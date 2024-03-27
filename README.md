@@ -12,6 +12,8 @@ This package eases the processing of hadronic jets stored in NTuples into graphs
 Prepare your venv (exchange all instances of `mamba` with `conda` if that is your jam):
 ```
 mamba create -n gnn python=3.11
+mamba activate gnn
+
 mamba install numpy, scipy, matplotlib, tqdm
 
 # If you run on CPU
