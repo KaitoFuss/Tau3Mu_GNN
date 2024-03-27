@@ -6,12 +6,10 @@ This package eases the processing of hadronic jets stored in NTuples into graphs
 
 - [Installation](#installation)
 - [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Installation
 
-Prepare your venv (exchange all instances of mamba with conda if that is your jam):
+Prepare your venv (exchange all instances of `mamba` with `conda` if that is your jam):
 ```
 mamba create -n gnn python=3.11
 mamba install numpy, scipy, matplotlib, tqdm
@@ -24,6 +22,11 @@ mamba install pytorch torchvision torchaudio cpuonly -c pytorch
 
 mamba install pyg -c pyg
 mamba install vector, uproot, awkward, networkx
+```
+
+Clone this repo:
+```
+git clone git@github.com:rseidita/SVJ_GNN.git
 ```
 
 ## Usage
