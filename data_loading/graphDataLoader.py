@@ -2,8 +2,9 @@ from utils.JetGraphProducer import JetGraphProducer
 from torch_geometric.loader import DataLoader
 from typing import Optional, List
 from utils.LundTreeUtilities import OnTheFlyNormalizer
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, WeightedRandomSampler
 import os
+import torch
 
 class GraphDataLoader(DataLoader):
     """
@@ -50,6 +51,7 @@ class GraphDataLoader(DataLoader):
             self.window_to_load = [[0., 1.] for _ in dataset_paths]
 
         datasets = []
+        weights = []
         # Build the dataset
         for i, (path, name) in enumerate(dataset_paths):
             if not os.path.exists(f"{path}/processed/{name}.pt"):
@@ -63,7 +65,12 @@ class GraphDataLoader(DataLoader):
                 normalizer(data.data)
 
             datasets.append(data)
+            weights.append(data.data.w)
 
         data = ConcatDataset(datasets)
 
-        super(GraphDataLoader, self).__init__(data, batch_size, shuffle, follow_batch, exclude_keys, **kwargs)
+        weights = torch.cat(weights)
+        sampler = WeightedRandomSampler(weights, batch_size, replacement=True)
+        sampler = None
+
+        super(GraphDataLoader, self).__init__(data, batch_size, shuffle, follow_batch, exclude_keys, sampler=sampler, **kwargs)

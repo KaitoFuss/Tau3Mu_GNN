@@ -314,8 +314,8 @@ class JetGraphProducer(InMemoryDataset):
         else:
             assert kt_cut is None, "kt_cut is only supported for Lund tree representations"
 
-        # if self.n_threads > 1:
-        #     raise NotImplementedError("Parallel processing is not yet implemented")
+        if self.n_threads > 1:
+            logging.warning("Using multi-threading for graph production. This may lead to memory issues: use with caution.")
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
