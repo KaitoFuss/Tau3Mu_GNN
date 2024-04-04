@@ -61,16 +61,14 @@ class GraphDataLoader(DataLoader):
                         )
             data = JetGraphProducer(path, output_dataset_name=name)
             data = data[int(self.window_to_load[i][0]*len(data)):int(self.window_to_load[i][1]*len(data))]
+            weights.append(data.w)
             if normalizer is not None:
                 normalizer(data.data)
 
             datasets.append(data)
-            weights.append(data.data.w)
 
         data = ConcatDataset(datasets)
-
         weights = torch.cat(weights)
-        sampler = WeightedRandomSampler(weights, batch_size, replacement=True)
-        sampler = None
+        sampler = WeightedRandomSampler(weights, len(data), replacement=True)
 
         super(GraphDataLoader, self).__init__(data, batch_size, shuffle, follow_batch, exclude_keys, sampler=sampler, **kwargs)
