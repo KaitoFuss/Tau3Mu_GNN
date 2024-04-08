@@ -273,7 +273,7 @@ def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, leaf_vs_
         pos[node]= (pos[node][0]*width/xmax, pos[node][1])
     return pos
 
-def plot_tree(graph, idx_of_feature_to_plot, label, file_name, root=None):
+def plot_tree(graph, idx_of_feature_to_plot, label, file_name, root=None, show=False):
     if root is None:
         root = max(graph.edge_index[0]).item()
     plt.figure(1, figsize=(20, 12))
@@ -285,3 +285,5 @@ def plot_tree(graph, idx_of_feature_to_plot, label, file_name, root=None):
     cb.set_label(label, size=20)
     plt.axis('off')
     plt.savefig(f"{file_name}.pdf")
+    if show: plt.show()
+    plt.close()

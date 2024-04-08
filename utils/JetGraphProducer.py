@@ -7,32 +7,85 @@ from torch_geometric.data import InMemoryDataset, Data
 import awkward as ak
 from tqdm import tqdm
 import vector
+import numba as nb
 import logging
 from utils.LundTreeUtilities import tensor_to_tree, prune_tree, tree_to_tensor
 import torch.multiprocessing as tmp
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+@nb.njit
+def get_rapidity(pt, eta, mass):
+    return np.log((np.sqrt(mass**2 + (pt**2)*(np.cosh(eta)**2)) + pt*np.sinh(eta)) / np.sqrt(mass**2 + pt**2) + 1e-15)
+
+@nb.njit
+def get_delta(rapidity_a, rapidity_b, phi_a, phi_b):
+    return np.sqrt((phi_a - phi_b)**2 + (rapidity_a - rapidity_b)**2)
+
+@nb.njit
+def get_z(pt_a, pt_b):
+    return min(pt_a, pt_b) / (pt_a + pt_b)
+
+@nb.njit
+def get_psi(rapidity_low, rapidity_high, phi_low, phi_high):
+    return np.arctan((rapidity_low - rapidity_high) / (phi_low - phi_high + 1e-15))
+
+@nb.njit
+def get_kt(pt_low, pt_high, delta):
+    return min(pt_low, pt_high) * delta
+
+@nb.njit
+def get_energy(pt, eta, mass):
+    return np.sqrt(mass**2 + pt**2)*np.cosh(eta)
+
+@nb.njit
+def get_dij(constituents:np.ndarray)->np.ndarray:
+    """
+    Calculate the dij matrix for the Cambridge-Aachen clustering algorithm
+
+    Args:
+        constituents (np.ndarray): Array of constituents with shape (4, n_constituents)
+
+    Returns:
+        np.ndarray: dij matrix with shape (n_constituents, n_constituents)
+    """
+    y = get_rapidity(constituents[0], constituents[1], constituents[3])
+    phi = constituents[2]
+    matrix_y = np.repeat(y, len(y)).reshape((len(y), -1))
+    matrix_phi = np.repeat(phi, len(phi)).reshape((len(phi), -1))
+    dij = ( (matrix_phi - matrix_phi.T)**2 + (matrix_y - matrix_y.T)**2 ) / 0.64
+
+    return dij
+
+@nb.njit
+def cluster_constituents(constituents:np.ndarray, index_a:int, index_b:int):
+    constituent_a = vector.obj(pt=constituents[0, index_a], eta=constituents[1, index_a], phi=constituents[2, index_a], mass=constituents[3, index_a])
+    constituent_b = vector.obj(pt=constituents[0, index_b], eta=constituents[1, index_b], phi=constituents[2, index_b], mass=constituents[3, index_b])
+
+    return constituent_a + constituent_b
+
+@nb.njit
 def get_lund_decomp(
-        pt,
-        eta,
-        phi,
-        mass,
-        n_lund_vars=3,
-        save_4vectors=False,
-        fractions=None):
+        pt:np.ndarray,
+        eta:np.ndarray,
+        phi:np.ndarray,
+        mass:np.ndarray,
+        n_lund_vars:int=3,
+        save_4vectors:bool=False,
+        fractions:np.ndarray=None
+        ):
     """
     Perform jet declustering, returning the Lund tree as a nested list
     A nested list is probably not ideal, a willing student could improve it :)
 
     Args:       
-        pt (list): pt of jet constituents
-        eta (list): eta of jet constituents
-        phi (list): phi of jet constituents
-        mass (list): mass of jet constituents
+        pt (np.ndarray): pt of jet constituents
+        eta (np.ndarray): eta of jet constituents
+        phi (np.ndarray): phi of jet constituents
+        mass (np.ndarray): mass of jet constituents
         n_lund_vars (int): number of Lund variables to use (3 or 5)
         save_constituents_4vectors (bool): whether to save the 4-vectors of the constituents in the Lund tree
-        fractions (list): energy fractions of jet constituents (basically pdgIds at this level)
+        fractions (dict): energy fractions of jet constituents (basically pdgIds at this level)
 
     Returns:   
         tuple[list, list]: nodes (feature matrix), edges (sparse adjacency matrix)
@@ -41,150 +94,255 @@ def get_lund_decomp(
     if n_lund_vars not in [3, 5]:
         raise ValueError("Only 3 or 5 Lund variables are supported")
 
-    constituents = vector.array({
-        "pt" : pt,
-        "eta" : eta,
-        "phi" : phi,
-        "mass" : mass,
-    })
+    constituents = np.stack((pt, eta, phi, mass), axis=0)
 
     if fractions is not None:
-        e_fraction = [f for f in fractions["e"]]
-        mu_fraction = [f for f in fractions["mu"]]
-        g_fraction = [f for f in fractions["g"]]
-        h_fraction = [f for f in fractions["h"]]
+        e_fraction = fractions[0].astype(np.float64)
+        mu_fraction = fractions[1].astype(np.float64)
+        g_fraction = fractions[2].astype(np.float64)
+        h_fraction = fractions[3].astype(np.float64)
 
     # Prepare sparse connection matrix for the Lund tree
-    edges = [[], []]
+    edges = np.empty((2, 4), dtype=np.int64)
+
+    pt = pt.astype(np.float64)
+    eta = eta.astype(np.float64)
+    phi = phi.astype(np.float64)
+    mass = mass.astype(np.float64)
 
     # Features of constituents
-    nodes_pt = [p for p in pt]
-    nodes_eta = [e for e in eta]
-    nodes_phi = [p for p in phi]
-    nodes_mass = [m for m in mass]
+    nodes_pt = pt.astype(np.float64).copy()
+    nodes_eta = eta.astype(np.float64).copy()
+    nodes_phi = phi.astype(np.float64).copy()
+    nodes_mass = mass.astype(np.float64).copy()
     
     # New Features of constituents
-    nodes_Delta = [0] * len(nodes_pt)
-    nodes_z = [1] * len(nodes_pt)
-    nodes_psi = [np.pi/4] * len(nodes_pt)
-    nodes_kt = [0] * len(nodes_pt)
+    nodes_Delta = np.zeros(len(nodes_pt), dtype=np.float64)
+    nodes_z = np.ones(len(nodes_pt), dtype=np.float64)
+    nodes_psi = np.full(len(nodes_pt), np.pi/4, dtype=np.float64)
+    nodes_kt = np.zeros(len(nodes_pt), dtype=np.float64)
 
     # Prepare index map to correctly build the Lund tree
-    index_list = [i for i in range(len(constituents))]
+    index_list = [i for i in range(constituents.shape[1])]
+
+    first_clustering = True
 
     # Start the actual CA clustering
-    while len(constituents) > 1:
-        matrix_y = np.repeat(constituents.rapidity, len(constituents)).reshape((len(constituents), -1))
-        matrix_phi = np.repeat(constituents.phi, len(constituents)).reshape((len(constituents), -1))
-        dij = ( (matrix_phi - matrix_phi.T)**2 + (matrix_y - matrix_y.T)**2 ) / 0.64
+    while constituents.shape[1] > 1:
+
+        dij = get_dij(constituents)
 
         # Avoiding the minimum distance to be the trivial 0 of each constituent with itself
         np.fill_diagonal(dij, np.inf)
 
         # Get pair with minimum distance
-        i, j = np.unravel_index(dij.argmin(), dij.shape)
+        i =  np.argmin(dij) // dij.shape[0]
+        j =  np.argmin(dij) % dij.shape[0]
 
         # Get index of new node in the tree
-        k = len(nodes_pt)
+        k = nodes_pt.shape[0]
 
         # Cluster the pair together
-        new_constituent = constituents[i] + constituents[j]
-        nodes_pt.append(new_constituent.pt)
-        nodes_eta.append(new_constituent.eta)
-        nodes_phi.append(new_constituent.phi)
-        nodes_mass.append(new_constituent.mass)
+        new_constituent = cluster_constituents(constituents, i, j)
+
+        nodes_pt = np.append(nodes_pt, new_constituent.pt)
+        nodes_eta = np.append(nodes_eta, new_constituent.eta)
+        nodes_phi = np.append(nodes_phi, new_constituent.phi)
+        nodes_mass = np.append(nodes_mass, new_constituent.mass)
         
         # Order indices by constituent pt
-        i_lo, i_hi = (i, j) if constituents[i].pt < constituents[j].pt else (j, i)
+        if constituents[0,i] < constituents[0,j]:
+            i_lo, i_hi = (i, j)
+        else:
+            i_lo, i_hi = (j, i)
         
         # New Features for clustered particle
-        Delta = np.sqrt((constituents[i].phi - constituents[j].phi)**2 + (constituents[i].rapidity - constituents[j].rapidity)**2)
-        z = constituents[i_lo].pt / (constituents[i_lo].pt + constituents[i_hi].pt)
-        psi = np.arctan((constituents[i_lo].rapidity - constituents[i_hi].rapidity) / (constituents[i_lo].phi - constituents[i_hi].phi + 1e-15))
-        kt = constituents[i_lo].pt * Delta   
+        Delta = get_delta(
+            get_rapidity(constituents[0,i], constituents[1,i], constituents[3,i]),
+            get_rapidity(constituents[0,j], constituents[1,j], constituents[3,j]),
+            constituents[2,i],
+            constituents[2,j]
+        )
+        if np.isnan(Delta):
+            print("pt: ", constituents[0,i])
+            print("eta: ", constituents[1,i])
+            print("phi: ", constituents[2,i])
+            print("mass: ", constituents[3,i])
+            print("y_1", get_rapidity(constituents[0,i], constituents[1,i], constituents[3,i]))
+            print("y_2", get_rapidity(constituents[0,j], constituents[1,j], constituents[3,j]))
+            print(constituents[0,j], constituents[1,j], constituents[3,j])
+            print("Delta: ", Delta)
+            raise ValueError("NaN in Delta")
         
-        nodes_Delta.append(Delta)
-        nodes_z.append(z)
-        nodes_psi.append(psi)
-        nodes_kt.append(kt)
+        z = get_z(constituents[0,i], constituents[0,j])
+        psi = get_psi(
+            get_rapidity(constituents[0,i_lo], constituents[1,i_lo], constituents[3,i_lo]),
+            get_rapidity(constituents[0,i_hi], constituents[1,i_hi], constituents[3,i_hi]),
+            constituents[2,i_lo],
+            constituents[2,i_hi]
+        )
+        kt = get_kt(constituents[0,i], constituents[0,j], Delta)
+        
+        nodes_Delta = np.append(nodes_Delta, Delta)
+        nodes_z = np.append(nodes_z, z)
+        nodes_psi = np.append(nodes_psi, psi)
+        nodes_kt = np.append(nodes_kt, kt)
 
         if fractions is not None:
             # Energy fractions of the current pseudojets
-            e_fraction.append((constituents[i].E*e_fraction[index_list[i]] + constituents[j].E*e_fraction[index_list[j]]) / new_constituent.E)
-            mu_fraction.append((constituents[i].E*mu_fraction[index_list[i]] + constituents[j].E*mu_fraction[index_list[j]]) / new_constituent.E)
-            g_fraction.append((constituents[i].E*g_fraction[index_list[i]] + constituents[j].E*g_fraction[index_list[j]]) / new_constituent.E)
-            h_fraction.append((constituents[i].E*h_fraction[index_list[i]] + constituents[j].E*h_fraction[index_list[j]]) / new_constituent.E)
+            energy_i = get_energy(constituents[0,i], constituents[1,i], constituents[3,i])
+            energy_j = get_energy(constituents[0,j], constituents[1,j], constituents[3,j])
+            energy_new = get_energy(new_constituent.pt, new_constituent.eta, new_constituent.mass)
+            e_fraction = np.append(e_fraction, (energy_i*e_fraction[index_list[i]] + energy_j*e_fraction[index_list[j]]) / energy_new)
+            mu_fraction = np.append(mu_fraction, (energy_i*mu_fraction[index_list[i]] + energy_j*mu_fraction[index_list[j]]) / energy_new)
+            g_fraction = np.append(g_fraction, (energy_i*g_fraction[index_list[i]] + energy_j*g_fraction[index_list[j]]) / energy_new)
+            h_fraction = np.append(h_fraction, (energy_i*h_fraction[index_list[i]] + energy_j*h_fraction[index_list[j]]) / energy_new)
         
         # Add connections to the tree
         # This construction ensures that each clustered step is
         # two-way connected to its mother constituents
-        edges[0] += [index_list[i], index_list[j], k, k]
-        edges[1] += [k, k, index_list[i], index_list[j]]
+        if first_clustering:
+            edges = np.array([
+                [index_list[i], index_list[j], k, k],
+                [k, k, index_list[i], index_list[j]]
+            ], dtype=np.int64
+            )
+            first_clustering = False
+        else:
+            new_edges = np.array([
+                [index_list[i], index_list[j], k, k],
+                [k, k, index_list[i], index_list[j]]
+            ], dtype=np.int64
+            )
+            edges = np.hstack((edges, new_edges))
 
         # Update the index map
         index_list = [idx for l, idx in enumerate(index_list) if l not in (i,j)] + [k]
 
         # Replace clustered constituents by the clustered particle
+        
         pt = np.hstack(( 
             pt[:min(i,j)], 
             pt[min(i,j)+1:max(i,j)], 
             pt[max(i,j)+1:], 
-            new_constituent.pt 
+            np.array([new_constituent.pt])
         ))
         eta = np.hstack(( 
             eta[:min(i,j)], 
             eta[min(i,j)+1:max(i,j)], 
             eta[max(i,j)+1:], 
-            new_constituent.eta 
+            np.array([new_constituent.eta])
         ))
         phi = np.hstack(( 
             phi[:min(i,j)], 
             phi[min(i,j)+1:max(i,j)], 
             phi[max(i,j)+1:], 
-            new_constituent.phi 
+            np.array([new_constituent.phi])
         ))
         mass = np.hstack(( 
             mass[:min(i,j)], 
             mass[min(i,j)+1:max(i,j)], 
             mass[max(i,j)+1:], 
-            new_constituent.mass 
+            np.array([new_constituent.mass])
         ))
-        
-        constituents = vector.array({
-            "pt" : pt,
-            "eta" : eta,
-            "phi" : phi,
-            "mass" : mass
-        })
 
-    nodes = [
-        np.array(nodes_kt),
-        np.array(nodes_Delta),
-        np.array(nodes_z),
-    ]
+        constituents = np.stack((pt, eta, phi, mass), axis=0)
 
-    if n_lund_vars == 5:
-        nodes += [
-            np.array(nodes_psi),
-            np.array(nodes_mass), 
-        ]
+    if not save_4vectors and fractions is None:
+        if n_lund_vars == 3:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+            ))
+        elif n_lund_vars == 5:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                nodes_psi,
+                nodes_mass,
+            ))
     
-    if save_4vectors:
-        nodes += [
-            np.array(nodes_pt), 
-            np.array(nodes_eta), 
-            np.array(nodes_phi),
-        ]
+    elif save_4vectors and fractions is None:
+        if n_lund_vars == 3:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                nodes_pt,
+                nodes_eta,
+                nodes_phi,
+                nodes_mass,
+            ))
+        elif n_lund_vars == 5:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                nodes_psi,
+                nodes_pt,
+                nodes_eta,
+                nodes_phi,
+                nodes_mass,
+            ))
          
-    if fractions is not None:
-        nodes += [
-            np.array(e_fraction),
-            np.array(mu_fraction),
-            np.array(g_fraction),
-            np.array(h_fraction),
-        ]
+    elif fractions is not None and not save_4vectors:
+        if n_lund_vars == 3:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                e_fraction,
+                mu_fraction,
+                g_fraction,
+                h_fraction,
+            ))
+        elif n_lund_vars == 5:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                nodes_psi,
+                nodes_mass,
+                e_fraction,
+                mu_fraction,
+                g_fraction,
+                h_fraction,
+            ))
 
-    return nodes, edges
+    else:
+        if n_lund_vars == 3:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                nodes_pt,
+                nodes_eta,
+                nodes_phi,
+                nodes_mass,
+                e_fraction,
+                mu_fraction,
+                g_fraction,
+                h_fraction,
+            ))
+        elif n_lund_vars == 5:
+            nodes = np.vstack((
+                nodes_kt,
+                nodes_Delta,
+                nodes_z,
+                nodes_psi,
+                nodes_pt,
+                nodes_eta,
+                nodes_phi,
+                nodes_mass,
+                e_fraction,
+                mu_fraction,
+                g_fraction,
+                h_fraction,
+            ))
+
+    return (nodes, edges)
 
 
 class JetGraphProducer(InMemoryDataset):
@@ -315,7 +473,7 @@ class JetGraphProducer(InMemoryDataset):
             assert kt_cut is None, "kt_cut is only supported for Lund tree representations"
 
         if self.n_threads > 1:
-            logging.warning("Using multi-threading for graph production. This may lead to memory issues: use with caution.")
+            raise NotImplementedError("Parallel processing is not yet implemented")
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
@@ -378,16 +536,16 @@ class JetGraphProducer(InMemoryDataset):
                 # Order everything by pt and keep the desired number of candidates
                 permutation = ak.argsort(pt, ascending=False)
                 n_constituents = min(len(permutation), self.n_store_cands) if self.n_store_cands else len(permutation)
-                pt = np.array(pt[permutation][:n_constituents])
-                eta = np.array(eta[permutation][:n_constituents])
-                phi = np.array(phi[permutation][:n_constituents])
+                pt = np.array(pt[permutation][:n_constituents], dtype=np.float64)
+                eta = np.array(eta[permutation][:n_constituents], dtype=np.float64)
+                phi = np.array(phi[permutation][:n_constituents], dtype=np.float64)
                 if self.use_relative_angles:
                     eta = eta - jet_eta
                     # Need care to account for circularity
                     phi = (phi - jet_phi + np.pi) % (2*np.pi) - np.pi
-                pdgId = np.array(pdgId[permutation][:n_constituents])
+                pdgId = np.array(pdgId[permutation][:n_constituents], dtype=np.int64)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
-                mass = np.clip(np.array(mass[permutation][:n_constituents]), a_min=0., a_max=None)
+                mass = np.clip(np.array(mass[permutation][:n_constituents]), a_min=0., a_max=None, dtype=np.float64)
 
                 # If requested, use random values for features
                 if self.use_dummy_values:
@@ -474,18 +632,18 @@ class JetGraphProducer(InMemoryDataset):
                 else:
                     if self.save_energy_fractions:
                         # Initialize energy fractions
-                        energy_fractions = {
-                            "e": 1*(np.abs(pdgId) == 11), # electrons
-                            "mu": 1*(np.abs(pdgId) == 13), # muons
-                            "g": 1*(pdgId == 22), # photons
-                            "h": 1*((np.abs(pdgId) != 11) & \
-                                    (np.abs(pdgId) != 13) & \
-                                    (np.abs(pdgId) != 22)), # hadrons
-                        }
+                        energy_fractions = np.array([
+                            1.*(np.abs(pdgId) == 11), # electrons
+                            1.*(np.abs(pdgId) == 13), # muons
+                            1.*(pdgId == 22), # photons
+                            1.*((np.abs(pdgId) != 11) & \
+                               (np.abs(pdgId) != 13) & \
+                               (np.abs(pdgId) != 22)), # hadrons
+                        ])
                     else: energy_fractions = None
 
                     # Get lund decomposition
-                    feature_matrix, adjacency_matrix = get_lund_decomp(
+                    ret = get_lund_decomp(
                         pt,
                         eta,
                         phi,
@@ -494,6 +652,8 @@ class JetGraphProducer(InMemoryDataset):
                         save_4vectors=self.save_4vectors_in_lund_tree,
                         fractions=energy_fractions,
                         )
+
+                    feature_matrix, adjacency_matrix = ret
 
                     # Pass features to torch tensor
                     features = torch.tensor(np.array(feature_matrix).T, dtype=torch.float)
