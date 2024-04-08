@@ -16,7 +16,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 @nb.njit
 def get_rapidity(pt, eta, mass):
-    return np.log((np.sqrt(mass**2 + pt**2*np.cosh(eta)) + pt*np.sinh(eta)) / np.sqrt(mass**2 + pt**2))
+    return np.log((np.sqrt(mass**2 + (pt**2)*(np.cosh(eta)**2)) + pt*np.sinh(eta)) / np.sqrt(mass**2 + pt**2) + 1e-15)
 
 @nb.njit
 def get_delta(rapidity_a, rapidity_b, phi_a, phi_b):
@@ -125,7 +125,7 @@ def get_lund_decomp(
     # Prepare index map to correctly build the Lund tree
     index_list = [i for i in range(constituents.shape[1])]
 
-    is_first = True
+    first_clustering = True
 
     # Start the actual CA clustering
     while constituents.shape[1] > 1:
@@ -163,6 +163,17 @@ def get_lund_decomp(
             constituents[2,i],
             constituents[2,j]
         )
+        if np.isnan(Delta):
+            print("pt: ", constituents[0,i])
+            print("eta: ", constituents[1,i])
+            print("phi: ", constituents[2,i])
+            print("mass: ", constituents[3,i])
+            print("y_1", get_rapidity(constituents[0,i], constituents[1,i], constituents[3,i]))
+            print("y_2", get_rapidity(constituents[0,j], constituents[1,j], constituents[3,j]))
+            print(constituents[0,j], constituents[1,j], constituents[3,j])
+            print("Delta: ", Delta)
+            raise ValueError("NaN in Delta")
+        
         z = get_z(constituents[0,i], constituents[0,j])
         psi = get_psi(
             get_rapidity(constituents[0,i_lo], constituents[1,i_lo], constituents[3,i_lo]),
@@ -190,13 +201,13 @@ def get_lund_decomp(
         # Add connections to the tree
         # This construction ensures that each clustered step is
         # two-way connected to its mother constituents
-        if is_first:
+        if first_clustering:
             edges = np.array([
                 [index_list[i], index_list[j], k, k],
                 [k, k, index_list[i], index_list[j]]
             ], dtype=np.int64
             )
-            is_first = False
+            first_clustering = False
         else:
             new_edges = np.array([
                 [index_list[i], index_list[j], k, k],
@@ -622,10 +633,10 @@ class JetGraphProducer(InMemoryDataset):
                     if self.save_energy_fractions:
                         # Initialize energy fractions
                         energy_fractions = np.array([
-                            1*(np.abs(pdgId) == 11), # electrons
-                            1*(np.abs(pdgId) == 13), # muons
-                            1*(pdgId == 22), # photons
-                            1*((np.abs(pdgId) != 11) & \
+                            1.*(np.abs(pdgId) == 11), # electrons
+                            1.*(np.abs(pdgId) == 13), # muons
+                            1.*(pdgId == 22), # photons
+                            1.*((np.abs(pdgId) != 11) & \
                                (np.abs(pdgId) != 13) & \
                                (np.abs(pdgId) != 22)), # hadrons
                         ])
