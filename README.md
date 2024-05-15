@@ -14,7 +14,7 @@ Prepare your venv (exchange all instances of `mamba` with `conda` if that is you
 mamba create -n gnn python=3.11
 mamba activate gnn
 
-mamba install numpy, scipy, matplotlib, tqdm
+mamba install numpy scipy matplotlib tqdm
 
 # If you run on CPU
 mamba install pytorch torchvision torchaudio cpuonly -c pytorch
