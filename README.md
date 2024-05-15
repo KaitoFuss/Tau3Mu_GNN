@@ -17,7 +17,7 @@ mamba activate gnn
 mamba install numpy scipy matplotlib tqdm
 
 # If you run on CPU
-mamba install pytorch torchvision torchaudio cpuonly -c pytorch
+conda install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 cpuonly -c pytorch
 
 # If you have a CUDA-enabled GPU
 # mamba install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
