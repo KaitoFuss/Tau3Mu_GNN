@@ -23,7 +23,7 @@ conda install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 cpuonly -c py
 # mamba install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
 mamba install pyg -c pyg
-mamba install vector, uproot, awkward, networkx
+mamba install vector uproot awkward networkx
 ```
 
 Clone this repo:
