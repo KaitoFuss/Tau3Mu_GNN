@@ -16,10 +16,10 @@ class OnTheFlyNormalizer(BaseTransform):
         means: means of the attributes
         stds: standard deviations of the attributes
     """
-    def __init__(self, attrs: list, means: torch.tensor, stds: torch.tensor):
-        self.attrs = attrs
-        self.means = means
-        self.stds = stds
+    def __init__(self, attrs: list, means: torch.tensor, stds: torch.tensor, device=None):
+        self.attrs = attrs.to(device) if device is not None else attrs
+        self.means = means.to(device) if device is not None else means
+        self.stds = stds.to(device) if device is not None else stds
         
     def __call__(self, data):
         for store in data.stores:
