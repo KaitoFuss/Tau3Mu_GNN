@@ -42,13 +42,15 @@ class GraphDataLoader(DataLoader):
             shuffle: bool = False,
             follow_batch: Optional[List[str]] = None,
             exclude_keys: Optional[List[str]] = None,
+            device=None,
             **kwargs,
     ):
-        self.dataset_paths=dataset_paths
-        self.normalizer=normalizer
-        self.window_to_load=window_to_load
+        self.dataset_paths = dataset_paths
+        self.normalizer = normalizer
+        self.window_to_load = window_to_load
         if self.window_to_load is None:
             self.window_to_load = [[0., 1.] for _ in dataset_paths]
+        self.device = device
 
         datasets = []
         weights = []
@@ -60,6 +62,8 @@ class GraphDataLoader(DataLoader):
                     "please do so before attempting to load it."
                         )
             data = JetGraphProducer(path, output_dataset_name=name)
+            if self.device is not None:
+                data.data.to(self.device)
             data = data[int(self.window_to_load[i][0]*len(data)):int(self.window_to_load[i][1]*len(data))]
             weights.append(data.w)
             if normalizer is not None:
@@ -68,7 +72,7 @@ class GraphDataLoader(DataLoader):
             datasets.append(data)
 
         data = ConcatDataset(datasets)
-        weights = torch.cat(weights)
+        weights = torch.cat(weights).to(device) if device is not None else torch.cat(weights)
         sampler = WeightedRandomSampler(weights, len(data), replacement=True)
 
         super(GraphDataLoader, self).__init__(data, batch_size, shuffle, follow_batch, exclude_keys, sampler=sampler, **kwargs)
