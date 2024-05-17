@@ -17,7 +17,7 @@ class OnTheFlyNormalizer(BaseTransform):
         stds: standard deviations of the attributes
     """
     def __init__(self, attrs: list, means: torch.tensor, stds: torch.tensor, device=None):
-        self.attrs = attrs.to(device) if device is not None else attrs
+        self.attrs = attrs
         self.means = means.to(device) if device is not None else means
         self.stds = stds.to(device) if device is not None else stds
         
