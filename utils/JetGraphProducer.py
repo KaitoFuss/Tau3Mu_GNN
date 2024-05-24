@@ -10,7 +10,6 @@ import vector
 import numba as nb
 import logging
 from utils.LundTreeUtilities import tensor_to_tree, prune_tree, tree_to_tensor
-import torch.multiprocessing as tmp
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -70,9 +69,10 @@ def get_lund_decomp(
         eta:np.ndarray,
         phi:np.ndarray,
         mass:np.ndarray,
+        fractions:np.ndarray,
+        save_fractions:bool=False,
         n_lund_vars:int=3,
         save_4vectors:bool=False,
-        fractions:np.ndarray=None
         ):
     """
     Perform jet declustering, returning the Lund tree as a nested list
@@ -96,7 +96,7 @@ def get_lund_decomp(
 
     constituents = np.stack((pt, eta, phi, mass), axis=0)
 
-    if fractions is not None:
+    if save_fractions:
         e_fraction = fractions[0].astype(np.float64)
         mu_fraction = fractions[1].astype(np.float64)
         g_fraction = fractions[2].astype(np.float64)
@@ -188,7 +188,7 @@ def get_lund_decomp(
         nodes_psi = np.append(nodes_psi, psi)
         nodes_kt = np.append(nodes_kt, kt)
 
-        if fractions is not None:
+        if save_fractions:
             # Energy fractions of the current pseudojets
             energy_i = get_energy(constituents[0,i], constituents[1,i], constituents[3,i])
             energy_j = get_energy(constituents[0,j], constituents[1,j], constituents[3,j])
@@ -248,7 +248,7 @@ def get_lund_decomp(
 
         constituents = np.stack((pt, eta, phi, mass), axis=0)
 
-    if not save_4vectors and fractions is None:
+    if not save_4vectors and not save_fractions:
         if n_lund_vars == 3:
             nodes = np.vstack((
                 nodes_kt,
@@ -264,7 +264,7 @@ def get_lund_decomp(
                 nodes_mass,
             ))
     
-    elif save_4vectors and fractions is None:
+    elif save_4vectors and not save_fractions:
         if n_lund_vars == 3:
             nodes = np.vstack((
                 nodes_kt,
@@ -287,7 +287,7 @@ def get_lund_decomp(
                 nodes_mass,
             ))
          
-    elif fractions is not None and not save_4vectors:
+    elif save_fractions and not save_4vectors:
         if n_lund_vars == 3:
             nodes = np.vstack((
                 nodes_kt,
@@ -389,7 +389,6 @@ class JetGraphProducer(InMemoryDataset):
         verbose (bool): Whether to print progress bars
         input_format (str): Format of the input root files ["PFNanoAOD", "TreeMaker2"]
         jet_collection (str): Name of the jet collection in the root file (default: "FatJet")
-        n_threads (int): Number of threads to use for parallel processing
     """
 
     def __init__(
@@ -425,7 +424,6 @@ class JetGraphProducer(InMemoryDataset):
         verbose=False,
         input_format="PFNanoAOD",
         jet_collection="FatJet",
-        n_threads=1,
     ):
 
         self.root = root
@@ -457,7 +455,6 @@ class JetGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.input_format = input_format
         self.jet_collection = jet_collection
-        self.n_threads = n_threads
 
         assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
 
@@ -471,9 +468,6 @@ class JetGraphProducer(InMemoryDataset):
         
         else:
             assert kt_cut is None, "kt_cut is only supported for Lund tree representations"
-
-        if self.n_threads > 1:
-            raise NotImplementedError("Parallel processing is not yet implemented")
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
@@ -630,17 +624,15 @@ class JetGraphProducer(InMemoryDataset):
                             )
                     
                 else:
-                    if self.save_energy_fractions:
-                        # Initialize energy fractions
-                        energy_fractions = np.array([
-                            1.*(np.abs(pdgId) == 11), # electrons
-                            1.*(np.abs(pdgId) == 13), # muons
-                            1.*(pdgId == 22), # photons
-                            1.*((np.abs(pdgId) != 11) & \
-                               (np.abs(pdgId) != 13) & \
-                               (np.abs(pdgId) != 22)), # hadrons
-                        ])
-                    else: energy_fractions = None
+                    # Initialize energy fractions
+                    energy_fractions = np.array([
+                        1.*(np.abs(pdgId) == 11), # electrons
+                        1.*(np.abs(pdgId) == 13), # muons
+                        1.*(pdgId == 22), # photons
+                        1.*((np.abs(pdgId) != 11) & \
+                            (np.abs(pdgId) != 13) & \
+                            (np.abs(pdgId) != 22)), # hadrons
+                    ])
 
                     # Get lund decomposition
                     ret = get_lund_decomp(
@@ -788,37 +780,15 @@ class JetGraphProducer(InMemoryDataset):
         
         events_to_process = min(self.max_events_to_process, total_events) if self.max_events_to_process else total_events
 
-        if self.n_threads == 1:
-            graphDataset = self.process_event(
-                0,
-                events_to_process,
-                events,
-                xsec,
-                gen_events_before_selection,
-                total_events,
-                events_to_process,
-            )
-
-        else:
-            with tmp.Pool(processes=self.n_threads) as pool:
-                stride = events_to_process//(self.n_threads)
-                slices = []
-                for i in range(self.n_threads):
-                    i_start = i*stride
-                    i_stop = (i+1)*stride if i < self.n_threads - 1 else events_to_process
-                    slices.append((i_start, i_stop))
-                
-                graphDataset = pool.starmap(self.process_event,
-                                                [(i_start,
-                                                  i_stop,
-                                                  events,
-                                                  xsec,
-                                                  gen_events_before_selection,
-                                                  total_events,
-                                                  events_to_process) for i_start, i_stop in slices],
-                                                )
-
-            graphDataset = [graph for graphs in graphDataset for graph in graphs]
+        graphDataset = self.process_event(
+            0,
+            events_to_process,
+            events,
+            xsec,
+            gen_events_before_selection,
+            total_events,
+            events_to_process,
+        )
 
         if self.pre_transform is not None:
             graphDataset = [self.pre_transform(d) for d in graphDataset]
