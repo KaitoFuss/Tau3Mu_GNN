@@ -16,6 +16,8 @@ mamba activate gnn
 
 mamba install numpy scipy matplotlib tqdm
 
+mamba install numba
+
 # If you run on CPU
 mamba install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 cpuonly -c pytorch
 
