@@ -104,7 +104,7 @@ def get_lund_decomp(
         h_fraction = fractions[3].astype(np.float64)
 
     # Prepare sparse connection matrix for the Lund tree
-    edges = np.empty((2, 4), dtype=np.int64)
+    edges = np.zeros((2, 1), dtype=np.int64)
 
     pt = pt.astype(np.float64)
     eta = eta.astype(np.float64)
@@ -503,7 +503,7 @@ class JetGraphProducer(InMemoryDataset):
                     jet_pt = event[f"{self.jet_collection}_pt"][nj]
                     jet_eta = event[f"{self.jet_collection}_eta"][nj]
                     jet_phi = event[f"{self.jet_collection}_phi"][nj]
-                    pf_cands_matching_filter = event[f"{self.jet_collection}PFCands_pFCandsIdx"][event[f"{self.jet_collection}PFCands_jetIdx"] == nj]
+                    pf_cands_matching_filter = event[f"{self.jet_collection}PFCands_pFCandsIdx"][event[f"{self.jet_collection}PFCands_jetIdx"] == nj].to_numpy().astype(np.int32)
                     pt = event["PFCands_pt"][pf_cands_matching_filter]
                     eta = event["PFCands_eta"][pf_cands_matching_filter]
                     phi = event["PFCands_phi"][pf_cands_matching_filter]
