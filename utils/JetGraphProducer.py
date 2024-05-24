@@ -83,9 +83,10 @@ def get_lund_decomp(
         eta (np.ndarray): eta of jet constituents
         phi (np.ndarray): phi of jet constituents
         mass (np.ndarray): mass of jet constituents
+        fractions (dict): energy fractions of jet constituents (basically pdgIds at this level)
+        save_fractions (bool): whether to save the energy fractions of the constituents in the Lund tree
         n_lund_vars (int): number of Lund variables to use (3 or 5)
         save_constituents_4vectors (bool): whether to save the 4-vectors of the constituents in the Lund tree
-        fractions (dict): energy fractions of jet constituents (basically pdgIds at this level)
 
     Returns:   
         tuple[list, list]: nodes (feature matrix), edges (sparse adjacency matrix)
