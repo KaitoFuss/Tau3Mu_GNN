@@ -26,6 +26,8 @@ mamba install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 cpuonly -c py
 
 mamba install pyg -c pyg
 mamba install vector uproot awkward networkx
+
+mamba install numba -c conda-forge
 ```
 
 Clone this repo:
