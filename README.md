@@ -28,6 +28,11 @@ mamba install pyg -c pyg
 mamba install vector uproot awkward networkx
 
 mamba install numba -c conda-forge
+
+# If you want to use MDMM
+export OLD_PWD=$PWD
+pip install mdmm && cd $(python -m site | grep "site-packages'," | cut -d"'" -f2)/mdmm && git clone git@github.com:fleble/mdmm.git && cp mdmm/mdmm/mdmm.py . && rm -rf mdmm
+cd $OLD_PWD
 ```
 
 Clone this repo:
