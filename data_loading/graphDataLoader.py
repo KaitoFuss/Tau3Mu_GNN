@@ -70,7 +70,7 @@ class GraphDataLoader(DataLoader):
             data = data[int(self.window_to_load[i][0]*len(data)):int(self.window_to_load[i][1]*len(data))]
             weights.append(data.w)
             if dataset_fraction is not None:
-                weights[i] = weights[i]*dataset_fraction[i]/np.sum(dataset_fraction)
+                weights[i] = weights[i]*dataset_fraction[i]/np.sum(dataset_fraction)/weights[i].sum()
             if normalizer is not None:
                 normalizer(data.data)
 
