@@ -385,7 +385,7 @@ class JetGraphProducer(InMemoryDataset):
         extra_obs_to_save_per_event (list): List of extra event-level observables to store in the graph (must be available in the root file)
         extra_obs_to_compute_per_event (list): List of extra event-level observables to compute and store in the graph (callable functions that take the event as input and return a float)
         extra_obs_to_load (list): List of extra observables to load from the root file (must be available in the root file)
-        save_jet_index_per_event (bool): Whether to save the jet index
+        save_jet_idx (bool): Whether to save the jet index
         mask (ak.Array): Mask to apply to the root file
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
