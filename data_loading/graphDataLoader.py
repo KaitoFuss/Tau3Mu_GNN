@@ -44,7 +44,7 @@ class GraphDataLoader(DataLoader):
             batch_size: int=1,
             dataset_fraction: List[float]=None,
             shuffle: bool = False,
-            permutation: Optional[torch.Tensor] = None,
+            permutation: Optional[dict] = {},
             follow_batch: Optional[List[str]] = None,
             exclude_keys: Optional[List[str]] = None,
             device: torch.device=None,
@@ -76,9 +76,9 @@ class GraphDataLoader(DataLoader):
                 data.data.to(self.device)
             
             if self.shuffle:
-                if self.permutation is None:
-                    self.permutation = torch.randperm(len(data))
-                data = data[self.permutation]
+                if name not in self.permutation.keys():
+                    self.permutation[name] = torch.randperm(len(data))
+                data = data[self.permutation[name]]
             
             data = data[int(self.window_to_load[i][0]*len(data)):int(self.window_to_load[i][1]*len(data))]
             weights.append(data.w)
