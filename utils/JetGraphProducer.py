@@ -659,7 +659,7 @@ class JetGraphProducer(InMemoryDataset):
                         # Convert to tree representation
                         root_node = tensor_to_tree(features, adjacency)
                         # Prune the tree
-                        root_node, n_nodes = prune_tree(root_node, 4, self.kt_cut)
+                        root_node, n_nodes = prune_tree(root_node, 0, self.kt_cut)
                         # Convert back to tensor representation
                         features, adjacency = tree_to_tensor(root_node, (n_nodes, features.shape[1]))
                         # TODO: deal with 1-node or empty graphs after pruning
