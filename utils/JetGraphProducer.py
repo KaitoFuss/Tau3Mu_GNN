@@ -739,7 +739,6 @@ class JetGraphProducer(InMemoryDataset):
                 "FatJetPFCands_jetIdx",
                 "FatJetPFCands_pFCandsIdx",
                 "nFatJet",
-                "genWeight",
                 "FatJet_eta",
                 "FatJet_phi",
                 "FatJet_pt",
