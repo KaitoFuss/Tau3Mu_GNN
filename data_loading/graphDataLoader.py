@@ -62,8 +62,8 @@ class GraphDataLoader(DataLoader):
         self.jet_idx = jet_idx
 
         # Consistency checks
-        assert len(self.window_to_load) == self.dataset_paths, "Please provide one slicing window per dataset!"
-        assert (not self.permuatation) or (len(self.permutation) == len(self.dataset_paths)), \
+        assert len(self.window_to_load) == len(self.dataset_paths), "Please provide one slicing window per dataset!"
+        assert (not self.permutation) or (len(self.permutation) == len(self.dataset_paths)), \
             "Mismatch between number of datasets and permutations, please check for consistency"
         
         
