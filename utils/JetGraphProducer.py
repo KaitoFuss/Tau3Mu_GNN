@@ -63,25 +63,7 @@ def cluster_constituents(constituents:np.ndarray, index_a:int, index_b:int):
     return constituent_a + constituent_b
 
 
-
-@nb.njit(
-    nb.types.Tuple((
-        nb.float64[:, :],  # Feature matrix (2D array of float64)
-        nb.int64[:, :]     # Edges (2D array of int64)
-    ))(
-        nb.float64[:],     # pt (1D array of float64)
-        nb.float64[:],     # eta (1D array of float64)
-        nb.float64[:],     # phi (1D array of float64)
-        nb.float64[:],     # mass (1D array of float64)
-        nb.float64[:],     # d0 (1D array of float64, transverse displacement)
-        nb.float64[:],     # dz (1D array of float64, longitudinal displacement)
-        nb.float64[:, :],  # fractions (2D array of float64)
-        nb.boolean,        # save_fractions (boolean flag)
-        nb.int64,          # n_lund_vars (integer)
-        nb.boolean,         # save_4vectors (boolean flag)
-        nb.boolean         # use_displacement (boolean flag)
-    )
-)
+@nb.njit
 def get_lund_decomp(
         pt:np.ndarray,
         eta:np.ndarray,
@@ -139,8 +121,8 @@ def get_lund_decomp(
     nodes_mass = mass.astype(np.float64).copy()
 
     #Displacement Features of constituents
-    nodes_d0=d0.astype(np.float64).copy() 
-    nodes_dz=dz.astype(np.float64).copy() 
+    nodes_d0 = d0.astype(np.float64).copy() 
+    nodes_dz = dz.astype(np.float64).copy() 
     
     # New Features of constituents
     nodes_Delta = np.zeros(len(nodes_pt), dtype=np.float64)
@@ -805,20 +787,15 @@ class JetGraphProducer(InMemoryDataset):
                             (np.abs(pdgId) != 13) & \
                             (np.abs(pdgId) != 22)), # hadrons
                     ])
-
-
-
-                    d0 = np.array(d0, dtype=np.float64)   
-                    dz = np.array(dz, dtype=np.float64)   
-
+  
                     # Get lund decomposition
                     ret = get_lund_decomp(
                         pt,
                         eta,
                         phi,
                         mass,
-                        d0 if self.use_displacement else np.zeros_like(pt),   
-                        dz if self.use_displacement else np.zeros_like(pt),   
+                        d0,   
+                        dz,   
                         n_lund_vars=self.n_lund_vars,
                         save_4vectors=self.save_4vectors_in_lund_tree,
                         fractions=energy_fractions,
