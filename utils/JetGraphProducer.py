@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 import uproot
 import torch
@@ -63,16 +62,20 @@ def cluster_constituents(constituents:np.ndarray, index_a:int, index_b:int):
 
     return constituent_a + constituent_b
 
+
 @nb.njit
 def get_lund_decomp(
         pt:np.ndarray,
         eta:np.ndarray,
         phi:np.ndarray,
         mass:np.ndarray,
+        d0:np.ndarray, 
+        dz:np.ndarray, 
         fractions:np.ndarray,
         save_fractions:bool=False,
         n_lund_vars:int=3,
         save_4vectors:bool=False,
+        use_displacement:bool = False 
         ):
     """
     Perform jet declustering, returning the Lund tree as a nested list
@@ -116,6 +119,10 @@ def get_lund_decomp(
     nodes_eta = eta.astype(np.float64).copy()
     nodes_phi = phi.astype(np.float64).copy()
     nodes_mass = mass.astype(np.float64).copy()
+
+    #Displacement Features of constituents
+    nodes_d0 = d0.astype(np.float64).copy() 
+    nodes_dz = dz.astype(np.float64).copy() 
     
     # New Features of constituents
     nodes_Delta = np.zeros(len(nodes_pt), dtype=np.float64)
@@ -145,6 +152,12 @@ def get_lund_decomp(
 
         # Cluster the pair together
         new_constituent = cluster_constituents(constituents, i, j)
+
+        new_d0 = (nodes_d0[i] + nodes_d0[j])/2 
+        new_dz = (nodes_dz[i] + nodes_dz[j])/2 
+
+        nodes_d0 = np.append(nodes_d0, new_d0) 
+        nodes_dz = np.append(nodes_dz, new_dz) 
 
         nodes_pt = np.append(nodes_pt, new_constituent.pt)
         nodes_eta = np.append(nodes_eta, new_constituent.eta)
@@ -251,97 +264,208 @@ def get_lund_decomp(
 
     if not save_4vectors and not save_fractions:
         if n_lund_vars == 3:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                ))
+
         elif n_lund_vars == 5:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                nodes_psi,
-                nodes_mass,
-            ))
+            if use_displacement:  
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_mass,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_mass,
+                ))
     
     elif save_4vectors and not save_fractions:
         if n_lund_vars == 3:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                nodes_pt,
-                nodes_eta,
-                nodes_phi,
-                nodes_mass,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                ))
         elif n_lund_vars == 5:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                nodes_psi,
-                nodes_pt,
-                nodes_eta,
-                nodes_phi,
-                nodes_mass,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                ))
          
     elif save_fractions and not save_4vectors:
         if n_lund_vars == 3:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                e_fraction,
-                mu_fraction,
-                g_fraction,
-                h_fraction,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                ))
         elif n_lund_vars == 5:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                nodes_psi,
-                nodes_mass,
-                e_fraction,
-                mu_fraction,
-                g_fraction,
-                h_fraction,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_mass,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_mass,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                ))
 
     else:
         if n_lund_vars == 3:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                nodes_pt,
-                nodes_eta,
-                nodes_phi,
-                nodes_mass,
-                e_fraction,
-                mu_fraction,
-                g_fraction,
-                h_fraction,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                ))
         elif n_lund_vars == 5:
-            nodes = np.vstack((
-                nodes_kt,
-                nodes_Delta,
-                nodes_z,
-                nodes_psi,
-                nodes_pt,
-                nodes_eta,
-                nodes_phi,
-                nodes_mass,
-                e_fraction,
-                mu_fraction,
-                g_fraction,
-                h_fraction,
-            ))
+            if use_displacement:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                    nodes_d0,   
+                    nodes_dz,   
+                ))
+            else:
+                nodes = np.vstack((
+                    nodes_kt,
+                    nodes_Delta,
+                    nodes_z,
+                    nodes_psi,
+                    nodes_pt,
+                    nodes_eta,
+                    nodes_phi,
+                    nodes_mass,
+                    e_fraction,
+                    mu_fraction,
+                    g_fraction,
+                    h_fraction,
+                ))
 
     return (nodes, edges)
 
@@ -391,6 +515,7 @@ class JetGraphProducer(InMemoryDataset):
         verbose (bool): Whether to print progress bars
         input_format (str): Format of the input root files ["PFNanoAOD", "TreeMaker2"]
         jet_collection (str): Name of the jet collection in the root file (default: "FatJet")
+        use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition
     """
 
     def __init__(
@@ -427,6 +552,7 @@ class JetGraphProducer(InMemoryDataset):
         verbose=False,
         input_format="PFNanoAOD",
         jet_collection="FatJet",
+        use_displacement=False  
     ):
 
         self.root = root
@@ -459,6 +585,7 @@ class JetGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.input_format = input_format
         self.jet_collection = jet_collection
+        self.use_displacement = use_displacement  
 
         assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
 
@@ -512,6 +639,8 @@ class JetGraphProducer(InMemoryDataset):
                     phi = event["PFCands_phi"][pf_cands_matching_filter]
                     pdgId = event["PFCands_pdgId"][pf_cands_matching_filter]
                     mass = event["PFCands_mass"][pf_cands_matching_filter]
+                    d0 = event["PFCands_d0"][pf_cands_matching_filter]   
+                    dz = event["PFCands_dz"][pf_cands_matching_filter]   
                     jet_idx = nj
                 elif self.input_format == "TreeMaker2":
                     jet_pt = event[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"][nj]
@@ -538,6 +667,15 @@ class JetGraphProducer(InMemoryDataset):
                 pt = np.array(pt[permutation][:n_constituents], dtype=np.float64)
                 eta = np.array(eta[permutation][:n_constituents], dtype=np.float64)
                 phi = np.array(phi[permutation][:n_constituents], dtype=np.float64)
+
+                if self.use_displacement:  
+                    d0 = np.array(d0[permutation][:n_constituents], dtype=np.float64)   
+                    dz = np.array(dz[permutation][:n_constituents], dtype=np.float64)   
+                else:
+                    d0 = np.zeros(len(pt), dtype=np.float64)   
+                    dz = np.zeros(len(pt), dtype=np.float64)   
+
+
                 if self.use_relative_angles:
                     eta = eta - jet_eta
                     # Need care to account for circularity
@@ -558,13 +696,24 @@ class JetGraphProducer(InMemoryDataset):
                     pos = [[e, p] for e, p in zip(eta, phi)]
 
                     # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
-                    features = torch.tensor(np.array([
-                        pt,
-                        eta,
-                        phi,
-                        pdgId,
-                        mass,
-                    ]).T, dtype=torch.float)
+                    if self.use_displacement: 
+                        features = torch.tensor(np.array([
+                            pt,
+                            eta,
+                            phi,
+                            pdgId,
+                            mass,
+                            d0,   
+                            dz   
+                        ]).T, dtype=torch.float)
+                    else:
+                        features = torch.tensor(np.array([
+                            pt,
+                            eta,
+                            phi,
+                            pdgId,
+                            mass
+                        ]).T, dtype=torch.float)
 
                     # Calculate edges and edge features
                     matrix_eta = np.repeat(eta, len(eta)).reshape((len(eta), -1))
@@ -638,17 +787,20 @@ class JetGraphProducer(InMemoryDataset):
                             (np.abs(pdgId) != 13) & \
                             (np.abs(pdgId) != 22)), # hadrons
                     ])
-
+  
                     # Get lund decomposition
                     ret = get_lund_decomp(
                         pt,
                         eta,
                         phi,
                         mass,
+                        d0,   
+                        dz,   
                         n_lund_vars=self.n_lund_vars,
                         save_4vectors=self.save_4vectors_in_lund_tree,
                         fractions=energy_fractions,
                         save_fractions=self.save_energy_fractions,
+                        use_displacement=self.use_displacement  
                         )
 
                     feature_matrix, adjacency_matrix = ret
@@ -736,6 +888,8 @@ class JetGraphProducer(InMemoryDataset):
                 "PFCands_phi",
                 "PFCands_pdgId",
                 "PFCands_mass",
+                "PFCands_d0",   
+                "PFCands_dz",   
                 "FatJetPFCands_jetIdx",
                 "FatJetPFCands_pFCandsIdx",
                 "nFatJet",
