@@ -44,7 +44,7 @@ class GraphDataLoader(DataLoader):
             batch_size: int=1,
             dataset_fraction: List[float]=None,
             shuffle: bool = False,
-            permutation: Optional[dict] = {},
+            permutation: Optional[dict] = None,
             follow_batch: Optional[List[str]] = None,
             exclude_keys: Optional[List[str]] = None,
             device: torch.device=None,
@@ -55,7 +55,7 @@ class GraphDataLoader(DataLoader):
         self.normalizer = normalizer
         self.window_to_load = window_to_load
         self.shuffle = shuffle
-        self.permutation = permutation
+        self.permutation = permutation if permutation is not None else {}
         if self.window_to_load is None:
             self.window_to_load = [[0., 1.] for _ in dataset_paths]
         self.device = device
