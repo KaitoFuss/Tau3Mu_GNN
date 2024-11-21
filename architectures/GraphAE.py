@@ -50,11 +50,13 @@ class graphAE(torch.nn.Module):
                 self.edges_decoder(z, edge_index, sigmoid=True) + EPS
                 )*weight
             ).mean()
-        neg_loss = (
-            -torch.log(
-                1 - self.edges_decoder(z, negative_edge_index, sigmoid=True) + EPS
-                )*weight
-            ).mean()
+        neg_loss = 0.0
+        if self.training:
+            neg_loss = (
+                -torch.log(
+                    1 - self.edges_decoder(z, negative_edge_index, sigmoid=True) + EPS
+                    )*weight
+                ).mean()
         
         return (pos_loss + neg_loss)
     
