@@ -485,6 +485,7 @@ class JetGraphProducer(InMemoryDataset):
     
     Args:
         root (str): Path to the folder with (one or more) root files containing the jet constituents. All files in the folder will be processed and treated as one sample.
+        output_dataset_name (str): Name of the processed output dataset
         n_store_jets (int): Number of jets to store per event
         delta_r_threshold (float): Threshold for the deltaR distance between constituents to be considered connected (spacial graphs only)
         n_store_cands (int): Number of constituents to store per jet (spacial graphs only)
@@ -515,7 +516,7 @@ class JetGraphProducer(InMemoryDataset):
         verbose (bool): Whether to print progress bars
         input_format (str): Format of the input root files ["PFNanoAOD", "TreeMaker2"]
         jet_collection (str): Name of the jet collection in the root file (default: "FatJet")
-        use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition
+        use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
     def __init__(
@@ -639,8 +640,11 @@ class JetGraphProducer(InMemoryDataset):
                     phi = event["PFCands_phi"][pf_cands_matching_filter]
                     pdgId = event["PFCands_pdgId"][pf_cands_matching_filter]
                     mass = event["PFCands_mass"][pf_cands_matching_filter]
-                    d0 = event["PFCands_d0"][pf_cands_matching_filter]   
-                    dz = event["PFCands_dz"][pf_cands_matching_filter]   
+                    if self.use_displacement:
+                        d0 = event["PFCands_d0"][pf_cands_matching_filter]   
+                        dz = event["PFCands_dz"][pf_cands_matching_filter]  
+                    else:
+                        d0, dz = None, None 
                     jet_idx = nj
                 elif self.input_format == "TreeMaker2":
                     jet_pt = event[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"][nj]
@@ -887,9 +891,7 @@ class JetGraphProducer(InMemoryDataset):
                 "PFCands_eta",
                 "PFCands_phi",
                 "PFCands_pdgId",
-                "PFCands_mass",
-                "PFCands_d0",   
-                "PFCands_dz",   
+                "PFCands_mass",  
                 "FatJetPFCands_jetIdx",
                 "FatJetPFCands_pFCandsIdx",
                 "nFatJet",
@@ -897,6 +899,9 @@ class JetGraphProducer(InMemoryDataset):
                 "FatJet_phi",
                 "FatJet_pt",
             ] + self.extra_obs_to_load
+
+            if self.use_displacement:
+                branches_to_load += ["PFCands_d0", "PFCands_dz"]
             
             for obs in self.extra_obs_to_save_per_event:
                 if obs not in branches_to_load: branches_to_load.append(obs)
