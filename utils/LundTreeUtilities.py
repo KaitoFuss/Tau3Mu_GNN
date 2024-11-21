@@ -1,11 +1,12 @@
 import numpy as np
 import torch
-import networkx as nx
-from torch_geometric.utils import to_networkx
 from torch_geometric.transforms import BaseTransform
-from numpy import random
-import matplotlib.pyplot as plt
 import torch
+import numba as nb
+import vector
+
+# Avoid nasty interplays of torch and numba
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 class OnTheFlyNormalizer(BaseTransform):
     """
@@ -154,136 +155,287 @@ def prune_tree(top_node, cut_variable_idx, cut_value):
 
     return top_node, n_nodes
 
-def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, leaf_vs_root_factor = 0.5):
 
-    '''
-    If the graph is a tree this will return the positions to plot this in a 
-    hierarchical layout.
+@nb.njit
+def get_rapidity(pt, eta, mass):
+    return np.log((np.sqrt(mass**2 + (pt**2)*(np.cosh(eta)**2)) + pt*np.sinh(eta)) / np.sqrt(mass**2 + pt**2) + 1e-15)
+
+@nb.njit
+def get_delta(rapidity_a, rapidity_b, phi_a, phi_b):
+    return np.sqrt((phi_a - phi_b)**2 + (rapidity_a - rapidity_b)**2)
+
+@nb.njit
+def get_z(pt_a, pt_b):
+    return min(pt_a, pt_b) / (pt_a + pt_b)
+
+@nb.njit
+def get_psi(rapidity_low, rapidity_high, phi_low, phi_high):
+    return np.arctan((rapidity_low - rapidity_high) / (phi_low - phi_high + 1e-15))
+
+@nb.njit
+def get_kt(pt_low, pt_high, delta):
+    return min(pt_low, pt_high) * delta
+
+@nb.njit
+def get_energy(pt, eta, mass):
+    return np.sqrt(mass**2 + pt**2)*np.cosh(eta)
+
+@nb.njit
+def get_dij(constituents:np.ndarray)->np.ndarray:
+    """
+    Calculate the dij matrix for the Cambridge-Aachen clustering algorithm
+
+    Args:
+        constituents (np.ndarray): Array of constituents with shape (4, n_constituents)
+
+    Returns:
+        np.ndarray: dij matrix with shape (n_constituents, n_constituents)
+    """
+    y = get_rapidity(constituents[0], constituents[1], constituents[3])
+    phi = constituents[2]
+    matrix_y = np.repeat(y, len(y)).reshape((len(y), -1))
+    matrix_phi = np.repeat(phi, len(phi)).reshape((len(phi), -1))
+    dij = ( (matrix_phi - matrix_phi.T)**2 + (matrix_y - matrix_y.T)**2 ) / 0.64
+
+    return dij
+
+@nb.njit
+def cluster_constituents(constituents:np.ndarray, index_a:int, index_b:int):
+    constituent_a = vector.obj(pt=constituents[0, index_a], eta=constituents[1, index_a], phi=constituents[2, index_a], mass=constituents[3, index_a])
+    constituent_b = vector.obj(pt=constituents[0, index_b], eta=constituents[1, index_b], phi=constituents[2, index_b], mass=constituents[3, index_b])
+
+    return constituent_a + constituent_b
+
+
+@nb.njit
+def get_lund_decomp(
+        pt:np.ndarray,
+        eta:np.ndarray,
+        phi:np.ndarray,
+        mass:np.ndarray,
+        d0:np.ndarray, 
+        dz:np.ndarray, 
+        fractions:np.ndarray,
+        save_fractions:bool=False,
+        n_lund_vars:int=3,
+        save_4vectors:bool=False,
+        use_displacement:bool = False,
+        ):
+    """
+    Perform jet declustering, returning the Lund tree as a nested list
+    A nested list is probably not ideal, a willing student could improve it :)
+
+    Args:       
+        pt (np.ndarray): pt of jet constituents
+        eta (np.ndarray): eta of jet constituents
+        phi (np.ndarray): phi of jet constituents
+        mass (np.ndarray): mass of jet constituents
+        fractions (dict): energy fractions of jet constituents (basically pdgIds at this level)
+        save_fractions (bool): whether to save the energy fractions of the constituents in the Lund tree
+        n_lund_vars (int): number of Lund variables to use (3 or 5)
+        save_constituents_4vectors (bool): whether to save the 4-vectors of the constituents in the Lund tree
+
+    Returns:   
+        tuple[list, list]: nodes (feature matrix), edges (sparse adjacency matrix)
+    """
+
+    if n_lund_vars not in [3, 5]:
+        raise ValueError("Only 3 or 5 Lund variables are supported")
+
+    constituents = np.stack((pt, eta, phi, mass), axis=0)
+
+    if save_fractions:
+        e_fraction = fractions[0].astype(np.float64)
+        mu_fraction = fractions[1].astype(np.float64)
+        g_fraction = fractions[2].astype(np.float64)
+        h_fraction = fractions[3].astype(np.float64)
+
+    # Prepare sparse connection matrix for the Lund tree
+    edges = np.zeros((2, 1), dtype=np.int64)
+
+    pt = pt.astype(np.float64)
+    eta = eta.astype(np.float64)
+    phi = phi.astype(np.float64)
+    mass = mass.astype(np.float64)
+
+    # Features of constituents
+    nodes_pt = pt.astype(np.float64).copy()
+    nodes_eta = eta.astype(np.float64).copy()
+    nodes_phi = phi.astype(np.float64).copy()
+    nodes_mass = mass.astype(np.float64).copy()
+
+    #Displacement Features of constituents
+    nodes_d0 = d0.astype(np.float64).copy() 
+    nodes_dz = dz.astype(np.float64).copy() 
     
-    Based on Joel's answer at https://stackoverflow.com/a/29597209/2966723,
-    but with some modifications.  
+    # New Features of constituents
+    nodes_Delta = np.zeros(len(nodes_pt), dtype=np.float64)
+    nodes_z = np.ones(len(nodes_pt), dtype=np.float64)
+    nodes_psi = np.full(len(nodes_pt), np.pi/4, dtype=np.float64)
+    nodes_kt = np.zeros(len(nodes_pt), dtype=np.float64)
 
-    We include this because it may be useful for plotting transmission trees,
-    and there is currently no networkx equivalent (though it may be coming soon).
-    
-    There are two basic approaches we think of to allocate the horizontal 
-    location of a node.  
-    
-    - Top down: we allocate horizontal space to a node.  Then its ``k`` 
-      descendants split up that horizontal space equally.  This tends to result
-      in overlapping nodes when some have many descendants.
-    - Bottom up: we allocate horizontal space to each leaf node.  A node at a 
-      higher level gets the entire space allocated to its descendant leaves.
-      Based on this, leaf nodes at higher levels get the same space as leaf
-      nodes very deep in the tree.  
-      
-    We use use both of these approaches simultaneously with ``leaf_vs_root_factor`` 
-    determining how much of the horizontal space is based on the bottom up 
-    or top down approaches.  ``0`` gives pure bottom up, while 1 gives pure top
-    down.   
-    
-    
-    :Arguments: 
-    
-    **G** the graph (must be a tree)
+    # Prepare index map to correctly build the Lund tree
+    index_list = [i for i in range(constituents.shape[1])]
 
-    **root** the root node of the tree 
-    - if the tree is directed and this is not given, the root will be found and used
-    - if the tree is directed and this is given, then the positions will be 
-      just for the descendants of this node.
-    - if the tree is undirected and not given, then a random choice will be used.
+    first_clustering = True
 
-    **width** horizontal space allocated for this branch - avoids overlap with other branches
+    # Start the actual CA clustering
+    while constituents.shape[1] > 1:
 
-    **vert_gap** gap between levels of hierarchy
+        dij = get_dij(constituents)
 
-    **vert_loc** vertical location of root
-    
-    **leaf_vs_root_factor**
+        # Avoiding the minimum distance to be the trivial 0 of each constituent with itself
+        np.fill_diagonal(dij, np.inf)
 
-    xcenter: horizontal location of root
-    '''
-    if not nx.is_tree(G):
-        raise TypeError('cannot use hierarchy_pos on a graph that is not a tree')
+        # Get pair with minimum distance
+        i =  np.argmin(dij) // dij.shape[0]
+        j =  np.argmin(dij) % dij.shape[0]
 
-    if root is None:
-        if isinstance(G, nx.DiGraph):
-            root = next(iter(nx.topological_sort(G)))  #allows back compatibility with nx version 1.11
+        # Get index of new node in the tree
+        k = nodes_pt.shape[0]
+
+        # Cluster the pair together
+        new_constituent = cluster_constituents(constituents, i, j)
+
+        new_d0 = (nodes_d0[i] + nodes_d0[j])/2 
+        new_dz = (nodes_dz[i] + nodes_dz[j])/2 
+
+        nodes_d0 = np.append(nodes_d0, new_d0) 
+        nodes_dz = np.append(nodes_dz, new_dz) 
+
+        nodes_pt = np.append(nodes_pt, new_constituent.pt)
+        nodes_eta = np.append(nodes_eta, new_constituent.eta)
+        nodes_phi = np.append(nodes_phi, new_constituent.phi)
+        nodes_mass = np.append(nodes_mass, new_constituent.mass)
+        
+        # Order indices by constituent pt
+        if constituents[0,i] < constituents[0,j]:
+            i_lo, i_hi = (i, j)
         else:
-            root = random.choice(list(G.nodes))
+            i_lo, i_hi = (j, i)
+        
+        # New Features for clustered particle
+        Delta = get_delta(
+            get_rapidity(constituents[0,i], constituents[1,i], constituents[3,i]),
+            get_rapidity(constituents[0,j], constituents[1,j], constituents[3,j]),
+            constituents[2,i],
+            constituents[2,j]
+        )
+        if np.isnan(Delta):
+            print("pt: ", constituents[0,i])
+            print("eta: ", constituents[1,i])
+            print("phi: ", constituents[2,i])
+            print("mass: ", constituents[3,i])
+            print("y_1", get_rapidity(constituents[0,i], constituents[1,i], constituents[3,i]))
+            print("y_2", get_rapidity(constituents[0,j], constituents[1,j], constituents[3,j]))
+            print(constituents[0,j], constituents[1,j], constituents[3,j])
+            print("Delta: ", Delta)
+            raise ValueError("NaN in Delta")
+        
+        z = get_z(constituents[0,i], constituents[0,j])
+        psi = get_psi(
+            get_rapidity(constituents[0,i_lo], constituents[1,i_lo], constituents[3,i_lo]),
+            get_rapidity(constituents[0,i_hi], constituents[1,i_hi], constituents[3,i_hi]),
+            constituents[2,i_lo],
+            constituents[2,i_hi]
+        )
+        kt = get_kt(constituents[0,i], constituents[0,j], Delta)
+        
+        nodes_Delta = np.append(nodes_Delta, Delta)
+        nodes_z = np.append(nodes_z, z)
+        nodes_psi = np.append(nodes_psi, psi)
+        nodes_kt = np.append(nodes_kt, kt)
 
-    def _hierarchy_pos(G, root, leftmost, width, leafdx = 0.2, vert_gap = 0.2, vert_loc = 0, 
-                    xcenter = 0.5, rootpos = None, 
-                    leafpos = None, parent = None):
-        '''
-        see hierarchy_pos docstring for most arguments
-
-        pos: a dict saying where all nodes go if they have been assigned
-        parent: parent of this branch. - only affects it if non-directed
-
-        '''
-
-        if rootpos is None:
-            rootpos = {root:(xcenter,vert_loc)}
+        if save_fractions:
+            # Energy fractions of the current pseudojets
+            energy_i = get_energy(constituents[0,i], constituents[1,i], constituents[3,i])
+            energy_j = get_energy(constituents[0,j], constituents[1,j], constituents[3,j])
+            energy_new = get_energy(new_constituent.pt, new_constituent.eta, new_constituent.mass)
+            e_fraction = np.append(e_fraction, (energy_i*e_fraction[index_list[i]] + energy_j*e_fraction[index_list[j]]) / energy_new)
+            mu_fraction = np.append(mu_fraction, (energy_i*mu_fraction[index_list[i]] + energy_j*mu_fraction[index_list[j]]) / energy_new)
+            g_fraction = np.append(g_fraction, (energy_i*g_fraction[index_list[i]] + energy_j*g_fraction[index_list[j]]) / energy_new)
+            h_fraction = np.append(h_fraction, (energy_i*h_fraction[index_list[i]] + energy_j*h_fraction[index_list[j]]) / energy_new)
+        
+        # Add connections to the tree
+        # This construction ensures that each clustered step is
+        # two-way connected to its mother constituents
+        if first_clustering:
+            edges = np.array([
+                [index_list[i], index_list[j], k, k],
+                [k, k, index_list[i], index_list[j]]
+            ], dtype=np.int64
+            )
+            first_clustering = False
         else:
-            rootpos[root] = (xcenter, vert_loc)
-        if leafpos is None:
-            leafpos = {}
-        children = list(G.neighbors(root))
-        leaf_count = 0
-        if not isinstance(G, nx.DiGraph) and parent is not None:
-            children.remove(parent)  
-        if len(children)!=0:
-            rootdx = width/len(children)
-            nextx = xcenter - width/2 - rootdx/2
-            for child in children:
-                nextx += rootdx
-                rootpos, leafpos, newleaves = _hierarchy_pos(G,child, leftmost+leaf_count*leafdx, 
-                                    width=rootdx, leafdx=leafdx,
-                                    vert_gap = vert_gap, vert_loc = vert_loc-vert_gap, 
-                                    xcenter=nextx, rootpos=rootpos, leafpos=leafpos, parent = root)
-                leaf_count += newleaves
+            new_edges = np.array([
+                [index_list[i], index_list[j], k, k],
+                [k, k, index_list[i], index_list[j]]
+            ], dtype=np.int64
+            )
+            edges = np.hstack((edges, new_edges))
 
-            leftmostchild = min((x for x,y in [leafpos[child] for child in children]))
-            rightmostchild = max((x for x,y in [leafpos[child] for child in children]))
-            leafpos[root] = ((leftmostchild+rightmostchild)/2, vert_loc)
-        else:
-            leaf_count = 1
-            leafpos[root]  = (leftmost, vert_loc)
-#        pos[root] = (leftmost + (leaf_count-1)*dx/2., vert_loc)
-#        print(leaf_count)
-        return rootpos, leafpos, leaf_count
+        # Update the index map
+        index_list = [idx for l, idx in enumerate(index_list) if l not in (i,j)] + [k]
 
-    xcenter = width/2.
-    if isinstance(G, nx.DiGraph):
-        leafcount = len([node for node in nx.descendants(G, root) if G.out_degree(node)==0])
-    elif isinstance(G, nx.Graph):
-        leafcount = len([node for node in nx.node_connected_component(G, root) if G.degree(node)==1 and node != root])
-    rootpos, leafpos, leaf_count = _hierarchy_pos(G, root, 0, width, 
-                                                    leafdx=width*1./leafcount, 
-                                                    vert_gap=vert_gap, 
-                                                    vert_loc = vert_loc, 
-                                                    xcenter = xcenter)
-    pos = {}
-    for node in rootpos:
-        pos[node] = (leaf_vs_root_factor*leafpos[node][0] + (1-leaf_vs_root_factor)*rootpos[node][0], leafpos[node][1]) 
-#    pos = {node:(leaf_vs_root_factor*x1+(1-leaf_vs_root_factor)*x2, y1) for ((x1,y1), (x2,y2)) in (leafpos[node], rootpos[node]) for node in rootpos}
-    xmax = max(x for x,y in pos.values())
-    for node in pos:
-        pos[node]= (pos[node][0]*width/xmax, pos[node][1])
-    return pos
+        # Replace clustered constituents by the clustered particle
+        
+        pt = np.hstack(( 
+            pt[:min(i,j)], 
+            pt[min(i,j)+1:max(i,j)], 
+            pt[max(i,j)+1:], 
+            np.array([new_constituent.pt])
+        ))
+        eta = np.hstack(( 
+            eta[:min(i,j)], 
+            eta[min(i,j)+1:max(i,j)], 
+            eta[max(i,j)+1:], 
+            np.array([new_constituent.eta])
+        ))
+        phi = np.hstack(( 
+            phi[:min(i,j)], 
+            phi[min(i,j)+1:max(i,j)], 
+            phi[max(i,j)+1:], 
+            np.array([new_constituent.phi])
+        ))
+        mass = np.hstack(( 
+            mass[:min(i,j)], 
+            mass[min(i,j)+1:max(i,j)], 
+            mass[max(i,j)+1:], 
+            np.array([new_constituent.mass])
+        ))
 
-def plot_tree(graph, idx_of_feature_to_plot, label, file_name, root=None, show=False):
-    if root is None:
-        root = max(graph.edge_index[0]).item()
-    plt.figure(1, figsize=(20, 12))
-    g = to_networkx(graph, to_undirected=True)
-    pos = hierarchy_pos(g, leaf_vs_root_factor=0.5, root=root)
-    e = nx.draw_networkx_edges(g, pos, alpha=0.3)
-    n = nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=graph.x[:,idx_of_feature_to_plot])
-    cb = plt.colorbar(n)
-    cb.set_label(label, size=20)
-    plt.axis('off')
-    plt.savefig(f"{file_name}.pdf")
-    if show: plt.show()
-    plt.close()
+        constituents = np.stack((pt, eta, phi, mass), axis=0)
+
+    nodes = [
+        nodes_kt,
+        nodes_Delta,
+        nodes_z,
+    ]
+
+    if n_lund_vars == 5: nodes += [nodes_psi, nodes_mass]
+
+    if save_4vectors:
+        if n_lund_vars == 3: nodes += [
+            nodes_mass,
+            nodes_pt,
+            nodes_eta,
+            nodes_phi,
+        ]
+        else: nodes += [
+            nodes_pt,
+            nodes_eta,
+            nodes_phi,
+        ]
+            
+    if save_fractions: nodes += [
+        e_fraction,
+        mu_fraction,
+        g_fraction,
+        h_fraction,
+    ]
+    
+    if use_displacement: nodes += [nodes_d0, nodes_dz]
+
+    nodes = np.vstack(nodes)
+
+    return (nodes, edges)
