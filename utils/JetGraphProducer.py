@@ -6,7 +6,6 @@ from torch_geometric.data import InMemoryDataset, Data
 import awkward as ak
 from tqdm import tqdm
 import vector
-import numba as nb
 import logging
 from utils.LundTreeUtilities import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
 

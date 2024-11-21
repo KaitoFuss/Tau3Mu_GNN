@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from torch_geometric.transforms import BaseTransform
-import torch
 import numba as nb
 import vector
 
