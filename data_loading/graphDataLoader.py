@@ -21,7 +21,7 @@ class GraphDataLoader(DataLoader):
         window_to_load (List[List[float]]): A list of lists, where each inner list
             contains the start and end of the window to be loaded. If None, the
             entire dataset is loaded.
-        batch_size (int): The batch size to be used.
+        batch_size (int): The batch size to be used. Negative numbers will read as len(dataset)
         dataset_fraction (List[float]): List of weights in order to have balanced datasets.
         shuffle (bool): Whether to shuffle the data.
         follow_batch (Optional[List[str]]): A list of strings specifying which
@@ -31,6 +31,7 @@ class GraphDataLoader(DataLoader):
             attributes of the data object should not be batched together. If None,
             the default behavior is used.
         jet_idx (Optional(int)): An integer to filter for the corresponding jet (pt ordered) in every event
+        sample (Optional(Bool)): Wether or not to use weighted random sampling (True by default)
         **kwargs: Additional keyword arguments to be passed to the DataLoader.
 
     Returns:
@@ -49,6 +50,7 @@ class GraphDataLoader(DataLoader):
             exclude_keys: Optional[List[str]] = None,
             device: torch.device=None,
             jet_idx: int = None,
+            sample = True,
             **kwargs,
     ):
         self.dataset_paths = dataset_paths
@@ -102,7 +104,8 @@ class GraphDataLoader(DataLoader):
 
         data = ConcatDataset(datasets)
         weights = torch.cat(weights).to(device) if device is not None else torch.cat(weights)
-        sampler = WeightedRandomSampler(weights, len(data), replacement=True)
+        sampler = WeightedRandomSampler(weights, len(data), replacement=True) if sample else None
+        batch_size = batch_size if batch_size > 0 else len(data)
 
         super(GraphDataLoader, self).__init__(data, batch_size, False, follow_batch, exclude_keys, sampler=sampler, **kwargs)
 
