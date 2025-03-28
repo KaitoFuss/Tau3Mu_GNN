@@ -156,6 +156,21 @@ class JetGraphProducer(InMemoryDataset):
     @property
     def processed_file_names(self):
         return [self.output_dataset_name+".pt"]
+    
+    def get_total_initial_events(self):
+        if self.input_format == "PFNanoAOD":
+            n_initial = 0
+            for f in self.raw_file_names:
+                with uproot.open(f) as in_file:
+                    if "CutFlow" in in_file.keys():
+                        n_initial += in_file["CutFlow"]["Initial"].array()[0]
+                    else:
+                        raise ValueError("No CutFlow tree found in file")
+            return n_initial
+        elif self.input_format == "TreeMaker2":
+            raise NotImplementedError("TreeMaker2 format not implemented yet")
+        else:
+            raise ValueError("Invalid input format. Must be either PFNanoAOD or TreeMaker2")
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process):
 
@@ -420,7 +435,7 @@ class JetGraphProducer(InMemoryDataset):
                     if "Metadata" in in_file:
                         if "GenCrossSection" in in_file["Metadata"].keys():
                             xsec = in_file["Metadata"]["GenCrossSection"].array()[0]
-                            gen_events_before_selection = in_file["CutFlow"]["Initial"].array()[0]
+                            gen_events_before_selection = self.get_total_initial_events()
                         else:
                             raise ValueError("No GenCrossSection found in Metadata")
                     else:
