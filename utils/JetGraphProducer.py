@@ -162,7 +162,9 @@ class JetGraphProducer(InMemoryDataset):
             n_initial = 0
             for f in self.raw_file_names:
                 with uproot.open(f) as in_file:
-                    if "CutFlow" in in_file.keys():
+                    # Ugly fix needed because apparently in_file.keys() returns ["Events;1", "CutFlow;1", ...]
+                    # while subsequently in_file["CutFlow"] is still a valid call
+                    if any([k.startswith("CutFlow") for k in in_file.keys()]):
                         n_initial += in_file["CutFlow"]["Initial"].array()[0]
                     else:
                         raise ValueError("No CutFlow tree found in file")
