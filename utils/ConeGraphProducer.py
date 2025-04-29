@@ -190,7 +190,7 @@ class ConeGraphProducer(InMemoryDataset):
                     jet_eta = event[f"{self.jet_collection}_eta"][nj]
                     jet_phi = event[f"{self.jet_collection}_phi"][nj]
                     pf_cands_matching_filter = event[f"{self.jet_collection}PFCands_pFCandsIdx"][event[f"{self.jet_collection}PFCands_jetIdx"] == nj].to_numpy().astype(np.int32)
-                    pt = event["PFCands_pt"][pf_cands_matching_filter]
+                    pt = event["PFCands_pt"][pf_cands_matching_filter] # delete this mask
                     eta = event["PFCands_eta"][pf_cands_matching_filter]
                     phi = event["PFCands_phi"][pf_cands_matching_filter]
                     pdgId = event["PFCands_pdgId"][pf_cands_matching_filter]
@@ -279,14 +279,27 @@ class ConeGraphProducer(InMemoryDataset):
                     matrix_phi = np.repeat(phi, len(phi)).reshape((len(phi), -1))
                     matrix_pt = np.repeat(pt, len(pt)).reshape((len(pt), -1))
                     matrix_mass = np.repeat(mass, len(mass)).reshape((len(mass), -1))
-                    delta_eta = matrix_eta - matrix_eta.T
+                    # delta_eta = matrix_eta - matrix_eta.T #do not calc distance to all pairs but just to jet eta
 
-                    # Calculate delta phi accounting for circularity
-                    delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
-                    delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
+                    # # Calculate delta phi accounting for circularity
+                    # delta_phi_internal = np.abs(matrix_phi - matrix_phi.T) #do not calc distance to all pairs but just to jet phi
+                    # delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
+                    # delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+                    # delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
+                    # adjacency = (delta_R < self.delta_r_threshold).astype(int)
+
+                    
+                    # How do I create a graph out of this? The jet itself is not a particle and thus not a node? Maybe create a fully connected graph with a the node/particles that belong to this jet?
+                    # Current problem: do not have matrix yet so edge_features are not possible yet
+                    delta_eta = eta - jet_eta #this is just a np.array
+                    delta_phi_internal = np.abs(phi - jet_phi)
+                    delta_phi_external = 2*np.pi - np.abs(phi - jet_phi) 
                     delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
                     delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-                    adjacency = (delta_R < self.delta_r_threshold).astype(int)
+                    adjacency = (delta_R < self.delta_r_threshold).astype(int) #this way I should have a binary np.array whether this pf_cand belongs to this jet_cone or not
+                    adjacency_matrix = np.repeat(adjacency, len(adjacency)).reshape((len(adjacency), -1))
+                    edge_connections = np.where( (adjacency_matrix + adjacency_matrix.T - np.identity(adjacency_matrix.shape[0])) == 2)
+                    
 
                     # If requested, substitute actual adjacency matrix with random values (to check for nconstituents dependency)
                     if self.use_dummy_values:
