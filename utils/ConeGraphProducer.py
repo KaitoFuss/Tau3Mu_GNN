@@ -26,8 +26,11 @@ class ConeGraphProducer(InMemoryDataset):
     Args:
         root (str): Path to the folder with (one or more) root files containing the jet constituents. All files in the folder will be processed and treated as one sample.
         output_dataset_name (str): Name of the processed output dataset
+        cone_size (float): Size of cone around jet to consider pf_cand
         n_store_jets (int): Number of jets to store per event
+        edge_connection_mode (str): Mode to connect nodes, should be in ["r_threshold", "knn", "fully"]
         delta_r_threshold (float): Threshold for the deltaR distance between constituents to be considered connected (spacial graphs only)
+        k_knn (int): Number of nearest neighbors for knn
         n_store_cands (int): Number of constituents to store per jet (spacial graphs only)
         max_events_to_process (int): Maximum number of events to process
         use_delta_r_star (bool): Whether to use the deltaR* distance instead of the standard deltaR (TODO: implement)
@@ -53,8 +56,11 @@ class ConeGraphProducer(InMemoryDataset):
         self,
         root,
         output_dataset_name,
-        n_store_jets=2,
-        delta_r_threshold=0.2,
+        cone_size,
+        n_store_jets=1,
+        edge_connection_mode="fully",
+        delta_r_threshold=None,
+        k_knn=None,
         n_store_cands=None,
         max_events_to_process=None,
         use_delta_r_star=False,
@@ -77,8 +83,11 @@ class ConeGraphProducer(InMemoryDataset):
 
         self.root = root
         self.output_dataset_name = output_dataset_name
+        self.cone_size = cone_size
         self.n_store_jets = n_store_jets
+        self.edge_connection_mode = edge_connection_mode
         self.delta_r_threshold = delta_r_threshold
+        self.k_knn = k_knn
         self.n_store_cands = n_store_cands
         self.max_events_to_process = max_events_to_process
         self.use_delta_r_star = use_delta_r_star
@@ -94,9 +103,26 @@ class ConeGraphProducer(InMemoryDataset):
         self.label = label
         self.verbose = verbose
         self.jet_collection = jet_collection
-        self.use_displacement = use_displacement  
+        self.use_displacement = use_displacement 
+        self.edge_connection_methods = {
+            "fully": self.connect_fully,
+            "knn": self.connect_knn,
+            "r_threshold": self.connect_r_threshold,
+        } 
 
         assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
+
+        assert self.edge_connection_mode in self.edge_connection_methods, f"Unsupported edge_connection_mode: {self.edge_connection_mode}"
+
+        if self.edge_connection_mode == "fully":
+            assert self.delta_r_threshold is None, "delta_r_threshold is not supported for fully connected graph. Please set to None"
+            assert self.k_knn is None, "k_knn is not supported for fully connected graph. Please set to None"
+        elif self.edge_connection_mode == "knn":
+            assert self.delta_r_threshold is None, "delta_r_threshold is not supported for knn. Please set to None"
+            assert type(self.k_knn) is int, "k_knn needs to be int"
+        elif self.edge_connection_mode == "r_threshold":
+            assert self.k_knn is None, "k_knn is not supported for r_threshold. Please set to None"
+            assert type(self.delta_r_threshold) is float, "r_threshold needs to be float"
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
@@ -142,9 +168,19 @@ class ConeGraphProducer(InMemoryDataset):
                 phi = event["PFCands_phi"]
                 pdgId = event["PFCands_pdgId"]
                 mass = event["PFCands_mass"]
+
+                # Only consider pf_cand that are inside cone
+                mask = self.build_cone(eta, phi, jet_eta, jet_phi)
+
+                pt = pt[mask]
+                eta = eta[mask]
+                phi = phi[mask]
+                pdgId = pdgId[mask]
+                mass = mass[mask]
+
                 if self.use_displacement:
-                    d0 = event["PFCands_d0"]
-                    dz = event["PFCands_dz"]
+                    d0 = event["PFCands_d0"][mask]
+                    dz = event["PFCands_dz"][mask]
                 else:
                     d0, dz = None, None 
                 jet_idx = nj
@@ -196,54 +232,28 @@ class ConeGraphProducer(InMemoryDataset):
                         pdgId,
                         mass
                     ]).T, dtype=torch.float)
-
                 # Calculate edges and edge features
                 matrix_eta = np.repeat(eta, len(eta)).reshape((len(eta), -1))
                 matrix_phi = np.repeat(phi, len(phi)).reshape((len(phi), -1))
                 matrix_pt = np.repeat(pt, len(pt)).reshape((len(pt), -1))
                 matrix_mass = np.repeat(mass, len(mass)).reshape((len(mass), -1))
-
-                # TODO: 3 different modes to build graph connections 
-                # # delta_eta = matrix_eta - matrix_eta.T #do not calc distance to all pairs but just to jet eta
-
-                # # # Calculate delta phi accounting for circularity
-                # # delta_phi_internal = np.abs(matrix_phi - matrix_phi.T) #do not calc distance to all pairs but just to jet phi
-                # # delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
-                # # delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
-                # # delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-                # # adjacency = (delta_R < self.delta_r_threshold).astype(int)
-
-                
-                # # How do I create a graph out of this? The jet itself is not a particle and thus not a node? Maybe create a fully connected graph with a the node/particles that belong to this jet?
-                # # Current problem: do not have matrix yet so edge_features are not possible yet
-                # delta_eta = eta - jet_eta #this is just a np.array
-                # delta_phi_internal = np.abs(phi - jet_phi)
-                # delta_phi_external = 2*np.pi - np.abs(phi - jet_phi) 
-                # delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
-                # delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-                # adjacency = (delta_R < self.delta_r_threshold).astype(int) #this way I should have a binary np.array whether this pf_cand belongs to this jet_cone or not
-                # # adjacency_matrix = np.repeat(adjacency, len(adjacency)).reshape((len(adjacency), -1))
-                # nodes_in_cone = np.where(adjacency == 1)[0]
-                # # print(nodes_in_cone)
-                # edge_connections = np.array(np.meshgrid(nodes_in_cone, nodes_in_cone)).T.reshape(-1, 2)
-                # edge_connections = edge_connections[edge_connections[:, 0] != edge_connections[:, 1]] # remove self connections
-                # # edge_connections = np.where( (adjacency_matrix + adjacency_matrix.T - np.identity(adjacency_matrix.shape[0])) == 2)
-                # If requested, substitute actual adjacency matrix with random values (to check for nconstituents dependency)
-
                 delta_eta = matrix_eta - matrix_eta.T
+
                 # Calculate delta phi accounting for circularity
                 delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
                 delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
                 delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
                 delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-                adjacency = (delta_R < self.delta_r_threshold).astype(int)
+
+                # build graph connections according to specified mode
+                edge_index = self.edge_connection_methods[self.edge_connection_mode](delta_R)
                 
                 if self.use_dummy_values:
                     adjacency = np.random.binomial(1, 0.5, delta_R.shape)
                     np.fill_diagonal(adjacency, 1)
 
-                edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-                edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+                    edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
+                    edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
 
                 if self.save_edge_attributes:
                     # Build pair-wise invariant masses
@@ -284,7 +294,7 @@ class ConeGraphProducer(InMemoryDataset):
                             pos=pos,
                             y=torch.Tensor([self.label])
                         )
-                        
+                            
                 # Add the event weight
                 if self.weights == "xsec":
                     if not self.max_events_to_process:
@@ -350,7 +360,6 @@ class ConeGraphProducer(InMemoryDataset):
         total_events = len(events)
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
-        
         events_to_process = min(self.max_events_to_process, total_events) if self.max_events_to_process else total_events
         graphDataset = self.process_event(
             0,
@@ -376,4 +385,36 @@ class ConeGraphProducer(InMemoryDataset):
         
         data, slices = self.collate(graphs)
         torch.save((data, slices), self.processed_paths[-1])
+    
+    def connect_fully(self, delta_R: np.ndarray) -> torch.tensor:
+        adjacency = np.ones_like(delta_R)
+        edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
+        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+        return edge_index
         
+    def connect_knn(self, delta_R: np.ndarray) -> torch.tensor:
+        nn_matrix = np.argsort(delta_R, axis=1)
+        k = min(self.k_knn, nn_matrix.shape[0] - 1) # ensure that k is not too large 
+        knn_matrix = nn_matrix[:, 1:(k+1)] # as closest pf_cand is the pf_cand itself and we dont want self loops
+        edges = [[i, j] for i in range(knn_matrix.shape[0]) for j in knn_matrix[i]]
+        edges += [[j, i] for i in range(knn_matrix.shape[0]) for j in knn_matrix[i]]  # Add reverse edges to make graph undirected
+        edge_index = torch.tensor(edges, dtype=torch.long) # What happens if some edges are added twice
+        return edge_index
+
+
+    def connect_r_threshold(self, delta_R: np.ndarray) -> torch.tensor:
+        adjacency = (delta_R < self.delta_r_threshold).astype(int)
+        edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
+        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+        return edge_index
+
+    def build_cone(self, eta: ak.Array, phi: ak.Array, jet_eta: float, jet_phi: float) -> ak.Array:
+        delta_eta = eta - jet_eta
+        delta_phi_internal = np.abs(phi - jet_phi)
+        delta_phi_external = 2*np.pi - np.abs(phi - jet_phi) 
+        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+        delta_R_cone = np.sqrt(delta_eta**2 + delta_phi**2)
+
+        cone_mask = (delta_R_cone < self.cone_size) # binary array whether pf_cand is inside cone or not
+
+        return cone_mask
