@@ -27,6 +27,8 @@ mamba install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 cpuonly -c py
 mamba install pyg -c pyg
 mamba install vector uproot awkward networkx
 
+mamba install notebook jupyter
+
 # If you want to use MDMM
 export OLD_PWD=$PWD
 python -m pip install mdmm && cd $(python -m site | grep "site-packages'," | cut -d"'" -f2)/mdmm && git clone git@github.com:fleble/mdmm.git && cp mdmm/mdmm/mdmm.py . && rm -rf mdmm
