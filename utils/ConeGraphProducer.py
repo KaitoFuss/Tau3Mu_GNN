@@ -356,7 +356,6 @@ class ConeGraphProducer(InMemoryDataset):
         with uproot.open(f"{file_name}:Events") as in_file:
             events = in_file.arrays(branches_to_load, library="ak")
 
-
         total_events = len(events)
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
@@ -400,7 +399,6 @@ class ConeGraphProducer(InMemoryDataset):
         edges += [[j, i] for i in range(knn_matrix.shape[0]) for j in knn_matrix[i]]  # Add reverse edges to make graph undirected
         edge_index = torch.tensor(edges, dtype=torch.long) # What happens if some edges are added twice
         return edge_index
-
 
     def connect_r_threshold(self, delta_R: np.ndarray) -> torch.tensor:
         adjacency = (delta_R < self.delta_r_threshold).astype(int)
