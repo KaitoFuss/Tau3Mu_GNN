@@ -38,11 +38,11 @@ class ConeGraphProducer(InMemoryDataset):
         save_event_number (bool): Whether to save the event number in the graph
         extra_label (str): Extra label to add to the processed file name)
         weights (str): What event weights to use (None, 'xsec') (TODO: implement pt flattening)
-        save_jet_idx (bool): Whether to save the jet index
+        save_fitted_tau_idx (bool): Whether to save the fitted tau index
         mask (ak.Array): Mask to apply to the root file
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
-        jet_collection (str): Name of the jet collection in the root file (default: "FatJet")
+        fitted_tau (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
@@ -63,11 +63,11 @@ class ConeGraphProducer(InMemoryDataset):
         save_edge_attributes=False,
         save_event_number=False,
         weights=None,
-        save_jet_idx=False,
+        save_fitted_tau_idx=False,
         mask=None,
         label:float=0.,
         verbose=False,
-        jet_collection="FatJet",
+        fitted_tau="TauTo3Mu_fitted",
         use_displacement=False  
     ):
 
@@ -84,11 +84,11 @@ class ConeGraphProducer(InMemoryDataset):
         self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
         self.weights = weights
-        self.save_jet_idx = save_jet_idx
+        self.save_fitted_tau_idx = save_fitted_tau_idx
         self.mask = mask
         self.label = label
         self.verbose = verbose
-        self.jet_collection = jet_collection
+        self.fitted_tau = fitted_tau
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -134,6 +134,7 @@ class ConeGraphProducer(InMemoryDataset):
     def processed_file_names(self):
         return [self.output_dataset_name+".pt"]
     
+    # This function is now not called because there is no metadata I think
     def get_total_initial_events(self):
         n_initial = 0
         for f in self.raw_file_names:
@@ -145,39 +146,79 @@ class ConeGraphProducer(InMemoryDataset):
         return n_initial
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process):
-
         graphs = []
 
         for i_ev in tqdm(range(i_start, i_stop), disable=not self.verbose):
-            n_cones = self.n_cones # Maybe adapt on number of muons the event has 
-            for nj in range(n_cones):
-                event = events[i_ev]
+            n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
-                jet_pt = event[f"{self.jet_collection}_pt"][nj]
-                jet_eta = event[f"{self.jet_collection}_eta"][nj]
-                jet_phi = event[f"{self.jet_collection}_phi"][nj]
+            event = events[i_ev]
+
+            n_tau = event["nTauTo3Mu"] # is always n_tau == len(all_fitted_tau_pt) == len(all_fitted_tau_eta) == ... ?
+            
+            pfcands_pt = event["PFCands_pt"]
+            pfcands_eta = event["PFCands_eta"]
+            pfcands_phi = event["PFCands_phi"]
+            pfcands_pdgId = event["PFCands_pdgId"]
+            pfcands_mass = event["PFCands_mass"]
+    
+            # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
+            for nt in range(n_tau):
+
+                # Read data for fitted tau from event
+                fitted_tau_pt = event[f"{self.fitted_tau}_pt"][nt]
+                fitted_tau_eta = event[f"{self.fitted_tau}_eta"][nt]
+                fitted_tau_phi = event[f"{self.fitted_tau}_phi"][nt]
+                fitted_tau_mass = event[f"{self.fitted_tau}_mass"][nt]
+
+                # Read data for mu1 from event
+                mu1_idx = event["TauTo3Mu_mu1_idx"][nt]
+                mu1_eta = event["TauTo3Mu_mu1_eta"][nt]
+                mu1_phi = event["TauTo3Mu_mu1_phi"][nt]
+                mu1_pt = event["TauTo3Mu_mu1_pt"][nt]
+    
+                # Read data for mu2 from event
+                mu2_idx = event["TauTo3Mu_mu2_idx"][nt]
+                mu2_eta = event["TauTo3Mu_mu2_eta"][nt]
+                mu2_phi = event["TauTo3Mu_mu2_phi"][nt]
+                mu2_pt = event["TauTo3Mu_mu2_pt"][nt]
                 
-                pfcands_pt = event["PFCands_pt"]
-                pfcands_eta = event["PFCands_eta"]
-                pfcands_phi = event["PFCands_phi"]
-                pfcands_pdgId = event["PFCands_pdgId"]
-                pfcands_mass = event["PFCands_mass"]
+                # Read data for mu3 from event
+                mu3_idx = event["TauTo3Mu_mu3_idx"][nt]
+                mu3_eta = event["TauTo3Mu_mu3_eta"][nt]
+                mu3_phi = event["TauTo3Mu_mu3_phi"][nt]
+                mu3_pt = event["TauTo3Mu_mu3_pt"][nt]
 
-                # Only consider pf_cand that are inside cone
-                mask = self.build_cone(pfcands_eta, pfcands_phi, jet_eta, jet_phi)
+                # Only consider pf_cand that are inside cone and disregard mu1, mu2, mu3 
+                # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
+                cone_mask = self.build_cone(
+                    pfcands_eta, 
+                    pfcands_phi, 
+                    fitted_tau_eta, 
+                    fitted_tau_phi, 
+                    mu1_eta, 
+                    mu1_phi, 
+                    mu1_idx, 
+                    mu2_eta, 
+                    mu2_phi, 
+                    mu2_idx, 
+                    mu3_eta, 
+                    mu3_phi, 
+                    mu3_idx
+                )
 
-                pfcands_pt = pfcands_pt[mask]
-                pfcands_eta = pfcands_eta[mask]
-                pfcands_phi = pfcands_phi[mask]
-                pfcands_pdgId = pfcands_pdgId[mask]
-                pfcands_mass = pfcands_mass[mask]
-
+                pfcands_pt = pfcands_pt[cone_mask]
+                pfcands_eta = pfcands_eta[cone_mask]
+                pfcands_phi = pfcands_phi[cone_mask]
+                pfcands_pdgId = pfcands_pdgId[cone_mask]
+                pfcands_mass = pfcands_mass[cone_mask]
+        
                 if self.use_displacement:
-                    pfcands_d0 = event["PFCands_d0"][mask]
-                    pfcands_dz = event["PFCands_dz"][mask]
+                    pfcands_d0 = event["PFCands_d0"][cone_mask]
+                    pfcands_dz = event["PFCands_dz"][cone_mask]
                 else:
                     pfcands_d0, pfcands_dz = None, None 
-                jet_idx = nj
+
+                fitted_tau_idx = nt
 
                 # Order everything by pt and keep the desired number of candidates
                 permutation = ak.argsort(pfcands_pt, ascending=False)
@@ -231,19 +272,19 @@ class ConeGraphProducer(InMemoryDataset):
                 matrix_phi = np.repeat(pfcands_phi, len(pfcands_phi)).reshape((len(pfcands_phi), -1))
                 matrix_pt = np.repeat(pfcands_pt, len(pfcands_pt)).reshape((len(pfcands_pt), -1))
                 matrix_mass = np.repeat(pfcands_mass, len(pfcands_mass)).reshape((len(pfcands_mass), -1))
-                delta_eta = matrix_eta - matrix_eta.T
+                matrix_delta_eta = matrix_eta - matrix_eta.T
 
                 # Calculate delta phi accounting for circularity
-                delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
-                delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
-                delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
-                delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
+                matrix_delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
+                matrix_delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
+                matrix_delta_phi = np.minimum(matrix_delta_phi_internal, matrix_delta_phi_external)
+                matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
 
                 # build graph connections according to specified mode
-                edge_index = self.edge_connection_methods[self.edge_connection_mode](delta_R)
+                edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
                 
                 if self.use_dummy_values:
-                    adjacency = np.random.binomial(1, 0.5, delta_R.shape)
+                    adjacency = np.random.binomial(1, 0.5, matrix_delta_R.shape)
                     np.fill_diagonal(adjacency, 1)
 
                     edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
@@ -258,8 +299,8 @@ class ConeGraphProducer(InMemoryDataset):
 
                     # Build Cambridge-Aachen and kt distances between constituents
                     R = 0.8
-                    d_ca = ((delta_R**2) / (R**2))[edge_connections]
-                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (delta_R**2) / (R**2))[edge_connections]
+                    d_ca = ((matrix_delta_R**2) / (R**2))[edge_connections]
+                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))[edge_connections]
 
                     edge_features = torch.tensor(np.array([
                         pair_masses,
@@ -301,8 +342,8 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.event_number = torch.tensor([i_ev], dtype=torch.long)
 
                 # Add jet index if requested
-                if self.save_jet_idx:
-                    graph["jet_idx"] = torch.tensor([jet_idx], dtype=torch.int)
+                if self.save_fitted_tau_idx:
+                    graph["fitted_tau_idx"] = torch.tensor([fitted_tau_idx], dtype=torch.int)
                         
                 graphs.append(graph)
 
@@ -327,17 +368,29 @@ class ConeGraphProducer(InMemoryDataset):
                     raise ValueError("No Metadata tree found in file")
 
         branches_to_load = [
+            "nPFCands",
             "PFCands_pt",
             "PFCands_eta",
             "PFCands_phi",
             "PFCands_pdgId",
             "PFCands_mass",  
-            "FatJetPFCands_jetIdx",
-            "FatJetPFCands_pFCandsIdx",
-            "nFatJet",
-            "FatJet_eta",
-            "FatJet_phi",
-            "FatJet_pt",
+            "nTauTo3Mu",
+            "TauTo3Mu_mu1_idx",
+            "TauTo3Mu_mu1_eta",
+            "TauTo3Mu_mu1_phi",
+            "TauTo3Mu_mu1_pt",
+            "TauTo3Mu_mu2_idx",
+            "TauTo3Mu_mu2_eta",
+            "TauTo3Mu_mu2_phi",
+            "TauTo3Mu_mu2_pt",
+            "TauTo3Mu_mu3_idx",
+            "TauTo3Mu_mu3_eta",
+            "TauTo3Mu_mu3_phi",
+            "TauTo3Mu_mu3_pt",
+            "TauTo3Mu_fitted_mass",
+            "TauTo3Mu_fitted_eta",
+            "TauTo3Mu_fitted_phi",
+            "TauTo3Mu_fitted_pt",
         ]
 
         if self.use_displacement:
@@ -345,7 +398,6 @@ class ConeGraphProducer(InMemoryDataset):
 
         with uproot.open(f"{file_name}:Events") as in_file:
             events = in_file.arrays(branches_to_load, library="ak")
-
         total_events = len(events)
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
@@ -399,12 +451,51 @@ class ConeGraphProducer(InMemoryDataset):
         edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
         return edge_index
 
-    def build_cone(self, pfcands_eta: ak.Array, pfcands_phi: ak.Array, jet_eta: float, jet_phi: float) -> ak.Array:
-        delta_eta = pfcands_eta - jet_eta
-        delta_phi_internal = np.abs(pfcands_phi - jet_phi)
-        delta_phi_external = 2*np.pi - np.abs(pfcands_phi - jet_phi) 
-        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
-        delta_R_cone = np.sqrt(delta_eta**2 + delta_phi**2)
+    def build_cone(
+            self, 
+            pfcands_eta: ak.Array, 
+            pfcands_phi: ak.Array, 
+            fitted_tau_eta: float, 
+            fitted_tau_phi: float, 
+            mu1_eta: float,
+            mu1_phi: float, 
+            mu1_idx: int, 
+            mu2_eta: float, 
+            mu2_phi: float, 
+            mu2_idx: int, 
+            mu3_eta: float, 
+            mu3_phi: float, 
+            mu3_idx: int
+        ) -> ak.Array:
 
-        cone_mask = (delta_R_cone < self.cone_size) # binary array whether pf_cand is inside cone or not
+        delta_R_cone = self.calc_delta_R(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
+
+        delta_R_mu1 = self.calc_delta_R(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_mu2 = self.calc_delta_R(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_mu3 = self.calc_delta_R(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
+
+        if self.cone_size < max(delta_R_mu1, delta_R_mu2, delta_R_mu3):
+            logging.warning("given cone size is not large enough. Using farthest away tau3mu candidate delta_R as cone size instead.")
+            cone_size = max(delta_R_mu1, delta_R_mu2, delta_R_mu3)
+        else:
+            cone_size = self.cone_size
+
+        cone_mask = (delta_R_cone < cone_size) # binary ak.array whether pf_cand is inside cone or not
+
+        # excluding tau3mu candidates from the cone
+        all_indices = ak.local_index(cone_mask)
+        exclude_tau3mu_mask = (all_indices != mu1_idx) & (all_indices != mu2_idx) & (all_indices != mu3_idx) # is there a cleaner way to exclude the tau3mu cands?
+        
+        cone_mask = cone_mask & exclude_tau3mu_mask
+
         return cone_mask
+    
+    def calc_delta_R(self, eta, phi, ref_eta, ref_phi):
+        delta_eta = eta - ref_eta
+        delta_phi_internal = np.abs(phi - ref_phi)
+        delta_phi_external = 2*np.pi - np.abs(phi - ref_phi)
+        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+        delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
+        return delta_R
+
+        
