@@ -7,7 +7,6 @@ import awkward as ak
 from tqdm import tqdm
 import vector
 import logging
-from utils.LundTreeUtilities import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
 
 
 class ConeGraphProducer(InMemoryDataset):
@@ -42,7 +41,7 @@ class ConeGraphProducer(InMemoryDataset):
         mask (ak.Array): Mask to apply to the root file
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
-        fitted_tau (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
+        tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
@@ -67,7 +66,7 @@ class ConeGraphProducer(InMemoryDataset):
         mask=None,
         label:float=0.,
         verbose=False,
-        fitted_tau="TauTo3Mu_fitted",
+        tau_collection_name="TauTo3Mu_fitted",
         use_displacement=False  
     ):
 
@@ -88,7 +87,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.mask = mask
         self.label = label
         self.verbose = verbose
-        self.fitted_tau = fitted_tau
+        self.tau_collection_name = tau_collection_name
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -153,7 +152,7 @@ class ConeGraphProducer(InMemoryDataset):
 
             event = events[i_ev]
 
-            n_tau = event["nTauTo3Mu"] # is always n_tau == len(all_fitted_tau_pt) == len(all_fitted_tau_eta) == ... ?
+            n_tau = event["nTauTo3Mu"]
             
             pfcands_pt = event["PFCands_pt"]
             pfcands_eta = event["PFCands_eta"]
@@ -165,10 +164,10 @@ class ConeGraphProducer(InMemoryDataset):
             for nt in range(n_tau):
 
                 # Read data for fitted tau from event
-                fitted_tau_pt = event[f"{self.fitted_tau}_pt"][nt]
-                fitted_tau_eta = event[f"{self.fitted_tau}_eta"][nt]
-                fitted_tau_phi = event[f"{self.fitted_tau}_phi"][nt]
-                fitted_tau_mass = event[f"{self.fitted_tau}_mass"][nt]
+                fitted_tau_pt = event[f"{self.tau_collection_name}_pt"][nt]
+                fitted_tau_eta = event[f"{self.tau_collection_name}_eta"][nt]
+                fitted_tau_phi = event[f"{self.tau_collection_name}_phi"][nt]
+                fitted_tau_mass = event[f"{self.tau_collection_name}_mass"][nt]
 
                 # Read data for mu1 from event
                 mu1_idx = event["TauTo3Mu_mu1_idx"][nt]
@@ -188,7 +187,6 @@ class ConeGraphProducer(InMemoryDataset):
                 mu3_phi = event["TauTo3Mu_mu3_phi"][nt]
                 mu3_pt = event["TauTo3Mu_mu3_pt"][nt]
 
-                # Only consider pf_cand that are inside cone and disregard mu1, mu2, mu3 
                 # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
                 cone_mask = self.build_cone(
                     pfcands_eta, 
@@ -220,7 +218,8 @@ class ConeGraphProducer(InMemoryDataset):
 
                 fitted_tau_idx = nt
 
-                # Order everything by pt and keep the desired number of candidates
+                # Order everything by pt
+                # Is this still necessary? Just seems now as useless calculation as we do not cut off at a certain pf_cand number
                 permutation = ak.argsort(pfcands_pt, ascending=False)
                 pfcands_pt = np.array(pfcands_pt[permutation], dtype=np.float64)
                 pfcands_eta = np.array(pfcands_eta[permutation], dtype=np.float64)
@@ -267,6 +266,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_mass
                     ]).T, dtype=torch.float)
                 
+                # TODO do this calc outside loop and then just mask inside 
                 # Calculate edges and edge features
                 matrix_eta = np.repeat(pfcands_eta, len(pfcands_eta)).reshape((len(pfcands_eta), -1))
                 matrix_phi = np.repeat(pfcands_phi, len(pfcands_phi)).reshape((len(pfcands_phi), -1))
@@ -281,14 +281,15 @@ class ConeGraphProducer(InMemoryDataset):
                 matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
 
                 # build graph connections according to specified mode
-                edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
+                edge_connections = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
                 
                 if self.use_dummy_values:
                     adjacency = np.random.binomial(1, 0.5, matrix_delta_R.shape)
                     np.fill_diagonal(adjacency, 1)
 
                     edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-                    edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+                
+                edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
 
                 if self.save_edge_attributes:
                     # Build pair-wise invariant masses
@@ -336,7 +337,9 @@ class ConeGraphProducer(InMemoryDataset):
                         graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
                     else:
                         graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
-
+                elif self.weights is None:
+                    graph.w = 1.
+                
                 # Add the event number if requested
                 if self.save_event_number:
                     graph.event_number = torch.tensor([i_ev], dtype=torch.long)
@@ -427,13 +430,12 @@ class ConeGraphProducer(InMemoryDataset):
         data, slices = self.collate(graphs)
         torch.save((data, slices), self.processed_paths[-1])
     
-    def connect_fully(self, delta_R: np.ndarray) -> torch.tensor:
+    def connect_fully(self, delta_R: np.ndarray) -> tuple:
         adjacency = np.ones_like(delta_R)
         edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
-        return edge_index
+        return edge_connections
         
-    def connect_knn(self, delta_R: np.ndarray) -> torch.tensor:
+    def connect_knn(self, delta_R: np.ndarray) -> tuple:
         nn_matrix = np.argsort(delta_R, axis=1)
         knn_matrix = nn_matrix[:, 1:(self.k_knn+1)] # as closest pf_cand is the pf_cand itself and we dont want self loops for now
         edge_set = set()
@@ -441,15 +443,20 @@ class ConeGraphProducer(InMemoryDataset):
             for j in knn_matrix[i]:
                 edge_set.add((i,j))
                 edge_set.add((j,i))
-        edges = list(edge_set)
-        edge_index = torch.tensor(edges, dtype=torch.long)
-        return edge_index
+        
+        edges = list(edge_set) # need this really clunky conversion, as this has shape (num_edges, 2). Which is actually what torch.geometric needs. However we need a edge_connections tuple in order to mask correctly if we want edge_attributes therefore needed to convert it back to Tuple(np.ndarray, np.ndarray)
 
-    def connect_r_threshold(self, delta_R: np.ndarray) -> torch.tensor:
+        edge_connections = ([], [])
+        for n1, n2 in edges:
+            edge_connections[0].append(n1)
+            edge_connections[1].append(n2)
+        edge_connections = tuple(map(np.array, edge_connections))
+        return edge_connections
+
+    def connect_r_threshold(self, delta_R: np.ndarray) -> tuple:
         adjacency = (delta_R < self.delta_r_threshold).astype(int)
         edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
-        return edge_index
+        return edge_connections
 
     def build_cone(
             self, 
@@ -468,25 +475,21 @@ class ConeGraphProducer(InMemoryDataset):
             mu3_idx: int
         ) -> ak.Array:
 
-        delta_R_cone = self.calc_delta_R(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_pfcands_tau = self.calc_delta_R(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
 
-        delta_R_mu1 = self.calc_delta_R(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
-        delta_R_mu2 = self.calc_delta_R(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
-        delta_R_mu3 = self.calc_delta_R(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_mu1_tau = self.calc_delta_R(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_mu2_tau = self.calc_delta_R(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_mu3_tau = self.calc_delta_R(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
 
-        if self.cone_size < max(delta_R_mu1, delta_R_mu2, delta_R_mu3):
+        if self.cone_size < max(delta_R_mu1_tau, delta_R_mu2_tau, delta_R_mu3_tau):
             logging.warning("given cone size is not large enough. Using farthest away tau3mu candidate delta_R as cone size instead.")
-            cone_size = max(delta_R_mu1, delta_R_mu2, delta_R_mu3)
+            cone_size = max(delta_R_mu1_tau, delta_R_mu2_tau, delta_R_mu3_tau)
         else:
             cone_size = self.cone_size
 
-        cone_mask = (delta_R_cone < cone_size) # binary ak.array whether pf_cand is inside cone or not
-
-        # excluding tau3mu candidates from the cone
-        all_indices = ak.local_index(cone_mask)
-        exclude_tau3mu_mask = (all_indices != mu1_idx) & (all_indices != mu2_idx) & (all_indices != mu3_idx) # is there a cleaner way to exclude the tau3mu cands?
+        cone_mask = (delta_R_pfcands_tau < cone_size) # binary ak.array whether pf_cand is inside cone or not
         
-        cone_mask = cone_mask & exclude_tau3mu_mask
+        # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
 
         return cone_mask
     
