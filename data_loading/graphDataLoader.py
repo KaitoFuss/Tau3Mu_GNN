@@ -78,7 +78,7 @@ class GraphDataLoader(DataLoader):
                     f"The requested dataset {path}/{name} has not been processed, "\
                     "please do so before attempting to load it."
                         )
-            data = ConeGraphProducer(path, output_dataset_name=name) # TODO add more input_params to create different kind of graphs 
+            data = ConeGraphProducer(path, output_dataset_name=name)
             
             if self.device is not None:
                 data.data.to(self.device)

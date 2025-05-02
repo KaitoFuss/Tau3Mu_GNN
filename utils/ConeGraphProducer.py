@@ -32,7 +32,6 @@ class ConeGraphProducer(InMemoryDataset):
         transform (callable, optional): A function/transform that takes in an :obj:`torch_geometric.data.Data` object and returns a transformed version. The data object will be transformed before every access. (default: :obj:`None`)
         pre_transform (callable, optional): A function/transform that takes in an :obj:`torch_geometric.data.Data` object and returns a transformed version. The data object will be transformed before being saved to disk. (default: :obj:`None`)
         pre_filter (callable, optional): A function that takes in an :obj:`torch_geometric.data.Data` object and returns a boolean value, indicating whether the data object should be included in the final dataset. (default: :obj:`None`)
-        use_dummy_values (bool): Whether to use dummy values for the features instead of the actual values
         save_edge_attributes (bool): Whether to save the edge attributes (pairwise invariant masses, Cambridge-Aachen and kt distances)
         save_event_number (bool): Whether to save the event number in the graph
         extra_label (str): Extra label to add to the processed file name)
@@ -49,7 +48,7 @@ class ConeGraphProducer(InMemoryDataset):
         self,
         root,
         output_dataset_name,
-        cone_size=0.7,
+        cone_size,
         n_cones=1,
         edge_connection_mode="fully",
         delta_r_threshold=None,
@@ -58,7 +57,6 @@ class ConeGraphProducer(InMemoryDataset):
         transform=None,
         pre_transform=None,
         pre_filter=None,
-        use_dummy_values=False,
         save_edge_attributes=False,
         save_event_number=False,
         weights=None,
@@ -79,7 +77,6 @@ class ConeGraphProducer(InMemoryDataset):
         self.k_knn = k_knn
         self.max_events_to_process = max_events_to_process
         self.pre_transform = pre_transform
-        self.use_dummy_values = use_dummy_values
         self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
         self.weights = weights
@@ -236,14 +233,6 @@ class ConeGraphProducer(InMemoryDataset):
                 # Clip masses to zero since for some reason sometimes they are slightly negative
                 pfcands_mass = np.clip(np.array(pfcands_mass[permutation]), a_min=0., a_max=None, dtype=np.float64)
 
-                # If requested, use random values for features
-                if self.use_dummy_values:
-                    pfcands_pt = np.random.random(size=(len(pfcands_pt),))
-                    pfcands_eta = np.random.random(size=(len(pfcands_eta),))
-                    pfcands_phi = np.random.random(size=(len(pfcands_phi),))
-                    pfcands_pdgId = np.random.random(size=(len(pfcands_pdgId),))
-                    pfcands_mass = np.random.random(size=(len(pfcands_mass),))
-
                 pos = [[e, p] for e, p in zip(pfcands_eta, pfcands_phi)]
 
                 # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
@@ -282,13 +271,6 @@ class ConeGraphProducer(InMemoryDataset):
 
                 # build graph connections according to specified mode
                 edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
-                
-                if self.use_dummy_values:
-                    adjacency = np.random.binomial(1, 0.5, matrix_delta_R.shape)
-                    np.fill_diagonal(adjacency, 1)
-
-                    edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-                    edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
                 
                 if self.save_edge_attributes:
                     # Build pair-wise invariant masses
@@ -433,8 +415,8 @@ class ConeGraphProducer(InMemoryDataset):
         torch.save((data, slices), self.processed_paths[-1])
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
-        adjacency = np.ones_like(delta_R)
-        edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
+        adjacency = np.ones_like(delta_R) - np.identity(delta_R.shape[0])
+        edge_connections = np.where(adjacency == 1)
         edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
         return edge_index
         
@@ -446,14 +428,13 @@ class ConeGraphProducer(InMemoryDataset):
             for j in knn_matrix[i]:
                 edge_set.add((i,j))
                 edge_set.add((j,i))
-        
-        edges = list(edge_set) 
-        edge_index = torch.tensor(edges, dtype=torch.long) 
+         
+        edge_index = torch.tensor(list(edge_set), dtype=torch.long) 
         return edge_index
 
     def connect_r_threshold(self, delta_R: np.ndarray) -> tuple:
-        adjacency = (delta_R < self.delta_r_threshold).astype(int)
-        edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
+        adjacency = (delta_R < self.delta_r_threshold).astype(int) - np.identity(delta_R.shape[0])
+        edge_connections = np.where(adjacency == 1)
         edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
         return edge_index
 
