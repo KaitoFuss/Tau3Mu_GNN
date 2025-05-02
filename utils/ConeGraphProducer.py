@@ -49,7 +49,7 @@ class ConeGraphProducer(InMemoryDataset):
         self,
         root,
         output_dataset_name,
-        cone_size,
+        cone_size=0.7,
         n_cones=1,
         edge_connection_mode="fully",
         delta_r_threshold=None,
@@ -281,27 +281,29 @@ class ConeGraphProducer(InMemoryDataset):
                 matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
 
                 # build graph connections according to specified mode
-                edge_connections = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
+                edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
                 
                 if self.use_dummy_values:
                     adjacency = np.random.binomial(1, 0.5, matrix_delta_R.shape)
                     np.fill_diagonal(adjacency, 1)
 
                     edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
+                    edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
                 
-                edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
-
                 if self.save_edge_attributes:
                     # Build pair-wise invariant masses
                     lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
                     pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
                     # Only keep connected edges and take log to squeeze the distribution
-                    pair_masses = np.clip(np.nan_to_num(np.log(pair_masses[edge_connections])), a_max=1e5, a_min=-1e5)
-
+                    pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
+                    pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
+                    
                     # Build Cambridge-Aachen and kt distances between constituents
                     R = 0.8
-                    d_ca = ((matrix_delta_R**2) / (R**2))[edge_connections]
-                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))[edge_connections]
+                    d_ca = ((matrix_delta_R**2) / (R**2))
+                    d_ca = np.array([d_ca[i,j] for i,j in edge_index])
+                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
+                    d_kt = np.array([d_kt[i,j] for i,j in edge_index])
 
                     edge_features = torch.tensor(np.array([
                         pair_masses,
@@ -433,7 +435,8 @@ class ConeGraphProducer(InMemoryDataset):
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
         adjacency = np.ones_like(delta_R)
         edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-        return edge_connections
+        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+        return edge_index
         
     def connect_knn(self, delta_R: np.ndarray) -> tuple:
         nn_matrix = np.argsort(delta_R, axis=1)
@@ -444,19 +447,15 @@ class ConeGraphProducer(InMemoryDataset):
                 edge_set.add((i,j))
                 edge_set.add((j,i))
         
-        edges = list(edge_set) # need this really clunky conversion, as this has shape (num_edges, 2). Which is actually what torch.geometric needs. However we need a edge_connections tuple in order to mask correctly if we want edge_attributes therefore needed to convert it back to Tuple(np.ndarray, np.ndarray)
-
-        edge_connections = ([], [])
-        for n1, n2 in edges:
-            edge_connections[0].append(n1)
-            edge_connections[1].append(n2)
-        edge_connections = tuple(map(np.array, edge_connections))
-        return edge_connections
+        edges = list(edge_set) 
+        edge_index = torch.tensor(edges, dtype=torch.long) 
+        return edge_index
 
     def connect_r_threshold(self, delta_R: np.ndarray) -> tuple:
         adjacency = (delta_R < self.delta_r_threshold).astype(int)
         edge_connections = np.where( (adjacency - np.identity(adjacency.shape[0])) == 1)
-        return edge_connections
+        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+        return edge_index
 
     def build_cone(
             self, 
