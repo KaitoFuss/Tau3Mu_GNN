@@ -1,7 +1,7 @@
-from utils.JetGraphProducer import JetGraphProducer
+from utils.ConeGraphProducer import ConeGraphProducer
 from torch_geometric.loader import DataLoader
 from typing import Optional, List
-from utils.LundTreeUtilities import OnTheFlyNormalizer
+from utils.NormalizerUtils import OnTheFlyNormalizer
 from torch.utils.data import ConcatDataset, WeightedRandomSampler
 import numpy as np
 import os
@@ -9,7 +9,7 @@ import torch
 
 class GraphDataLoader(DataLoader):
     """
-    A custom DataLoader for loading JetGraphProducer objects. It allows for the
+    A custom DataLoader for loading ConeGraphProducer objects. It allows for the
     use of a normalizer to be applied to the data, and for the specification of
     a window of the data to be loaded. It also allows for the loading of multiple
     datasets at once, and concatenates them into a single dataset.
@@ -35,7 +35,7 @@ class GraphDataLoader(DataLoader):
         **kwargs: Additional keyword arguments to be passed to the DataLoader.
 
     Returns:
-        DataLoader: A DataLoader object for loading JetGraphProducer objects.
+        DataLoader: A DataLoader object for loading ConeGraphProducer objects.
     """
     def __init__(
             self,
@@ -78,7 +78,7 @@ class GraphDataLoader(DataLoader):
                     f"The requested dataset {path}/{name} has not been processed, "\
                     "please do so before attempting to load it."
                         )
-            data = JetGraphProducer(path, output_dataset_name=name)
+            data = ConeGraphProducer(path, output_dataset_name=name) # TODO add more input_params to create different kind of graphs 
             
             if self.device is not None:
                 data.data.to(self.device)
