@@ -385,6 +385,8 @@ class ConeGraphProducer(InMemoryDataset):
 
         with uproot.open(f"{file_name}:Events") as in_file:
             events = in_file.arrays(branches_to_load, library="ak")
+        if self.mask is not None:
+            events = events[self.mask]
         total_events = len(events)
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
