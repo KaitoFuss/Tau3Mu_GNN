@@ -37,7 +37,7 @@ class ConeGraphProducer(InMemoryDataset):
         extra_label (str): Extra label to add to the processed file name)
         weights (str): What event weights to use (None, 'xsec') (TODO: implement pt flattening)
         save_fitted_tau_idx (bool): Whether to save the fitted tau index
-        mask (ak.Array): Mask to apply to the root file
+        mask (bool): Bool whether to apply a mask extracting only tau3mu cands outside vicinity of tau mass, used to get background events
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
         tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
@@ -61,7 +61,7 @@ class ConeGraphProducer(InMemoryDataset):
         save_event_number=False,
         weights=None,
         save_fitted_tau_idx=False,
-        mask=None,
+        mask=False,
         label:float=0.,
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
@@ -143,14 +143,13 @@ class ConeGraphProducer(InMemoryDataset):
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process):
         graphs = []
-
         for i_ev in tqdm(range(i_start, i_stop), disable=not self.verbose):
             n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
             event = events[i_ev]
 
             n_tau = event["nTauTo3Mu"]
-            
+
             pfcands_pt = event["PFCands_pt"]
             pfcands_eta = event["PFCands_eta"]
             pfcands_phi = event["PFCands_phi"]
@@ -206,7 +205,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_phi = pfcands_phi[cone_mask]
                 pfcands_pdgId = pfcands_pdgId[cone_mask]
                 pfcands_mass = pfcands_mass[cone_mask]
-        
+
                 if self.use_displacement:
                     pfcands_d0 = event["PFCands_d0"][cone_mask]
                     pfcands_dz = event["PFCands_dz"][cone_mask]
@@ -385,8 +384,15 @@ class ConeGraphProducer(InMemoryDataset):
 
         with uproot.open(f"{file_name}:Events") as in_file:
             events = in_file.arrays(branches_to_load, library="ak")
-        if self.mask is not None:
-            events = events[self.mask]
+        if self.mask:
+            bkg_mask = abs(events["TauTo3Mu_fitted_mass"] - 1.78) > 0.08 # is this masking okay if there is more than one TauTo3Mu cand oer event
+            # print(ak.type(bkg_mask)) == len(events) * var * bool
+            bkg_mask = ak.any(bkg_mask, axis=-1) # what happens if there is more than one TauTo3Mu cand per event with this flattened mask 
+            # print(ak.type(bkg_mask)) == len(events) * bool
+            # events = ak.mask(events, bkg_mask)
+            events = events[bkg_mask]
+            
+
         total_events = len(events)
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
