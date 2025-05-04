@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch_geometric.nn import EdgeConv
 from torch_geometric.nn import global_mean_pool
 
-class LundNet(nn.Module):
+class TauMuNet(nn.Module):
 
     def __init__(
             self,
@@ -17,7 +17,7 @@ class LundNet(nn.Module):
             num_classes = 1,
             add_fractions_to_lund = False,
             ):
-        super(LundNet, self).__init__()
+        super(TauMuNet, self).__init__()
 
         self.conv_params = conv_params
         self.fc_params = fc_params

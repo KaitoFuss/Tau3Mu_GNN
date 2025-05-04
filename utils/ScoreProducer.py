@@ -9,7 +9,7 @@ import vector
 import logging
 from torch_geometric.utils import negative_sampling
 from utils.LundTreeUtils import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
-import utils.awkward_array_utilities as akUtl
+import utils.AwkwardArrayUtils as akUtl
 
 def __cast_unknown_type_branches(ak_array, field):
 

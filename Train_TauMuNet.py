@@ -2,7 +2,7 @@ from comet_ml import Experiment
 
 from utils.NormalizerUtils import OnTheFlyNormalizer
 from data_loading.graphDataLoader import GraphDataLoader
-from architectures.LundNet import LundNet
+from architectures.TauMuNet import TauMuNet
 from tqdm import tqdm 
 
 import time
@@ -12,12 +12,10 @@ import os
 import pickle
 import numpy as np
 
-import utils.utils_evaluation as ueval
-import utils.utils_training as utrain
+import utils.EvaluationUtils as ueval
+import utils.TrainingUtils as utrain
 
 # import mdmm
-
-# TODO get utils_evaluation and utils_training adapt also these files
 
 def main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx):
     """Train the model and evaluate it.
@@ -150,7 +148,7 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx
  
     # Adapt 
     # Create the model
-    model = LundNet(
+    model = TauMuNet(
         conv_params = [[128, 128], [128, 128], [64, 64], [64, 64], [32, 32], [32, 32]],
         fc_params = [(32, 0.8)], # 0.8 is dropout rate 
         input_dims = nLund_variables, # This should be num_nodes for me? 
