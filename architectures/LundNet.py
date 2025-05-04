@@ -36,7 +36,7 @@ class LundNet(nn.Module):
         for idx, channels in enumerate(conv_params):
             in_feat = self.input_dims if idx == 0 else conv_params[idx - 1][-1]
             out_feat = conv_params[idx][1] 
-            nns = nn.Sequential(nn.Linear(2 *in_feat, out_feat),
+            nns = nn.Sequential(nn.Linear(2 *in_feat, out_feat), # why is in_feat multiplied by 2
                         nn.BatchNorm1d(out_feat),
                         #added dropout
                         nn.Dropout(0.6),

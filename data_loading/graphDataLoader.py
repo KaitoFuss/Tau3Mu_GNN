@@ -61,7 +61,7 @@ class GraphDataLoader(DataLoader):
         if self.window_to_load is None:
             self.window_to_load = [[0., 1.] for _ in dataset_paths]
         self.device = device
-        self.jet_idx = jet_idx
+        self.jet_idx = jet_idx # is there something similar on my data set? eg. nTauTo3Mu but this doesnt seem to fit perfectly 
 
         # Consistency checks
         assert len(self.window_to_load) == len(self.dataset_paths), "Please provide one slicing window per dataset!"
