@@ -159,7 +159,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_pdgId = event["PFCands_pdgId"]
             pfcands_mass = event["PFCands_mass"]
             pfcands_charge = event["PFCands_charge"]
-    
+            
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
 
@@ -205,7 +205,7 @@ class ConeGraphProducer(InMemoryDataset):
                     mu3_phi, 
                     mu3_idx
                 )
-
+                
                 pfcands_pt = pfcands_pt[cone_mask]
                 pfcands_eta = pfcands_eta[cone_mask]
                 pfcands_phi = pfcands_phi[cone_mask]
@@ -288,7 +288,7 @@ class ConeGraphProducer(InMemoryDataset):
                     pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
                     pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
                     # Get pair charge
-                    pair_charges = np.array(matrix_charge[i,j] for i,j in edge_index)
+                    pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
                     
                     # Build Cambridge-Aachen and kt distances between constituents
                     R = 0.8

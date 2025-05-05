@@ -309,12 +309,14 @@ if __name__ == "__main__":
         help="Number of epochs to train on",
         type=int,
         )
+    
     parser.add_argument(
         "--batch",
         default=64,
         help="Batch size",
         type=int,
         )
+    
     parser.add_argument(
         "--name",
         default="TauMuNet",
@@ -325,7 +327,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         default="TMN",
-        help="Which model to train: TMN", # TODO needs to be expanded
+        help="Which model to train: TMN", # will be probably expanded later
         type=str,
         )
 
@@ -372,7 +374,7 @@ if __name__ == "__main__":
         workspace="kaitofuss"
         )
     
-    # this looks useful
+    # overwriting names (adding versionnumber) such that no old files get overwritten
     name = utrain.generate_name_with_versionnumber(name, os.getcwd())
     utrain.output_directory(name)
     

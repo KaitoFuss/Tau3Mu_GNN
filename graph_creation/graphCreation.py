@@ -1,12 +1,14 @@
 from utils.ConeGraphProducer import ConeGraphProducer
 import logging
 
-edge_connection_modes = ["fully", "knn", "r_threshold"]
-cone_sizes = [0.7]
+# edge_connection_modes = ["fully", "knn", "r_threshold"]
+edge_connection_modes = ["fully"]
+# test with delta_r
+cone_sizes = [0.5]
 k_knns = [3]
 delta_r_thresholds = [0.2]
-max_events_to_process = 1 # change to None later
-save_edge_attributes = False # do we want edge features?
+max_events_to_process = None # change to None later
+save_edge_attributes = True # do we want edge features?
 save_event_number = False
 weights = None
 save_fitted_tau_idx = False
