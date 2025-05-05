@@ -14,7 +14,7 @@ def Normalize(base_directory_bkg, base_directory_signal, model_type):
     Args:
         base_directory_bkg(str): Directory of the backgrounds
         base_directory_signal(str): Directory of the signal
-        model_type (str): Type of the model: LN3, LN3p, LN5, LN5+
+        model_type: Name of model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
 
     Returns: means, stds (np.array)
         
@@ -125,9 +125,6 @@ def get_model_parameters(model_type):
     if "dzd0" in model_type:
         num_node_features += 2
     return num_node_features
-    
-
-
 
 def output_directory(name):
     """Create output directory with the name of the training and
@@ -165,7 +162,7 @@ def save_loss(training_losses, validation_losses, name):
 
     output_path = output_directory(name)
 
-    #take output and convert each column to a list and safe it in a root file
+    # take output and convert each column to a list and safe it in a root file
     output_file_path = output_path + f"/{name}_loss.root"
     file = uproot.recreate(output_file_path)
     df = pd.DataFrame(output_dict,columns=output_dict.keys())
@@ -173,7 +170,7 @@ def save_loss(training_losses, validation_losses, name):
     file.close()
     print(f"Output save to {output_file_path}")
 
-    #make also the loss plot
+    # make also the loss plot
     # Iterate over each key in roc dictionary and plot the curves
     
     x_data = range(0,len(training_losses))

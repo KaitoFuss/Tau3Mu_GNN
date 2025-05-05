@@ -139,18 +139,18 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type):
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(base_directory_bkg, base_directory_SVJ,model_type,eval_type, batch_size, normalizer, model, device, window_to_load=[0.7,1])
+    evaluation_dict = ueval.Evaluate_model(base_directory_bkg, base_directory_W_signal,model_type,eval_type, batch_size, normalizer, model, device, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
     ueval.plot_auc(auc, name)
     ueval.plot_roc(roc, name)
-    ueval.plot_scores(evaluation_dict,name)
-    ueval.plot_sic(roc, name)
+    # ueval.plot_scores(evaluation_dict,name)
+    # ueval.plot_sic(roc, name)
     ueval.plot_dnn(evaluation_dict, name)
-    ueval.plot_sic_small(roc,name)
-    ueval.plot_dnn(evaluation_dict,name)
-    ueval.plot_dnn_2(evaluation_dict, name)
+    # ueval.plot_sic_small(roc,name)
+    # ueval.plot_dnn(evaluation_dict,name)
+    # ueval.plot_dnn_2(evaluation_dict, name)
 
     print(f"==> Evaluation completed in {time.time()-start_eva:.2f} seconds")
 
@@ -282,8 +282,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--model",
-        default="TMN",
-        help="Which model to train: TMN", # will maybe be expanded later
+        default="dzd0_cone_size_0.5_fully",
+        help="Which model to train/ which graph construction was used: TMN",
         type=str,
         )
 

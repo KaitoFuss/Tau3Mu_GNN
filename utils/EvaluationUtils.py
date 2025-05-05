@@ -11,13 +11,13 @@ import dcor
 
 from utils.TrainingUtils import output_directory
 
-def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type, batch_size, normalizer, model, device, window_to_load= [0.7,1], jet_idx=None):
+def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_type, batch_size, normalizer, model, device, window_to_load= [0.7,1]):
     """Evaluate the model on each signal dataset independently
 
     Args:
-        base_directory_QCD(str): Path to the bkg directory
-        base_directory_SVJ(str): Path to the signal directroy
-        model_type (str): Type of the model: LN3, LN3p, LN5, LN5+
+        base_directory_bkg(str): Path to the bkg directory
+        base_directory_signal(str): Path to the signal directroy
+        model_type: Name of model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
         eval_type (strg): _ + on which graphs to evaluate: "", "_eventidx" (to get mt distribution), "_3J" (to get evaluation on single jet)
         batch_size(int)
         normalizer
@@ -25,7 +25,6 @@ def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type
         device
         permutation: permutation from the dataloader
         window_to_load: for the evaluation: standard = [0.7,1]
-        jet_idx(int): Which jet to look at (0,1,2), default = None -> look at all graphs in the window
 
 
     Returns:   evaluation_dict[SVJ_***_*p*] = {
@@ -36,68 +35,32 @@ def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type
     """
 
 
+    # datasets_signal = [
+    #     [base_directory_SVJ + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_700_0p3_{model_type}{eval_type}"],
+    #     [base_directory_SVJ + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_700_0p5_{model_type}{eval_type}"],
+    #     [base_directory_SVJ + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_700_0p7_{model_type}{eval_type}"],
+
+    #     [base_directory_SVJ + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_800_0p3_{model_type}{eval_type}"],
+    #     [base_directory_SVJ + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_800_0p5_{model_type}{eval_type}"],
+    #     [base_directory_SVJ + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_800_0p7_{model_type}{eval_type}"],
+    # ]
+
+    # datasets_bkg = [
+
+    #     [base_directory_bkg + "QCD/QCD_HT300to500", f"QCD_HT300to500_{model_type}{eval_type}"],
+    #     [base_directory_bkg + "QCD/QCD_HT500to700", f"QCD_HT500to700_{model_type}{eval_type}"],
+    #     [base_directory_bkg + "QCD/QCD_HT700to1000", f"QCD_HT700to1000_{model_type}{eval_type}"],
+    #     [base_directory_bkg + "QCD/QCD_HT1000to1500", f"QCD_HT1000to1500_{model_type}{eval_type}"],
+    #     [base_directory_bkg + "QCD/QCD_HT1500to2000", f"QCD_HT1500to2000_{model_type}{eval_type}"],
+    #     [base_directory_bkg + "QCD/QCD_HT2000toInf", f"QCD_HT2000toInf_{model_type}{eval_type}"],
+    # ]
+
     datasets_signal = [
-        [base_directory_SVJ + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_700_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_700_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_700_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_800_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_800_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_800_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_900_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_900_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_900_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_1000_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_1000_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_1000_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_1100_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_1100_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_1100_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_1200_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_1200_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_1200_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_1300_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_1300_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_1300_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_1400_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_1400_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_1400_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_1500_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_1500_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_1500_0p7_{model_type}{eval_type}"],
-
-        [base_directory_SVJ + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.3_alpha-peak", f"SVJ_3000_0p3_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.5_alpha-peak", f"SVJ_3000_0p5_{model_type}{eval_type}"],
-        [base_directory_SVJ + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.7_alpha-peak", f"SVJ_3000_0p7_{model_type}{eval_type}"],
+        [base_directory_bkg, f"background_{model_type}"],
     ]
 
     datasets_bkg = [
-
-        [base_directory_bkg + "QCD/QCD_HT300to500", f"QCD_HT300to500_{model_type}{eval_type}"],
-        [base_directory_bkg + "QCD/QCD_HT500to700", f"QCD_HT500to700_{model_type}{eval_type}"],
-        [base_directory_bkg + "QCD/QCD_HT700to1000", f"QCD_HT700to1000_{model_type}{eval_type}"],
-        [base_directory_bkg + "QCD/QCD_HT1000to1500", f"QCD_HT1000to1500_{model_type}{eval_type}"],
-        [base_directory_bkg + "QCD/QCD_HT1500to2000", f"QCD_HT1500to2000_{model_type}{eval_type}"],
-        [base_directory_bkg + "QCD/QCD_HT2000toInf", f"QCD_HT2000toInf_{model_type}{eval_type}"],
-
-        [base_directory_bkg + "TTJet", f"TTJet_{model_type}{eval_type}"],
-
-        [base_directory_bkg + "EW/WJets_inclusive",f"WJets_{model_type}{eval_type}"],
-            
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-100To200", f"ZJetsToNuNu_HT-100To200_{model_type}{eval_type}"],
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-200To400", f"ZJetsToNuNu_HT-200To400_{model_type}{eval_type}"],
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-400To600", f"ZJetsToNuNu_HT-400To600_{model_type}{eval_type}"],
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-600To800", f"ZJetsToNuNu_HT-600To800_{model_type}{eval_type}"],
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-800To1200", f"ZJetsToNuNu_HT-800To1200_{model_type}{eval_type}"],
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-1200To2500", f"ZJetsToNuNu_HT-1200To2500_{model_type}{eval_type}"],
-        [base_directory_bkg + "EW/ZJetsToNuNu_HT-2500ToInf", f"ZJetsToNuNu_HT-2500ToInf_{model_type}{eval_type}"],
+        [base_directory_signal, f"W_decay_signal_{model_type}"]
     ]
 
     evaluation_dict = {}
@@ -106,9 +69,9 @@ def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type
     weights_bkg = []
     target_labels_bkg = []
     test_scores_bkg = []
-    graph_label_bkg = []
-    mt_bkg = []
-    event_number_bkg = []
+    graph_label_bkg = [] # What is this??
+    mt_bkg = [] # What is this??
+    event_number_bkg = [] # What is this??
 
     for dataset in datasets_bkg:
         dataloader_bkg = GraphDataLoader(
@@ -116,7 +79,7 @@ def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type
             window_to_load=[window_to_load for _ in range(1)],
             batch_size=batch_size,
             normalizer=normalizer,
-            jet_idx=jet_idx,)
+            )
         
         model.eval()
 
@@ -142,7 +105,7 @@ def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type
 
 
 
-    # Run signal through network and safe it togheter with the bkg
+    # Run signal through network and save it togheter with the bkg
     for dataset in datasets_signal:
         weights_sig = []
         target_labels_sig = []
@@ -156,7 +119,7 @@ def Evaluate_model(base_directory_bkg, base_directory_SVJ, model_type, eval_type
             window_to_load=[window_to_load for _ in range(1)],
             batch_size=batch_size,
             normalizer=normalizer,
-            jet_idx=jet_idx,)
+            )
     
         model.eval()
 
@@ -228,9 +191,6 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
 
         if np.all(target == 0) or np.all(target == 1):
             continue
-
-        # fpr_, tpr_, thres_ = roc_curve(target, score, sample_weight=weights)
-        # auc_ = roc_auc_score(target, score, sample_weight=weights)
 
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
