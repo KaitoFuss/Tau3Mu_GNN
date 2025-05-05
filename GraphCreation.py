@@ -8,19 +8,20 @@ cone_sizes = [0.5]
 k_knns = [3]
 delta_r_thresholds = [0.2]
 max_events_to_process = None # change to None later
-save_edge_attributes = True # do we want edge features?
+save_edge_attributes = True
 save_event_number = False
 weights = None
 save_fitted_tau_idx = False
 verbose = True
+use_displacement = True
 
-def create_graph(root: str, label: float, mask: bool):
+def create_graph(root: str, output_ident: str, label: float, mask: bool):
     for cone_size in cone_sizes:
         for edge_connection_mode in edge_connection_modes:
             if edge_connection_mode == "fully":
                 delta_r_threshold = None
                 k_knn = None
-                output_dataset_name = "W_decay_signal_cone_size_" + str(cone_size) + edge_connection_mode
+                output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + edge_connection_mode
                 ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -35,12 +36,13 @@ def create_graph(root: str, label: float, mask: bool):
                         save_fitted_tau_idx=save_fitted_tau_idx,
                         mask=mask,
                         label=label,
-                        verbose=verbose
+                        verbose=verbose,
+                        use_displacement=use_displacement,
                     )
             elif edge_connection_mode == "knn":
                 delta_r_threshold = None
                 for k_knn in k_knns:
-                    output_dataset_name = "W_decay_signal_cone_size_" + str(cone_size) + edge_connection_mode + "_" + str(k_knn)
+                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + edge_connection_mode + "_" + str(k_knn)
                     ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -55,12 +57,13 @@ def create_graph(root: str, label: float, mask: bool):
                         save_fitted_tau_idx=save_fitted_tau_idx,
                         mask=mask,
                         label=label,
-                        verbose=verbose
+                        verbose=verbose,
+                        use_displacement=use_displacement,
                     )
             elif edge_connection_mode == "r_threshold":
                 k_knn = None
                 for delta_r_threshold in delta_r_thresholds:
-                    output_dataset_name = "W_decay_signal_cone_size_" + str(cone_size) + edge_connection_mode + "_" + str(delta_r_threshold)
+                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + edge_connection_mode + "_" + str(delta_r_threshold)
                     ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -75,13 +78,16 @@ def create_graph(root: str, label: float, mask: bool):
                         save_fitted_tau_idx=save_fitted_tau_idx,
                         mask=mask,
                         label=label,
-                        verbose=verbose
+                        verbose=verbose,
+                        use_displacement=use_displacement,
                     )
                 
 
 
 if __name__ == "__main__":
-    root_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/manzoni/tau3mu_gnn/WTo3MuNu-smfull_TuneCP5_13p6TeV_madgraph-pythia8/_WTo3MuNu-smfull_TuneCP5_13p6TeV_madgraph-pythia8_RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2_MINIAODSIM/250430_104612/0000/"
-    create_graph(root_W_signal, label=1., mask=False)
-    root_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/manzoni/tau3mu_gnn/ParkingDoubleMuonLowMass*/_ParkingDoubleMuonLowMass*_Run2024*_MINIAOD/*/*/*root"
-    create_graph(root_bkg, label=0., mask=True)
+    root_W_signal = "data/signal_W" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W
+    output_ident = "W_decay_signal"
+    create_graph(root_W_signal, output_ident, label=1., mask=False)
+    root_bkg = "data/background" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background
+    output_ident = "background"
+    create_graph(root_bkg, output_ident, label=0., mask=True)
