@@ -14,6 +14,7 @@ weights = None
 save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
+dzd0 = "_dzdo" if use_displacement else ""
 
 def create_graph(root: str, output_ident: str, label: float, mask: bool):
     for cone_size in cone_sizes:
@@ -21,7 +22,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
             if edge_connection_mode == "fully":
                 delta_r_threshold = None
                 k_knn = None
-                output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode
+                output_dataset_name = output_ident + dzd0 +  "_cone_size_" + str(cone_size) + "_" + edge_connection_mode
                 ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -42,7 +43,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
             elif edge_connection_mode == "knn":
                 delta_r_threshold = None
                 for k_knn in k_knns:
-                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(k_knn)
+                    output_dataset_name = output_ident + dzd0 + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(k_knn)
                     ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -63,7 +64,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
             elif edge_connection_mode == "r_threshold":
                 k_knn = None
                 for delta_r_threshold in delta_r_thresholds:
-                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(delta_r_threshold)
+                    output_dataset_name = output_ident + dzd0 + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(delta_r_threshold)
                     ConeGraphProducer(
                         root, 
                         output_dataset_name, 

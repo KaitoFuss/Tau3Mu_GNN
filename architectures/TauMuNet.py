@@ -12,10 +12,9 @@ class TauMuNet(nn.Module):
             self,
             conv_params,
             fc_params,
-            input_dims = 3,
+            input_dims = 7, # as we want to normally use also dzd0
             use_fusion = True,
             num_classes = 1,
-            add_fractions_to_lund = False,
             ):
         super(TauMuNet, self).__init__()
 
@@ -23,11 +22,7 @@ class TauMuNet(nn.Module):
         self.fc_params = fc_params
         self.use_fusion = use_fusion
         self.num_classes = num_classes
-        self.add_fractions_to_lund = add_fractions_to_lund
         self.input_dims = input_dims
-
-        if self.add_fractions_to_lund:
-            self.input_dims += 4
 
         #batch normalization features
         self.bn_fts = nn.BatchNorm1d(self.input_dims)
@@ -36,7 +31,7 @@ class TauMuNet(nn.Module):
         for idx, channels in enumerate(conv_params):
             in_feat = self.input_dims if idx == 0 else conv_params[idx - 1][-1]
             out_feat = conv_params[idx][1] 
-            nns = nn.Sequential(nn.Linear(2 *in_feat, out_feat), # why is in_feat multiplied by 2
+            nns = nn.Sequential(nn.Linear(2 *in_feat, out_feat),
                         nn.BatchNorm1d(out_feat),
                         #added dropout
                         nn.Dropout(0.6),
@@ -48,7 +43,6 @@ class TauMuNet(nn.Module):
                         nn.Dropout(0.6))
             self.edge_convs.append(EdgeConv(nn=nns, aggr='mean'))
 
-        self.use_fusion = use_fusion
         if self.use_fusion:
             in_chn = sum(x[-1] for x in conv_params)
             out_chn = np.clip((in_chn // 128) * 128, 128, 1024)
