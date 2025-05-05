@@ -147,7 +147,6 @@ class ConeGraphProducer(InMemoryDataset):
             n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
             event = events[i_ev]
-            
             if self.mask:
                 n_tau = event["nTauTo3Mu"] 
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
@@ -159,6 +158,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_phi = event["PFCands_phi"]
             pfcands_pdgId = event["PFCands_pdgId"]
             pfcands_mass = event["PFCands_mass"]
+            pfcands_charge = event["PFCands_charge"]
     
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -211,6 +211,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_phi = pfcands_phi[cone_mask]
                 pfcands_pdgId = pfcands_pdgId[cone_mask]
                 pfcands_mass = pfcands_mass[cone_mask]
+                pfcands_charge = pfcands_charge[cone_mask]
 
                 if self.use_displacement:
                     pfcands_d0 = event["PFCands_d0"][cone_mask]
@@ -237,6 +238,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_pdgId = np.array(pfcands_pdgId[permutation], dtype=np.int64)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
                 pfcands_mass = np.clip(np.array(pfcands_mass[permutation]), a_min=0., a_max=None, dtype=np.float64)
+                pfcands_charge = np.array(pfcands_charge[permutation], dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
 
                 pos = [[e, p] for e, p in zip(pfcands_eta, pfcands_phi)]
 
@@ -266,6 +268,7 @@ class ConeGraphProducer(InMemoryDataset):
                 matrix_phi = np.repeat(pfcands_phi, len(pfcands_phi)).reshape((len(pfcands_phi), -1))
                 matrix_pt = np.repeat(pfcands_pt, len(pfcands_pt)).reshape((len(pfcands_pt), -1))
                 matrix_mass = np.repeat(pfcands_mass, len(pfcands_mass)).reshape((len(pfcands_mass), -1))
+                matrix_charge = np.repeat(pfcands_charge, len(pfcands_charge)).reshape((len(pfcands_charge), -1))
                 matrix_delta_eta = matrix_eta - matrix_eta.T
 
                 # Calculate delta phi accounting for circularity
@@ -284,6 +287,8 @@ class ConeGraphProducer(InMemoryDataset):
                     # Only keep connected edges and take log to squeeze the distribution
                     pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
                     pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
+                    # Get pair charge
+                    pair_charges = np.array(matrix_charge[i,j] for i,j in edge_index)
                     
                     # Build Cambridge-Aachen and kt distances between constituents
                     R = 0.8
@@ -294,6 +299,7 @@ class ConeGraphProducer(InMemoryDataset):
 
                     edge_features = torch.tensor(np.array([
                         pair_masses,
+                        pair_charges,
                         d_ca,
                         d_kt,
                     ]).T, dtype=torch.float)
@@ -366,6 +372,7 @@ class ConeGraphProducer(InMemoryDataset):
             "PFCands_phi",
             "PFCands_pdgId",
             "PFCands_mass",  
+            "PFCands_charge",
             "nTauTo3Mu",
             "TauTo3Mu_mu1_idx",
             "TauTo3Mu_mu1_eta",
