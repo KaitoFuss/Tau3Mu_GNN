@@ -385,12 +385,9 @@ class ConeGraphProducer(InMemoryDataset):
         with uproot.open(f"{file_name}:Events") as in_file:
             events = in_file.arrays(branches_to_load, library="ak")
         if self.mask:
-            bkg_mask = abs(events["TauTo3Mu_fitted_mass"] - 1.78) > 0.08 # is this masking okay if there is more than one TauTo3Mu cand oer event
-            # print(ak.type(bkg_mask)) == len(events) * var * bool
+            bkg_mask = abs(events["TauTo3Mu_fitted_mass"] - 1.78) > 0.08
             # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
-            bkg_mask = ak.any(bkg_mask, axis=-1) # what happens if there is more than one TauTo3Mu cand per event with this flattened mask 
-            # print(ak.type(bkg_mask)) == len(events) * bool
-            # events = ak.mask(events, bkg_mask)
+            bkg_mask = ak.any(bkg_mask, axis=1)
             events = events[bkg_mask]
             
 
