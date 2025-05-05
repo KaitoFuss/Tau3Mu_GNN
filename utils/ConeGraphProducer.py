@@ -162,55 +162,32 @@ class ConeGraphProducer(InMemoryDataset):
     
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
+
+                tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{self.tau_collection_name}_pt"])
                 
-                if self.mask:
-                    # Read data for fitted tau from event
-                    fitted_tau_pt = event[f"{self.tau_collection_name}_pt"][bkg_mask[i_ev]][nt] # liked this
-                    fitted_tau_eta = event[f"{self.tau_collection_name}_eta"][bkg_mask[i_ev]][nt]
-                    fitted_tau_phi = event[f"{self.tau_collection_name}_phi"][bkg_mask[i_ev]][nt]
-                    fitted_tau_mass = event[f"{self.tau_collection_name}_mass"][bkg_mask[i_ev]][nt]
-                    
-                    # Read data for mu1 from event
-                    mu1_idx = event["TauTo3Mu_mu1_idx"][bkg_mask[i_ev]][nt]
-                    mu1_eta = event["TauTo3Mu_mu1_eta"][bkg_mask[i_ev]][nt]
-                    mu1_phi = event["TauTo3Mu_mu1_phi"][bkg_mask[i_ev]][nt]
-                    mu1_pt = event["TauTo3Mu_mu1_pt"][bkg_mask[i_ev]][nt]
-        
-                    # Read data for mu2 from event
-                    mu2_idx = event["TauTo3Mu_mu2_idx"][bkg_mask[i_ev]][nt]
-                    mu2_eta = event["TauTo3Mu_mu2_eta"][bkg_mask[i_ev]][nt]
-                    mu2_phi = event["TauTo3Mu_mu2_phi"][bkg_mask[i_ev]][nt]
-                    mu2_pt = event["TauTo3Mu_mu2_pt"][bkg_mask[i_ev]][nt]
-                    
-                    # Read data for mu3 from event
-                    mu3_idx = event["TauTo3Mu_mu3_idx"][bkg_mask[i_ev]][nt]
-                    mu3_eta = event["TauTo3Mu_mu3_eta"][bkg_mask[i_ev]][nt]
-                    mu3_phi = event["TauTo3Mu_mu3_phi"][bkg_mask[i_ev]][nt]
-                    mu3_pt = event["TauTo3Mu_mu3_pt"][bkg_mask[i_ev]][nt]
-                else:
-                        # Read data for fitted tau from event
-                    fitted_tau_pt = event[f"{self.tau_collection_name}_pt"][nt] 
-                    fitted_tau_eta = event[f"{self.tau_collection_name}_eta"][nt]
-                    fitted_tau_phi = event[f"{self.tau_collection_name}_phi"][nt]
-                    fitted_tau_mass = event[f"{self.tau_collection_name}_mass"][nt]
-                    # if self.mask and fitted_tau_mass # later
-                    # Read data for mu1 from event
-                    mu1_idx = event["TauTo3Mu_mu1_idx"][nt]
-                    mu1_eta = event["TauTo3Mu_mu1_eta"][nt]
-                    mu1_phi = event["TauTo3Mu_mu1_phi"][nt]
-                    mu1_pt = event["TauTo3Mu_mu1_pt"][nt]
-        
-                    # Read data for mu2 from event
-                    mu2_idx = event["TauTo3Mu_mu2_idx"][nt]
-                    mu2_eta = event["TauTo3Mu_mu2_eta"][nt]
-                    mu2_phi = event["TauTo3Mu_mu2_phi"][nt]
-                    mu2_pt = event["TauTo3Mu_mu2_pt"][nt]
-                    
-                    # Read data for mu3 from event
-                    mu3_idx = event["TauTo3Mu_mu3_idx"][nt]
-                    mu3_eta = event["TauTo3Mu_mu3_eta"][nt]
-                    mu3_phi = event["TauTo3Mu_mu3_phi"][nt]
-                    mu3_pt = event["TauTo3Mu_mu3_pt"][nt]
+                # Read data for fitted tau from event
+                fitted_tau_pt = event[f"{self.tau_collection_name}_pt"][tau_mask][nt] 
+                fitted_tau_eta = event[f"{self.tau_collection_name}_eta"][tau_mask][nt] 
+                fitted_tau_phi = event[f"{self.tau_collection_name}_phi"][tau_mask][nt] 
+                fitted_tau_mass = event[f"{self.tau_collection_name}_mass"][tau_mask][nt] 
+                
+                # Read data for mu1 from event
+                mu1_idx = event["TauTo3Mu_mu1_idx"][tau_mask][nt] 
+                mu1_eta = event["TauTo3Mu_mu1_eta"][tau_mask][nt] 
+                mu1_phi = event["TauTo3Mu_mu1_phi"][tau_mask][nt] 
+                mu1_pt = event["TauTo3Mu_mu1_pt"][tau_mask][nt] 
+    
+                # Read data for mu2 from event
+                mu2_idx = event["TauTo3Mu_mu2_idx"][tau_mask][nt] 
+                mu2_eta = event["TauTo3Mu_mu2_eta"][tau_mask][nt] 
+                mu2_phi = event["TauTo3Mu_mu2_phi"][tau_mask][nt] 
+                mu2_pt = event["TauTo3Mu_mu2_pt"][tau_mask][nt] 
+                
+                # Read data for mu3 from event
+                mu3_idx = event["TauTo3Mu_mu3_idx"][tau_mask][nt] 
+                mu3_eta = event["TauTo3Mu_mu3_eta"][tau_mask][nt] 
+                mu3_phi = event["TauTo3Mu_mu3_phi"][tau_mask][nt] 
+                mu3_pt = event["TauTo3Mu_mu3_pt"][tau_mask][nt] 
 
                 # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
                 cone_mask = self.build_cone(
@@ -415,17 +392,16 @@ class ConeGraphProducer(InMemoryDataset):
             events = in_file.arrays(branches_to_load, library="ak")
         
         bkg_mask = None
+        total_events = len(events)
         if self.mask:
             bkg_mask = abs(events["TauTo3Mu_fitted_mass"] - 1.78) > 0.08
             # Filters events that do not have single bkg-looking event
             events = events[ak.any(bkg_mask, axis=1)] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
             bkg_mask = bkg_mask[ak.any(bkg_mask, axis=1)]
             
-
-        total_events = len(events)
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
-        events_to_process = min(self.max_events_to_process, total_events) if self.max_events_to_process else total_events
+        events_to_process = min(self.max_events_to_process, len(events)) if self.max_events_to_process else len(events)
         graphDataset = self.process_event(
             0,
             events_to_process,
