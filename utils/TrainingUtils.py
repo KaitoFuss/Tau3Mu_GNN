@@ -222,12 +222,12 @@ class early_stop:
         self.patience = patience
         self.naverage = naverage
         self.counter = 0
-        self.best_loss = 999 # start somewhere large
-        self.current_loss = 999
+        self.best_loss = float('inf') # start somewhere large
+        self.current_loss = float('inf')
         self.early_stop = False
         self.best_epoch = 0
         self.loss_dict = {f"{i}": None for i in range(0, naverage)} # create dictionary s.t. I can put the last 10 validation losses in it
-        self.avg_loss = 999
+        self.avg_loss = float('inf')
     
     def __call__(self, validation_loss, model, epoch, output_path, name):
         if epoch == 0:
@@ -243,7 +243,6 @@ class early_stop:
 
     # check whether early stopping is necessary
     def early_stopping(self, epoch, model, output_path, name):
-        # if (self.avg_loss > self.best_loss) & (self.current_loss > self.best_loss):
         if self.current_loss > self.best_loss:
             self.counter += 1
             print(f"Average loss = {self.avg_loss} and current loss = {self.current_loss} is larger than {self.best_loss}")

@@ -167,6 +167,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         loss_criterion:
         device: GPU or CPU
         optimizer: ADAM
+        name: name of output directory 
 
 
     Returns: training_losses(List), validation_losses(List)
@@ -191,15 +192,14 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
 
         for batch, data in enumerate(dataloader_training):
-        # for batch, data in tqdm(enumerate(dataloader_training), total=len(dataloader_training), desc=f"Epoch {epoch+1}/{epochs}", leave=False):
             model.train() # set into training modus for backpropagation
             data = data.to(device) # send data to ram of gpu!
             target = data.y # this is my label
             
-            optimizer.zero_grad() #make sure gradients are empty
+            optimizer.zero_grad() # make sure gradients are empty
             out = model(data) # fill data into model and safe the output
             loss_ =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
-            score = out[:,0].cpu()
+            score = out[:,0].cpu() # For what is this score used??
             score = score.detach().numpy()
             loss_per_batch += loss_.item()
 
@@ -212,7 +212,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         training_losses.append(epoch_loss_training)
         experiment.log_metric("Training loss", epoch_loss_training, epoch=epoch)
 
-        #validation
+        # validation
         batch_counter = 0
         loss_per_batch = 0
 
@@ -237,10 +237,10 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
         ## check for early stop
         early_stop(epoch_loss_validation,model,epoch,output_path,name)
-        if early_stop.early_stop == True:
+        if early_stop.early_stop:
             break
-        ## log the average loss asw ell
-        experiment.log_metric("Average Validation loss", early_stop.avg_loss, epoch=epoch)
+        ## log the average loss as well
+        experiment.log_metric("Average Validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
 
     # Safe output Model
     print("==> Saving Model")      
