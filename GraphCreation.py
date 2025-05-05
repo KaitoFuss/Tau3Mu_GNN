@@ -7,7 +7,7 @@ edge_connection_modes = ["fully"]
 cone_sizes = [0.5]
 k_knns = [3]
 delta_r_thresholds = [0.2]
-max_events_to_process = None # change to None later
+max_events_to_process = None
 save_edge_attributes = True
 save_event_number = False
 weights = None
@@ -21,7 +21,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
             if edge_connection_mode == "fully":
                 delta_r_threshold = None
                 k_knn = None
-                output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + edge_connection_mode
+                output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode
                 ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -42,7 +42,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
             elif edge_connection_mode == "knn":
                 delta_r_threshold = None
                 for k_knn in k_knns:
-                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + edge_connection_mode + "_" + str(k_knn)
+                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(k_knn)
                     ConeGraphProducer(
                         root, 
                         output_dataset_name, 
@@ -63,7 +63,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
             elif edge_connection_mode == "r_threshold":
                 k_knn = None
                 for delta_r_threshold in delta_r_thresholds:
-                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + edge_connection_mode + "_" + str(delta_r_threshold)
+                    output_dataset_name = output_ident + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(delta_r_threshold)
                     ConeGraphProducer(
                         root, 
                         output_dataset_name, 

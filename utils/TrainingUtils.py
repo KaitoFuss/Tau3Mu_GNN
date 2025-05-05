@@ -21,105 +21,122 @@ def Normalize(base_directory_bkg, base_directory_signal, model_type):
     """
 
 
-    bkg_directory = [
-        base_directory_bkg + "QCD/QCD_HT300to500",
-        base_directory_bkg + "QCD/QCD_HT500to700",
-        base_directory_bkg + "QCD/QCD_HT700to1000", 
-        base_directory_bkg + "QCD/QCD_HT1000to1500", 
-        base_directory_bkg + "QCD/QCD_HT1500to2000", 
-        base_directory_bkg + "QCD/QCD_HT2000toInf",
+    # bkg_directory = [
+    #     base_directory_bkg + "QCD/QCD_HT300to500",
+    #     base_directory_bkg + "QCD/QCD_HT500to700",
+    #     base_directory_bkg + "QCD/QCD_HT700to1000", 
+    #     base_directory_bkg + "QCD/QCD_HT1000to1500", 
+    #     base_directory_bkg + "QCD/QCD_HT1500to2000", 
+    #     base_directory_bkg + "QCD/QCD_HT2000toInf",
         
-        base_directory_bkg + "TTJet",
+    #     base_directory_bkg + "TTJet",
 
-        base_directory_bkg + "EW/WJets_inclusive",
+    #     base_directory_bkg + "EW/WJets_inclusive",
             
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-100To200",
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-200To400", 
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-400To600", 
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-600To800", 
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-800To1200", 
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-1200To2500", 
-        base_directory_bkg + "EW/ZJetsToNuNu_HT-2500ToInf", 
-        ]  
-    
-    Bkg = {
-        f"QCD_HT300to500_{model_type}": None,
-        f"QCD_HT500to700_{model_type}": None,
-        f"QCD_HT700to1000_{model_type}" : None,
-        f"QCD_HT1000to1500_{model_type}" : None,
-        f"QCD_HT1500to2000_{model_type}" : None,
-        f"QCD_HT2000toInf_{model_type}" : None,
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-100To200",
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-200To400", 
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-400To600", 
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-600To800", 
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-800To1200", 
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-1200To2500", 
+    #     base_directory_bkg + "EW/ZJetsToNuNu_HT-2500ToInf", 
+    #     ] 
 
-        f"TTJet_{model_type}" : None,
+    # Bkg = {
+    #     f"QCD_HT300to500_{model_type}": None,
+    #     f"QCD_HT500to700_{model_type}": None,
+    #     f"QCD_HT700to1000_{model_type}" : None,
+    #     f"QCD_HT1000to1500_{model_type}" : None,
+    #     f"QCD_HT1500to2000_{model_type}" : None,
+    #     f"QCD_HT2000toInf_{model_type}" : None,
 
-        f"WJets_{model_type}": None,
+    #     f"TTJet_{model_type}" : None,
+
+    #     f"WJets_{model_type}": None,
             
-        f"ZJetsToNuNu_HT-100To200_{model_type}": None,
-        f"ZJetsToNuNu_HT-200To400_{model_type}": None,
-        f"ZJetsToNuNu_HT-400To600_{model_type}": None,
-        f"ZJetsToNuNu_HT-600To800_{model_type}": None,
-        f"ZJetsToNuNu_HT-800To1200_{model_type}": None,
-        f"ZJetsToNuNu_HT-1200To2500_{model_type}": None,
-        f"ZJetsToNuNu_HT-2500ToInf_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-100To200_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-200To400_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-400To600_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-600To800_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-800To1200_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-1200To2500_{model_type}": None,
+    #     f"ZJetsToNuNu_HT-2500ToInf_{model_type}": None,
+    # }
+
+    # signal_directory = [
+    #     base_directory_signal + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+
+    #     base_directory_signal + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+
+    #     base_directory_signal + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+
+    #     base_directory_signal + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+
+    #     base_directory_signal + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.3_alpha-peak", 
+    #     base_directory_signal + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.5_alpha-peak", 
+    #     base_directory_signal + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.7_alpha-peak", 
+         
+    #     base_directory_signal + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.3_alpha-peak", 
+    #     base_directory_signal + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.5_alpha-peak", 
+    #     base_directory_signal + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.7_alpha-peak", 
+         
+    #     base_directory_signal + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.3_alpha-peak", 
+    #     base_directory_signal + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.7_alpha-peak", 
+
+    #     base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+
+    #     base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+
+    #     base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.3_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.5_alpha-peak",
+    #     base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.7_alpha-peak"
+    #     ]
+
+    # signal= {
+    #     f"SVJ_700_0p3_{model_type}" : None, f"SVJ_700_0p5_{model_type}" : None, f"SVJ_700_0p7_{model_type}" : None, 
+    #     f"SVJ_800_0p3_{model_type}" : None, f"SVJ_800_0p5_{model_type}" : None, f"SVJ_800_0p7_{model_type}" : None,
+    #     f"SVJ_900_0p3_{model_type}" : None, f"SVJ_900_0p5_{model_type}" : None, f"SVJ_900_0p7_{model_type}" : None,
+    #     f"SVJ_1000_0p3_{model_type}" : None, f"SVJ_1000_0p5_{model_type}" : None, f"SVJ_1000_0p7_{model_type}" : None,
+    #     f"SVJ_1100_0p3_{model_type}" : None, f"SVJ_1100_0p5_{model_type}" : None, f"SVJ_1100_0p7_{model_type}" : None,
+    #     f"SVJ_1200_0p3_{model_type}" : None, f"SVJ_1200_0p5_{model_type}" : None, f"SVJ_1200_0p7_{model_type}" : None,
+    #     f"SVJ_1300_0p3_{model_type}" : None, f"SVJ_1300_0p5_{model_type}" : None, f"SVJ_1300_0p7_{model_type}" : None,
+    #     f"SVJ_1400_0p3_{model_type}" : None, f"SVJ_1400_0p5_{model_type}" : None, f"SVJ_1400_0p7_{model_type}" : None,
+    #     f"SVJ_1500_0p3_{model_type}" : None, f"SVJ_1500_0p5_{model_type}" : None, f"SVJ_1500_0p7_{model_type}" : None,
+    #     f"SVJ_3000_0p3_{model_type}" : None, f"SVJ_3000_0p5_{model_type}" : None, f"SVJ_3000_0p7_{model_type}" : None,
+    #     }
+
+    bkg_directory = [
+        base_directory_bkg,
+    ] 
+
+    bkg = {
+        f"background_{model_type}" : None,
     }
 
     signal_directory = [
-        base_directory_signal + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+        base_directory_signal
+    ]
 
-        base_directory_signal + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-800GeV_mDark-20GeV_rinv-0.7_alpha-peak",
+    signal = {
+        f"W_decay_signal_{model_type}" : None,
+    }
 
-        base_directory_signal + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-900GeV_mDark-20GeV_rinv-0.7_alpha-peak",
 
-        base_directory_signal + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1000GeV_mDark-20GeV_rinv-0.7_alpha-peak",
-
-        base_directory_signal + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.3_alpha-peak", 
-        base_directory_signal + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.5_alpha-peak", 
-        base_directory_signal + "SVJ_mMed-1100GeV_mDark-20GeV_rinv-0.7_alpha-peak", 
-         
-        base_directory_signal + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.3_alpha-peak", 
-        base_directory_signal + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.5_alpha-peak", 
-        base_directory_signal + "SVJ_mMed-1200GeV_mDark-20GeV_rinv-0.7_alpha-peak", 
-         
-        base_directory_signal + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.3_alpha-peak", 
-        base_directory_signal + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1300GeV_mDark-20GeV_rinv-0.7_alpha-peak", 
-
-        base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.7_alpha-peak",
-
-        base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.7_alpha-peak",
-
-        base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-        base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-        base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.7_alpha-peak"
-        ]
-
-    signal= {
-        f"SVJ_700_0p3_{model_type}" : None, f"SVJ_700_0p5_{model_type}" : None, f"SVJ_700_0p7_{model_type}" : None, 
-        f"SVJ_800_0p3_{model_type}" : None, f"SVJ_800_0p5_{model_type}" : None, f"SVJ_800_0p7_{model_type}" : None,
-        f"SVJ_900_0p3_{model_type}" : None, f"SVJ_900_0p5_{model_type}" : None, f"SVJ_900_0p7_{model_type}" : None,
-        f"SVJ_1000_0p3_{model_type}" : None, f"SVJ_1000_0p5_{model_type}" : None, f"SVJ_1000_0p7_{model_type}" : None,
-        f"SVJ_1100_0p3_{model_type}" : None, f"SVJ_1100_0p5_{model_type}" : None, f"SVJ_1100_0p7_{model_type}" : None,
-        f"SVJ_1200_0p3_{model_type}" : None, f"SVJ_1200_0p5_{model_type}" : None, f"SVJ_1200_0p7_{model_type}" : None,
-        f"SVJ_1300_0p3_{model_type}" : None, f"SVJ_1300_0p5_{model_type}" : None, f"SVJ_1300_0p7_{model_type}" : None,
-        f"SVJ_1400_0p3_{model_type}" : None, f"SVJ_1400_0p5_{model_type}" : None, f"SVJ_1400_0p7_{model_type}" : None,
-        f"SVJ_1500_0p3_{model_type}" : None, f"SVJ_1500_0p5_{model_type}" : None, f"SVJ_1500_0p7_{model_type}" : None,
-        f"SVJ_3000_0p3_{model_type}" : None, f"SVJ_3000_0p5_{model_type}" : None, f"SVJ_3000_0p7_{model_type}" : None,
-        }
-
-    for directory, key in zip(bkg_directory, Bkg):
-        Bkg[key] = ConeGraphProducer(directory,key)
+    for directory, key in zip(bkg_directory, bkg):
+        bkg[key] = ConeGraphProducer(directory,key)
 
     for directory, key in zip(signal_directory, signal):
         signal[key] = ConeGraphProducer(directory,key)
@@ -128,8 +145,8 @@ def Normalize(base_directory_bkg, base_directory_signal, model_type):
     means, stds = 0., 0.
     weights = []
 
-    for key in Bkg:
-        for graph in Bkg[key]:
+    for key in bkg:
+        for graph in bkg[key]:
             means += graph.x.sum(dim=0)*graph.w
             weights.append(graph.w)
     for key in signal:
@@ -138,8 +155,8 @@ def Normalize(base_directory_bkg, base_directory_signal, model_type):
             weights.append(graph.w)
     means /= sum(weights)
 
-    for key in Bkg:
-        for graph in Bkg[key]:   
+    for key in bkg:
+        for graph in bkg[key]:   
             stds += ((graph.x - means)**2).sum(dim=0)*graph.w
     for key in signal:
         for graph in signal[key]:   

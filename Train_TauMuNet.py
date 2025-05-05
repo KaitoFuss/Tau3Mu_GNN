@@ -17,7 +17,7 @@ import utils.TrainingUtils as utrain
 
 # import mdmm
 
-def main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx):
+def main(epochs, batch_size, learning_rate, name, model_type, eval_type):
     """Train the model and evaluate it.
 
     Args:
@@ -25,8 +25,7 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx
         batch_size(int): size of each batch
         learning_rate(float):
         name(str): name of the training
-        model_type (str): Type of the model: LN3, LN3p, LN5, LN5+
-        jet_idx(int): Which jet to look at (0,1,2), default = None -> look at all graphs in the window
+        model_type (str): Type of the model: which graph constructions params were used; eg. cone_size_0.5_knn_3, cone_size_0.5_fully
 
     Returns: -
         
@@ -40,11 +39,11 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx
     output_path = utrain.output_directory(name)
 
     # Directory for the graphs
-    base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/rhampp/forTraining/Preselection_applied/Bkg_sorted/"
-    base_directory_SVJ = "/pnfs/psi.ch/cms/trivcat/store/user/rhampp/forTraining/Preselection_applied/SVJ_26_08/"
+    base_directory_W_signal = "data/signal_W" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W
+    base_directory_bkg = "data/background" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background
 
     # create on the fly normalizer and save the mean and std 
-    means, stds = utrain.Normalize(base_directory_bkg, base_directory_SVJ, model_type)
+    means, stds = utrain.Normalize(base_directory_bkg, base_directory_W_signal, model_type)
     normalizer = OnTheFlyNormalizer(["x"], means, stds)
     normalize_dict = {
         'means': means,
@@ -183,7 +182,7 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(base_directory_bkg, base_directory_SVJ,model_type,eval_type, batch_size, normalizer, model, device, window_to_load=[0.7,1], jet_idx=None)
+    evaluation_dict = ueval.Evaluate_model(base_directory_bkg, base_directory_SVJ,model_type,eval_type, batch_size, normalizer, model, device, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
@@ -327,7 +326,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         default="TMN",
-        help="Which model to train: TMN", # will be probably expanded later
+        help="Which model to train: TMN", # will maybe be expanded later
         type=str,
         )
 
@@ -338,19 +337,10 @@ if __name__ == "__main__":
         type=float,
         )
 
-    # is there sth similar in my case?
-    parser.add_argument(
-        "--jet_idx",
-        default=None,
-        help="Which jet to look at: 0=leading jet, 1=subleading jet, 2=subsubleading jet, None = all graphs in the dataset",
-        type=int,
-    )
-
-    # this is not needed in my case?
     parser.add_argument(
         "--eval_type",
         default="",
-        help="Which pt file to evaluate on: _3J(each jet single)",
+        help="Which pt file to evaluate on:",
         type=str,
     )
     
@@ -363,7 +353,6 @@ if __name__ == "__main__":
     learning_rate = args.lr
     name = args.name
     model_type = args.model
-    jet_idx = args.jet_idx
     eval_type = args.eval_type
 
     print("==> Running TauMuNet ")
@@ -390,5 +379,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, name, model_type, eval_type, jet_idx=None)
+    main(epochs, batch_size, learning_rate, name, model_type, eval_type)
 
