@@ -28,37 +28,59 @@ class TauMuNet(nn.Module):
         self.bn_fts = nn.BatchNorm1d(self.input_dims)
 
         self.edge_convs = nn.ModuleList()
-        for idx, channels in enumerate(conv_params):
-            in_feat = self.input_dims if idx == 0 else conv_params[idx - 1][-1]
-            out_feat = conv_params[idx][1] 
-            nns = nn.Sequential(nn.Linear(2 *in_feat, out_feat),
-                        nn.BatchNorm1d(out_feat),
-                        #added dropout
-                        nn.Dropout(0.6),
-                        nn.ReLU(),
-                        nn.Linear(out_feat, out_feat),
-                        nn.ReLU(),
-                        nn.BatchNorm1d(out_feat),
-                        #added dropout
-                        nn.Dropout(0.6))
-            self.edge_convs.append(EdgeConv(nn=nns, aggr='mean'))
+        aggr_func = 'mean'
+        # First layer: from input_dims to conv_params[0]
+        nns = nn.Sequential(
+            nn.Linear(2 * self.input_dims, conv_params[0]),
+            nn.BatchNorm1d(conv_params[0]),
+            nn.Dropout(0.6),
+            nn.ReLU(),
+            nn.Linear(conv_params[0], conv_params[0]),
+            nn.ReLU(),
+            nn.BatchNorm1d(conv_params[0]),
+            nn.Dropout(0.6)
+        )
+        self.edge_convs.append(EdgeConv(nn=nns, aggr=aggr_func))
+
+        # Remaining layers
+        for in_feat, out_feat in zip(conv_params[:-1], conv_params[1:]):
+            nns = nn.Sequential(
+                nn.Linear(2 * in_feat, out_feat),
+                nn.BatchNorm1d(out_feat),
+                nn.Dropout(0.6),
+                nn.ReLU(),
+                nn.Linear(out_feat, out_feat),
+                nn.ReLU(),
+                nn.BatchNorm1d(out_feat),
+                nn.Dropout(0.6)
+            )
+            self.edge_convs.append(EdgeConv(nn=nns, aggr=aggr_func))
 
         if self.use_fusion:
-            in_chn = sum(x[-1] for x in conv_params)
+            in_chn = sum(x for x in conv_params)
             out_chn = np.clip((in_chn // 128) * 128, 128, 1024)
             self.fusion_block = nn.Sequential(nn.Linear(in_chn, out_chn), nn.ReLU(), nn.BatchNorm1d(out_chn))
 
         fcs = []
-        for idx, layer_param in enumerate(fc_params):
-            channels, drop_rate = layer_param
+        for idx, (channels, drop_rate) in enumerate(fc_params):
             if idx == 0:
-                in_chn = out_chn if self.use_fusion else conv_params[-1][-1]
+                in_chn = out_chn if self.use_fusion else conv_params[-1]  
             else:
                 in_chn = fc_params[idx - 1][0]
-            #fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU() ,nn.Dropout(drop_rate)))
-            fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.BatchNorm1d(channels), nn.Dropout(drop_rate)))
-        #fcs.append(nn.Linear(fc_params[-1][0], num_classes))
-        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0], num_classes),nn.BatchNorm1d(num_classes)))
+            
+            fcs.append(nn.Sequential(
+                nn.Linear(in_chn, channels),
+                nn.ReLU(),
+                nn.BatchNorm1d(channels),
+                nn.Dropout(drop_rate)
+            ))
+        # Isnt this way and also in the old code the final layer applied twice? Once with ReLU and Dropout and once without. Is this intended?
+        # Final fc layer 
+        fcs.append(nn.Sequential(
+            nn.Linear(fc_params[-1][0], num_classes),
+            nn.BatchNorm1d(num_classes)
+        ))
+
         self.fc = nn.Sequential(*fcs)
 
     def forward(self, data):
