@@ -68,10 +68,10 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
     ## Run Bkg through network
     weights_bkg = []
     target_labels_bkg = []
-    test_scores_bkg = []
-    graph_label_bkg = [] # What is this??
-    mt_bkg = [] # What is this??
-    event_number_bkg = [] # What is this??
+    test_scores_bkg = [] 
+    graph_label_bkg = [] # What is this?? del
+    mt_bkg = [] # What is this?? del
+    event_number_bkg = [] # What is this?? del
 
     for dataset in datasets_bkg:
         dataloader_bkg = GraphDataLoader(
@@ -85,7 +85,7 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
 
         for graphs in dataloader_bkg:
             weights_bkg.append(np.array(graphs.w))
-            mt_bkg.append(np.array(graphs.MT01FatJetMET))
+            mt_bkg.append(np.array(graphs.MT01FatJetMET)) # MT01FatJetMET and event doesn't exist in my graph I think
             event_number_bkg.append(np.array(graphs.event))
             graphs = graphs.to(device)
             target = graphs.y

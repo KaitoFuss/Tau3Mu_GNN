@@ -168,7 +168,7 @@ def save_loss(training_losses, validation_losses, name):
     df = pd.DataFrame(output_dict,columns=output_dict.keys())
     file["Output"] = df
     file.close()
-    print(f"Output save to {output_file_path}")
+    print(f"Output saved to {output_file_path}")
 
     # make also the loss plot
     # Iterate over each key in roc dictionary and plot the curves

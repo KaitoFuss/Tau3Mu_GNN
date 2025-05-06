@@ -345,7 +345,7 @@ class ConeGraphProducer(InMemoryDataset):
                 if self.save_event_number:
                     graph.event_number = torch.tensor([i_ev], dtype=torch.long)
 
-                # Add jet index if requested
+                # Add tau index if requested
                 if self.save_fitted_tau_idx:
                     graph["fitted_tau_idx"] = torch.tensor([fitted_tau_idx], dtype=torch.int)
                         

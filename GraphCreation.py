@@ -27,7 +27,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
                 ConeGraphProducer(
                         root, 
                         output_dataset_name, 
-                        cone_size, 
+                        cone_size,
                         edge_connection_mode=edge_connection_mode,
                         delta_r_threshold=delta_r_threshold,
                         k_knn=k_knn,
@@ -91,6 +91,11 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
 
 if __name__ == "__main__":
     root_W_signal = "data/signal_W" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W
+    base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W"
+    root_W_signals = [
+        base_direc_W_signal + "ParkingDoubleMuonLowMass0/", # TODO adapt 
+        base_direc_W_signal + "ParkingDoubleMuonLowMass0/"
+    ]
     output_ident = "W_decay_signal"
     create_graph(root_W_signal, output_ident, label=1., mask=False)
     root_bkg = "data/background" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background

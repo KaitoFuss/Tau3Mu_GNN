@@ -150,7 +150,7 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type):
     ueval.plot_roc(roc, name)
     # ueval.plot_scores(evaluation_dict,name)
     # ueval.plot_sic(roc, name)
-    ueval.plot_dnn(evaluation_dict, name)
+    ueval.plot_dnn(evaluation_dict, name) # plots GNN scores of bkg and signal
     # ueval.plot_sic_small(roc,name)
     # ueval.plot_dnn(evaluation_dict,name)
     # ueval.plot_dnn_2(evaluation_dict, name)
@@ -251,7 +251,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
         }, os.path.join(output_path, name + ".pt"))
-    print("Model saved to ", output_path + name + "_end.pt")
+    print("Model saved to ", output_path + "/" + name + "_end.pt")
 
        
 
