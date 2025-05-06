@@ -11,14 +11,13 @@ import dcor
 
 from utils.TrainingUtils import output_directory
 
-def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_type, batch_size, normalizer, model, device, window_to_load= [0.7,1]):
+def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, batch_size, normalizer, model, device, window_to_load= [0.7,1]):
     """Evaluate the model on each signal dataset independently
 
     Args:
         base_directory_bkg(str): Path to the bkg directory
         base_directory_signal(str): Path to the signal directroy
         model_type: Name of model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
-        eval_type (strg): _ + on which graphs to evaluate: "", "_eventidx" (to get mt distribution), "_3J" (to get evaluation on single jet)
         batch_size(int)
         normalizer
         model
@@ -69,9 +68,8 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
     weights_bkg = []
     target_labels_bkg = []
     test_scores_bkg = [] 
-    graph_label_bkg = [] # What is this?? del
-    mt_bkg = [] # What is this?? del
-    event_number_bkg = [] # What is this?? del
+    tau_mass_bkg = []
+    
 
     for dataset in datasets_bkg:
         dataloader_bkg = GraphDataLoader(
@@ -85,24 +83,19 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
 
         for graphs in dataloader_bkg:
             weights_bkg.append(np.array(graphs.w))
-            mt_bkg.append(np.array(graphs.MT01FatJetMET)) # MT01FatJetMET and event doesn't exist in my graph I think
-            event_number_bkg.append(np.array(graphs.event))
+            tau_mass_bkg.append(np.array(graphs.fitted_tau_mass)) 
             graphs = graphs.to(device)
             target = graphs.y
             out = model(graphs)
             score = out[:,0].cpu()
             target_labels_bkg.append(np.array(target.cpu()))
             test_scores_bkg.append(score.detach().numpy())
-            graph_label_bkg.append([dataset[1]]*len(score.detach().numpy()))
             
         
     weights_bkg =  np.concatenate(weights_bkg)
-    mt_bkg = np.concatenate(mt_bkg)
+    tau_mass_bkg = np.concatenate(tau_mass_bkg)
     test_scores_bkg = np.concatenate(test_scores_bkg)
     target_labels_bkg = np.concatenate(target_labels_bkg)
-    graph_label_bkg = np.concatenate(graph_label_bkg)   
-    event_number_bkg = np.concatenate(event_number_bkg)
-
 
 
     # Run signal through network and save it togheter with the bkg
@@ -110,9 +103,7 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
         weights_sig = []
         target_labels_sig = []
         test_scores_sig = []
-        graph_label_sig = []
-        mt_sig = []
-        event_number_sig = []
+        tau_mass_sig = []
 
         dataloader_sig = GraphDataLoader(
             [dataset],
@@ -125,31 +116,25 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
 
         for graphs in dataloader_sig:
             weights_sig.append(np.array(graphs.w))
-            mt_sig.append(np.array(graphs.MT01FatJetMET))
-            event_number_sig.append(np.array(graphs.event))
+            tau_mass_sig.append(np.array(graphs.fitted_tau_mass))
             graphs = graphs.to(device)
             target = graphs.y
             out = model(graphs)
             score = out[:,0].cpu()
             target_labels_sig.append(np.array(target.cpu()))
             test_scores_sig.append(score.detach().numpy())
-            graph_label_sig.append([dataset[1]]*len(score.detach().numpy()))
 
         weights_sig =  np.concatenate(weights_sig)
-        mt_sig = np.concatenate(mt_sig)
+        tau_mass_sig = np.concatenate(tau_mass_sig)
         test_scores_sig = np.concatenate(test_scores_sig)
         target_labels_sig = np.concatenate(target_labels_sig)
-        graph_label_sig = np.concatenate(graph_label_sig)
-        event_number_sig = np.concatenate(event_number_sig)
 
         weights = np.append(weights_sig, weights_bkg)
-        mt = np.append(mt_sig, mt_bkg)
+        tau_mass = np.append(tau_mass_sig, tau_mass_bkg)
         test_scores = np.append(test_scores_sig, test_scores_bkg)
         target_labels = np.append(target_labels_sig, target_labels_bkg)
-        graph_label = np.append(graph_label_sig, graph_label_bkg)
-        event_number = np.append(event_number_sig, event_number_bkg)
 
-        disco = dcor.distance_correlation(np.array(test_scores), np.array(mt))
+        disco = dcor.distance_correlation(np.array(test_scores), np.array(tau_mass))
 
         print("DisCo = ", disco)
 
@@ -157,10 +142,8 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, eval_t
             'weights': weights,
             'target_labels': target_labels,
             'scores': test_scores,
-            'mt': mt,
-            'dataset_labels':graph_label,
+            'tau_mass': tau_mass,
             'disco': disco,
-            'event': event_number,
         }
     
     
@@ -184,10 +167,8 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         target = evaluation_dict[key]["target_labels"]
         score  = evaluation_dict[key]["scores"]
         weights = evaluation_dict[key]["weights"]
-        mt = evaluation_dict[key]["mt"]
-        dataset_labels = evaluation_dict[key]["dataset_labels"]
+        tau_mass = evaluation_dict[key]["tau_mass"]
         disco = evaluation_dict[key]["disco"]
-        event = evaluation_dict[key]["event"]
 
         if np.all(target == 0) or np.all(target == 1):
             continue
@@ -210,9 +191,7 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "weight": weights,
             "sic": sic_,
             "disco": disco,
-            "MT01FatJet": mt,
-            "dataset_labels": dataset_labels,
-            "event": event
+            "fitted_tau_mass": tau_mass,
             }
         
         roc[key] = {   
@@ -587,6 +566,7 @@ def plot_dnn(evaluation_dict, name, suffix = "_eval"):
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)
     plt.close()
 
+# If someone uses this be awar that I have deleted "dataset_labels" from the evaluation_dict. So adapt when using this func. See devel_rhampp branch utils_evaluation for reference
 def plot_dnn_2(evaluation_dict, name, suffix = "_eval"):
     #Plot all signals vs Bkg ( TTjet and QCD singlely)
 

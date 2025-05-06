@@ -35,6 +35,7 @@ class ConeGraphProducer(InMemoryDataset):
         pre_filter (callable, optional): A function that takes in an :obj:`torch_geometric.data.Data` object and returns a boolean value, indicating whether the data object should be included in the final dataset. (default: :obj:`None`)
         save_edge_attributes (bool): Whether to save the edge attributes (pairwise invariant masses, Cambridge-Aachen and kt distances)
         save_event_number (bool): Whether to save the event number in the graph
+        save_fitted_tau_mass (bool): Whether to save fitted tau mass in the graph
         extra_label (str): Extra label to add to the processed file name)
         weights (str): What event weights to use (None, 'xsec') (TODO: implement pt flattening)
         save_fitted_tau_idx (bool): Whether to save the fitted tau index
@@ -61,6 +62,7 @@ class ConeGraphProducer(InMemoryDataset):
         pre_filter=None,
         save_edge_attributes=False,
         save_event_number=False,
+        save_fitted_tau_mass=True,
         weights=None,
         save_fitted_tau_idx=False,
         mask=False,
@@ -82,6 +84,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.pre_transform = pre_transform
         self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
+        self.save_fitted_tau_mass = save_fitted_tau_mass
         self.weights = weights
         self.save_fitted_tau_idx = save_fitted_tau_idx
         self.mask = mask
@@ -347,7 +350,11 @@ class ConeGraphProducer(InMemoryDataset):
 
                 # Add tau index if requested
                 if self.save_fitted_tau_idx:
-                    graph["fitted_tau_idx"] = torch.tensor([fitted_tau_idx], dtype=torch.int)
+                    graph.fitted_tau_index = torch.tensor([fitted_tau_idx], dtype=torch.int)
+
+                # Add fitted_tau_mass if requested
+                if self.save_fitted_tau_mass:
+                    graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
                         
                 graphs.append(graph)
 

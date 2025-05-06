@@ -20,7 +20,7 @@ import utils.TrainingUtils as utrain
 # maximum number of threads in order to not break t3
 torch.set_num_threads(8)
 
-def main(epochs, batch_size, learning_rate, name, model_type, eval_type):
+def main(epochs, batch_size, learning_rate, name, model_type):
     """Train the model and evaluate it.
 
     Args:
@@ -142,7 +142,7 @@ def main(epochs, batch_size, learning_rate, name, model_type, eval_type):
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(base_directory_bkg, base_directory_W_signal,model_type,eval_type, batch_size, normalizer, model, device, window_to_load=[0.7,1])
+    evaluation_dict = ueval.Evaluate_model(base_directory_bkg, base_directory_W_signal,model_type, batch_size, normalizer, model, device, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
@@ -299,14 +299,6 @@ if __name__ == "__main__":
         type=float,
         )
 
-    parser.add_argument(
-        "--eval_type",
-        default="",
-        help="Which pt file to evaluate on:",
-        type=str,
-    )
-    
-
 
     args = parser.parse_args()
 
@@ -315,7 +307,6 @@ if __name__ == "__main__":
     learning_rate = args.lr
     name = args.name
     model_type = args.model
-    eval_type = args.eval_type
 
     print("==> Running TauMuNet ")
 
@@ -341,5 +332,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, name, model_type, eval_type)
+    main(epochs, batch_size, learning_rate, name, model_type)
 
