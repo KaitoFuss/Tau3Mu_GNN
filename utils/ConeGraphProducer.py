@@ -29,6 +29,7 @@ class ConeGraphProducer(InMemoryDataset):
         delta_r_threshold (float): Threshold for the deltaR distance between constituents to be considered connected (spacial graphs only)
         k_knn (int): Number of nearest neighbors for knn
         max_events_to_process (int): Maximum number of events to process
+        use_relative_angles (bool): Whether to use relative angles (eta - jet_eta, phi - jet_phi) or absolute angles (eta, phi)
         transform (callable, optional): A function/transform that takes in an :obj:`torch_geometric.data.Data` object and returns a transformed version. The data object will be transformed before every access. (default: :obj:`None`)
         pre_transform (callable, optional): A function/transform that takes in an :obj:`torch_geometric.data.Data` object and returns a transformed version. The data object will be transformed before being saved to disk. (default: :obj:`None`)
         pre_filter (callable, optional): A function that takes in an :obj:`torch_geometric.data.Data` object and returns a boolean value, indicating whether the data object should be included in the final dataset. (default: :obj:`None`)
@@ -54,6 +55,7 @@ class ConeGraphProducer(InMemoryDataset):
         delta_r_threshold=None,
         k_knn=None,
         max_events_to_process=None,
+        use_relative_angles=True,
         transform=None,
         pre_transform=None,
         pre_filter=None,
@@ -76,6 +78,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.delta_r_threshold = delta_r_threshold
         self.k_knn = k_knn
         self.max_events_to_process = max_events_to_process
+        self.use_relative_angles = use_relative_angles
         self.pre_transform = pre_transform
         self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
@@ -235,6 +238,10 @@ class ConeGraphProducer(InMemoryDataset):
                     pfcands_d0 = np.zeros(len(pfcands_pt), dtype=np.float64)   
                     pfcands_dz = np.zeros(len(pfcands_pt), dtype=np.float64)   
 
+                if self.use_relative_angles:
+                    pfcands_eta = pfcands_eta - fitted_tau_eta
+                    # Need care to account for circularity
+                    pfcands_phi = (pfcands_phi - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
                 pfcands_pdgId = np.array(pfcands_pdgId[permutation], dtype=np.int64)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
                 pfcands_mass = np.clip(np.array(pfcands_mass[permutation]), a_min=0., a_max=None, dtype=np.float64)

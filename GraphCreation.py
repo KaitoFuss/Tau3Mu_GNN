@@ -8,6 +8,7 @@ cone_sizes = [0.5]
 k_knns = [3]
 delta_r_thresholds = [0.2]
 max_events_to_process = None
+use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
 weights = None
@@ -31,6 +32,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
                         delta_r_threshold=delta_r_threshold,
                         k_knn=k_knn,
                         max_events_to_process=max_events_to_process,
+                        use_relative_angles=use_relative_angles,
                         save_edge_attributes=save_edge_attributes,
                         save_event_number=save_event_number,
                         weights=weights, 
@@ -52,6 +54,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
                         delta_r_threshold=delta_r_threshold,
                         k_knn=k_knn,
                         max_events_to_process=max_events_to_process,
+                        use_relative_angles=use_relative_angles,
                         save_edge_attributes=save_edge_attributes,
                         save_event_number=save_event_number,
                         weights=weights, 
@@ -73,6 +76,7 @@ def create_graph(root: str, output_ident: str, label: float, mask: bool):
                         delta_r_threshold=delta_r_threshold,
                         k_knn=k_knn,
                         max_events_to_process=max_events_to_process,
+                        use_relative_angles=use_relative_angles,
                         save_edge_attributes=save_edge_attributes,
                         save_event_number=save_event_number,
                         weights=weights, 
