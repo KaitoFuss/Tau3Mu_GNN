@@ -17,6 +17,9 @@ import utils.TrainingUtils as utrain
 
 # import mdmm
 
+# maximum number of threads in order to not break t3
+torch.set_num_threads(8)
+
 def main(epochs, batch_size, learning_rate, name, model_type, eval_type):
     """Train the model and evaluate it.
 
