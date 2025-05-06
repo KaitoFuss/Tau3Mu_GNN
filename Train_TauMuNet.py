@@ -245,12 +245,14 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         ## log the average loss as well
         experiment.log_metric("Average Validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
 
-    # Safe output Model
-    print("==> Saving Model")      
-    torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-        }, os.path.join(output_path, name + ".pt"))
+
+    # Safe output Model only if early stopping was not done
+    if not early_stop.early_stop:
+        print("==> Saving Model")      
+        torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+            }, os.path.join(output_path, name + ".pt"))
     print("Model saved to ", output_path + "/" + name + "_end.pt")
 
        
