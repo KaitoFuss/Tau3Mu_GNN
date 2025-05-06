@@ -165,7 +165,6 @@ class ConeGraphProducer(InMemoryDataset):
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
-
                 tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{self.tau_collection_name}_pt"], dtype=bool)
                 
                 # Read data for fitted tau from event
@@ -208,74 +207,74 @@ class ConeGraphProducer(InMemoryDataset):
                     mu3_phi, 
                     mu3_idx
                 )
-                
-                pfcands_pt = pfcands_pt[cone_mask]
-                pfcands_eta = pfcands_eta[cone_mask]
-                pfcands_phi = pfcands_phi[cone_mask]
-                pfcands_pdgId = pfcands_pdgId[cone_mask]
-                pfcands_mass = pfcands_mass[cone_mask]
-                pfcands_charge = pfcands_charge[cone_mask]
+                pfcands_pt_masked = pfcands_pt[cone_mask]
+                pfcands_eta_masked = pfcands_eta[cone_mask]
+                pfcands_phi_masked = pfcands_phi[cone_mask]
+                pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
+                pfcands_mass_masked = pfcands_mass[cone_mask]
+                pfcands_charge_masked = pfcands_charge[cone_mask]
 
                 if self.use_displacement:
-                    pfcands_d0 = event["PFCands_d0"][cone_mask]
-                    pfcands_dz = event["PFCands_dz"][cone_mask]
+                    pfcands_d0_masked = event["PFCands_d0"][cone_mask]
+                    pfcands_dz_masked = event["PFCands_dz"][cone_mask]
                 else:
-                    pfcands_d0, pfcands_dz = None, None 
+                    pfcands_d0_masked, pfcands_dz_massked = None, None 
 
                 fitted_tau_idx = nt
 
                 # Order everything by pt
                 # Is this still necessary? Just seems now as useless calculation as we do not cut off at a certain pf_cand number
-                permutation = ak.argsort(pfcands_pt, ascending=False)
-                pfcands_pt = np.array(pfcands_pt[permutation], dtype=np.float64)
-                pfcands_eta = np.array(pfcands_eta[permutation], dtype=np.float64)
-                pfcands_phi = np.array(pfcands_phi[permutation], dtype=np.float64)
+                permutation = ak.argsort(pfcands_pt_masked, ascending=False)
+                pfcands_pt_masked = np.array(pfcands_pt_masked[permutation], dtype=np.float64)
+                pfcands_eta_masked = np.array(pfcands_eta_masked[permutation], dtype=np.float64)
+                pfcands_phi_masked = np.array(pfcands_phi_masked[permutation], dtype=np.float64)
 
                 if self.use_displacement:  
-                    pfcands_d0 = np.array(pfcands_d0[permutation], dtype=np.float64)   
-                    pfcands_dz = np.array(pfcands_dz[permutation], dtype=np.float64)   
+                    pfcands_d0_masked = np.array(pfcands_d0_masked[permutation], dtype=np.float64)   
+                    pfcands_dz_masked = np.array(pfcands_dz_masked[permutation], dtype=np.float64)   
                 else:
-                    pfcands_d0 = np.zeros(len(pfcands_pt), dtype=np.float64)   
-                    pfcands_dz = np.zeros(len(pfcands_pt), dtype=np.float64)   
+                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
+                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
 
                 if self.use_relative_angles:
-                    pfcands_eta = pfcands_eta - fitted_tau_eta
+                    pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
                     # Need care to account for circularity
-                    pfcands_phi = (pfcands_phi - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
-                pfcands_pdgId = np.array(pfcands_pdgId[permutation], dtype=np.int64)
+                    pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
+                
+                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked[permutation], dtype=np.int64)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
-                pfcands_mass = np.clip(np.array(pfcands_mass[permutation]), a_min=0., a_max=None, dtype=np.float64)
-                pfcands_charge = np.array(pfcands_charge[permutation], dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
+                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked[permutation]), a_min=0., a_max=None, dtype=np.float64)
+                pfcands_charge_masked = np.array(pfcands_charge_masked[permutation], dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
 
-                pos = [[e, p] for e, p in zip(pfcands_eta, pfcands_phi)]
+                pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
 
                 # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
                 if self.use_displacement: 
                     features = torch.tensor(np.array([
-                        pfcands_pt,
-                        pfcands_eta,
-                        pfcands_phi,
-                        pfcands_pdgId,
-                        pfcands_mass,
-                        pfcands_d0,   
-                        pfcands_dz   
+                        pfcands_pt_masked,
+                        pfcands_eta_masked,
+                        pfcands_phi_masked,
+                        pfcands_pdgId_masked,
+                        pfcands_mass_masked,
+                        pfcands_d0_masked,   
+                        pfcands_dz_masked   
                     ]).T, dtype=torch.float)
                 else:
                     features = torch.tensor(np.array([
-                        pfcands_pt,
-                        pfcands_eta,
-                        pfcands_phi,
-                        pfcands_pdgId,
-                        pfcands_mass
+                        pfcands_pt_masked,
+                        pfcands_eta_masked,
+                        pfcands_phi_masked,
+                        pfcands_pdgId_masked,
+                        pfcands_mass_masked
                     ]).T, dtype=torch.float)
                 
                 # TODO do this calc outside loop and then just mask inside 
                 # Calculate edges and edge features
-                matrix_eta = np.repeat(pfcands_eta, len(pfcands_eta)).reshape((len(pfcands_eta), -1))
-                matrix_phi = np.repeat(pfcands_phi, len(pfcands_phi)).reshape((len(pfcands_phi), -1))
-                matrix_pt = np.repeat(pfcands_pt, len(pfcands_pt)).reshape((len(pfcands_pt), -1))
-                matrix_mass = np.repeat(pfcands_mass, len(pfcands_mass)).reshape((len(pfcands_mass), -1))
-                matrix_charge = np.repeat(pfcands_charge, len(pfcands_charge)).reshape((len(pfcands_charge), -1))
+                matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
+                matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
+                matrix_pt = np.repeat(pfcands_pt_masked, len(pfcands_pt_masked)).reshape((len(pfcands_pt_masked), -1))
+                matrix_mass = np.repeat(pfcands_mass_masked, len(pfcands_mass_masked)).reshape((len(pfcands_mass_masked), -1))
+                matrix_charge = np.repeat(pfcands_charge_masked, len(pfcands_charge_masked)).reshape((len(pfcands_charge_masked), -1))
                 matrix_delta_eta = matrix_eta - matrix_eta.T
 
                 # Calculate delta phi accounting for circularity
