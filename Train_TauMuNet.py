@@ -253,7 +253,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
             }, os.path.join(output_path, name + ".pt"))
-    print("Model saved to ", output_path + "/" + name + "_end.pt")
+    print("Model saved to ", output_path + "/" + name + ".pt")
 
        
 

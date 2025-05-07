@@ -176,7 +176,7 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
         auc_ = roc_auc_score(target, score)
-
+        
         #calculate sic
         sic_ = np.zeros_like(tpr_, dtype=float)
         np.divide(tpr_, np.sqrt(fpr_), out=sic_, where=fpr_ != 0)
