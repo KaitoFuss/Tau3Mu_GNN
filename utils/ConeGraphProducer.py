@@ -295,7 +295,7 @@ class ConeGraphProducer(InMemoryDataset):
                     pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
                     # Only keep connected edges and take log to squeeze the distribution
                     pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
-                    pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
+                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
                     # Get pair charge
                     pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
                     
