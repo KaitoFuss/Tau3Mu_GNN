@@ -8,103 +8,33 @@ import pandas as pd
 
 
 
-def Normalize(base_directory_bkg, base_directory_signal, model_type):
+def Normalize(datasets):
     """Create means and stds for the normalization.
 
     Args:
-        base_directory_bkg(str): Directory of the backgrounds
-        base_directory_signal(str): Directory of the signal
-        model_type: Name of model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
+        datasets (lists): List of all (dataset folder, graph_file_name) pairs
 
     Returns: means, stds (np.array)
         
     """
 
-
-    # bkg_directory = [
-    #     base_directory_bkg + "QCD/QCD_HT300to500",
-    #     base_directory_bkg + "QCD/QCD_HT500to700",
-    #     base_directory_bkg + "QCD/QCD_HT700to1000", 
-    #     base_directory_bkg + "QCD/QCD_HT1000to1500", 
-    #     base_directory_bkg + "QCD/QCD_HT1500to2000", 
-    #     base_directory_bkg + "QCD/QCD_HT2000toInf",
-        
-    #     base_directory_bkg + "TTJet",
-    #     ] 
-
-    # Bkg = {
-    #     f"QCD_HT300to500_{model_type}": None,
-    #     f"QCD_HT500to700_{model_type}": None,
-    #     f"QCD_HT700to1000_{model_type}" : None,
-    #     f"QCD_HT1000to1500_{model_type}" : None,
-    #     f"QCD_HT1500to2000_{model_type}" : None,
-    #     f"QCD_HT2000toInf_{model_type}" : None,
-
-    #     f"TTJet_{model_type}" : None,
-    # }
-
-    # signal_directory = [
-    #     base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-    #     base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-    #     base_directory_signal + "SVJ_mMed-1400GeV_mDark-20GeV_rinv-0.7_alpha-peak",
-
-    #     base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-    #     base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-    #     base_directory_signal + "SVJ_mMed-1500GeV_mDark-20GeV_rinv-0.7_alpha-peak",
-
-    #     base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.3_alpha-peak",
-    #     base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.5_alpha-peak",
-    #     base_directory_signal + "SVJ_mMed-3000GeV_mDark-20GeV_rinv-0.7_alpha-peak"
-    #     ]
-
-    # signal= {
-    #     f"SVJ_1400_0p3_{model_type}" : None, f"SVJ_1400_0p5_{model_type}" : None, f"SVJ_1400_0p7_{model_type}" : None,
-    #     f"SVJ_1500_0p3_{model_type}" : None, f"SVJ_1500_0p5_{model_type}" : None, f"SVJ_1500_0p7_{model_type}" : None,
-    #     f"SVJ_3000_0p3_{model_type}" : None, f"SVJ_3000_0p5_{model_type}" : None, f"SVJ_3000_0p7_{model_type}" : None,
-    #     }
-
-    bkg_directory = [
-        base_directory_bkg,
-    ] 
-
-    bkg = {
-        f"background_{model_type}" : None,
-    }
-
-    signal_directory = [
-        base_directory_signal
-    ]
-
-    signal = {
-        f"W_decay_signal_{model_type}" : None,
-    }
+    graph_dict = {}
 
 
-    for directory, key in zip(bkg_directory, bkg):
-        bkg[key] = ConeGraphProducer(directory,key)
-
-    for directory, key in zip(signal_directory, signal):
-        signal[key] = ConeGraphProducer(directory,key)
-
+    for directory, key in zip(datasets[:,0], datasets[:,1]):
+        graph_dict[key] = ConeGraphProducer(directory,key)
 
     means, stds = 0., 0.
     weights = []
 
-    for key in bkg:
-        for graph in bkg[key]:
-            means += graph.x.sum(dim=0)*graph.w
-            weights.append(graph.w)
-    for key in signal:
-        for graph in signal[key]:
+    for key in graph_dict:
+        for graph in graph_dict[key]:
             means += graph.x.sum(dim=0)*graph.w
             weights.append(graph.w)
     means /= sum(weights)
 
-    for key in bkg:
-        for graph in bkg[key]:   
-            stds += ((graph.x - means)**2).sum(dim=0)*graph.w
-    for key in signal:
-        for graph in signal[key]:   
+    for key in graph_dict:
+        for graph in graph_dict[key]:   
             stds += ((graph.x - means)**2).sum(dim=0)*graph.w
 
     stds /= sum(weights)
