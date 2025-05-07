@@ -280,25 +280,27 @@ def plot_roc(roc, name, suffix = "_eval"):
  
     # Iterate over each key in roc dictionary and plot the curves
     for key in roc:
-        parts = key.split("_")
-        label = f"$M_{{Z'}} = {parts[1]},  r_{{inv}} = 0.{parts[2].split('p')[1]}$"
-        rinv_value = f"0.{parts[2].split('p')[1]}"
-        m_z = parts[1]
-        plt.plot(roc[key]["fpr"], roc[key]["tpr"], color=colors[m_z], linewidth = 0.9, linestyle=line_styles[rinv_value], label=label)
+        # parts = key.split("_")
+        # label = f"$M_{{Z'}} = {parts[1]},  r_{{inv}} = 0.{parts[2].split('p')[1]}$"
+        # rinv_value = f"0.{parts[2].split('p')[1]}"
+        # m_z = parts[1]
+        # plt.plot(roc[key]["fpr"], roc[key]["tpr"], color=colors[m_z], linewidth = 0.9, linestyle=line_styles[rinv_value], label=label)
+        plt.plot(roc[key]["fpr"], roc[key]["tpr"], linewidth = 0.9, label=key)
 
     # Create dummy plots for separate legends
     # Dummy plots for MZ values
-    legend_handles_mz = [plt.Line2D([0], [1], color=color, linewidth = 0.9,linestyle='-', label=f"$M_{{Z'}} = {m_z}$") for m_z, color in colors.items()]
+    # legend_handles_mz = [plt.Line2D([0], [1], color=color, linewidth = 0.9,linestyle='-', label=f"$M_{{Z'}} = {m_z}$") for m_z, color in colors.items()]
     # Dummy plots for rinv values
-    legend_handles_rinv = [plt.Line2D([0], [1], color='black',linewidth = 0.9, linestyle=linestyle, label=f"$r_{{inv}} = {rinv}$") for rinv, linestyle in line_styles.items()]
+    # legend_handles_rinv = [plt.Line2D([0], [1], color='black',linewidth = 0.9, linestyle=linestyle, label=f"$r_{{inv}} = {rinv}$") for rinv, linestyle in line_styles.items()]
 
     # Plot the actual ROC curves
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
 
     # Create the first legend for MZ values
-    add_legends_low(ax,[legend_handles_mz,legend_handles_rinv])
+    # add_legends_low(ax,[legend_handles_mz,legend_handles_rinv])
     plt.grid()
+    plt.legend()
 
     output_path = output_directory(name)
     outout_plot_name = name + suffix + "_roc.png"
@@ -307,7 +309,44 @@ def plot_roc(roc, name, suffix = "_eval"):
     plt.close()
 
 
+def plot_auc_simple(auc, name, suffix = "_eval"):
+    """Plot AUC scores
 
+    Args:
+        auc(dict): as dict created in roc_auc()
+        name(str): Name of the training for the saving of the pdf
+
+    Returns:
+    
+    """
+
+    # Prepare data
+    models = list(auc.keys())
+    scores = list(auc.values())
+
+    # Create bar chart
+    plt.figure(figsize=(12, 12))
+    bars = plt.bar(models, scores, color='skyblue')
+    plt.ylabel("AUC Score")
+    plt.title("AUC Scores of Different Models")
+    plt.ylim(0, 1)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Add value labels on top of bars
+    for bar, score in zip(bars, scores):
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{score:.3f}", ha='center', va='bottom')
+
+    plt.xticks(rotation=45)  # rotate x labels if model names are long
+
+
+    output_path = output_directory(name)
+    outout_plot_name = name + suffix + "_auc.png"
+    print(f"{outout_plot_name} has been saved.")
+    plt.savefig(os.path.join(output_path,outout_plot_name),  dpi=400)
+    plt.close()
+
+    return
 
 
 def plot_auc(auc, name, suffix = "_eval",  variable_name = "AUC"):

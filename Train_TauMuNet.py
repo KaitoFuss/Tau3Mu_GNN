@@ -146,7 +146,7 @@ def main(epochs, batch_size, learning_rate, name, model_type):
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
-    ueval.plot_auc(auc, name)
+    ueval.plot_auc_simple(auc, name)
     ueval.plot_roc(roc, name)
     # ueval.plot_scores(evaluation_dict,name)
     # ueval.plot_sic(roc, name)
@@ -288,7 +288,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         default="dzd0_cone_size_0.5_fully",
-        help="Which model to train/ which graph construction was used: TMN",
+        help="Which model to train/ which graph construction was used",
         type=str,
         )
 
