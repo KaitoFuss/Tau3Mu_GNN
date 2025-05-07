@@ -11,12 +11,12 @@ import dcor
 
 from utils.TrainingUtils import output_directory
 
-def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, batch_size, normalizer, model, device, window_to_load= [0.7,1]):
+def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, window_to_load= [0.7,1]):
     """Evaluate the model on each signal dataset independently
 
     Args:
-        base_directory_bkg(str): Path to the bkg directory
-        base_directory_signal(str): Path to the signal directroy
+        datasets_signal(list): List of all (dataset folder, graph_file_name) pairs for signal
+        datasets_bkg(list): List of all (dataset folder, graph_file_name) pairs for bkg
         model_type: Name of model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
         batch_size(int)
         normalizer
@@ -53,14 +53,6 @@ def Evaluate_model(base_directory_bkg, base_directory_signal, model_type, batch_
     #     [base_directory_bkg + "QCD/QCD_HT1500to2000", f"QCD_HT1500to2000_{model_type}{eval_type}"],
     #     [base_directory_bkg + "QCD/QCD_HT2000toInf", f"QCD_HT2000toInf_{model_type}{eval_type}"],
     # ]
-
-    datasets_signal = [
-        [base_directory_bkg, f"background_{model_type}"],
-    ]
-
-    datasets_bkg = [
-        [base_directory_signal, f"W_decay_signal_{model_type}"]
-    ]
 
     evaluation_dict = {}
 
