@@ -1,7 +1,7 @@
-from utils.JetGraphProducer import JetGraphProducer
+from utils.ConeGraphProducer import ConeGraphProducer
 from torch_geometric.loader import DataLoader
 from typing import Optional, List
-from utils.LundTreeUtilities import OnTheFlyNormalizer
+from utils.NormalizerUtils import OnTheFlyNormalizer
 from torch.utils.data import ConcatDataset, WeightedRandomSampler
 import numpy as np
 import os
@@ -9,7 +9,7 @@ import torch
 
 class GraphDataLoader(DataLoader):
     """
-    A custom DataLoader for loading JetGraphProducer objects. It allows for the
+    A custom DataLoader for loading ConeGraphProducer objects. It allows for the
     use of a normalizer to be applied to the data, and for the specification of
     a window of the data to be loaded. It also allows for the loading of multiple
     datasets at once, and concatenates them into a single dataset.
@@ -30,12 +30,11 @@ class GraphDataLoader(DataLoader):
         exclude_keys (Optional[List[str]]): A list of strings specifying which
             attributes of the data object should not be batched together. If None,
             the default behavior is used.
-        jet_idx (Optional(int)): An integer to filter for the corresponding jet (pt ordered) in every event
         sample (Optional(Bool)): Wether or not to use weighted random sampling (True by default)
         **kwargs: Additional keyword arguments to be passed to the DataLoader.
 
     Returns:
-        DataLoader: A DataLoader object for loading JetGraphProducer objects.
+        DataLoader: A DataLoader object for loading ConeGraphProducer objects.
     """
     def __init__(
             self,
@@ -49,7 +48,6 @@ class GraphDataLoader(DataLoader):
             follow_batch: Optional[List[str]] = None,
             exclude_keys: Optional[List[str]] = None,
             device: torch.device=None,
-            jet_idx: int = None,
             sample = True,
             **kwargs,
     ):
@@ -61,7 +59,6 @@ class GraphDataLoader(DataLoader):
         if self.window_to_load is None:
             self.window_to_load = [[0., 1.] for _ in dataset_paths]
         self.device = device
-        self.jet_idx = jet_idx
 
         # Consistency checks
         assert len(self.window_to_load) == len(self.dataset_paths), "Please provide one slicing window per dataset!"
@@ -78,7 +75,7 @@ class GraphDataLoader(DataLoader):
                     f"The requested dataset {path}/{name} has not been processed, "\
                     "please do so before attempting to load it."
                         )
-            data = JetGraphProducer(path, output_dataset_name=name)
+            data = ConeGraphProducer(path, output_dataset_name=name)
             
             if self.device is not None:
                 data.data.to(self.device)
@@ -90,9 +87,6 @@ class GraphDataLoader(DataLoader):
             
             data = data[int(self.window_to_load[i][0]*len(data)):int(self.window_to_load[i][1]*len(data))]
             weights.append(data.w)
-            
-            if self.jet_idx is not None:
-                data = data[data.jet_idx == self.jet_idx]
 
             if dataset_fraction is not None:
                 weights[i] = weights[i]*dataset_fraction[i]/np.sum(dataset_fraction)/weights[i].sum()
