@@ -122,9 +122,12 @@ def get_model_parameters(model_type):
         
     """
     num_node_features = 5
+    num_edge_features = 4
+
     if "dzd0" in model_type:
         num_node_features += 2
-    return num_node_features
+    
+    return num_node_features, num_edge_features
 
 def output_directory(name):
     """Create output directory with the name of the training and

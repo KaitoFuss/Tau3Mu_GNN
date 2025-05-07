@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from torch_geometric.nn import EdgeConv
+from torch_geometric.nn.conv import GINEConv
 from torch_geometric.nn import global_mean_pool
 
 class TauMuNet(nn.Module):
@@ -13,6 +13,7 @@ class TauMuNet(nn.Module):
             conv_params,
             fc_params,
             input_dims = 7, # as we want to normally use also dzd0
+            num_edge_features = 4, 
             use_fusion = True,
             num_classes = 1,
             ):
@@ -28,10 +29,10 @@ class TauMuNet(nn.Module):
         self.bn_fts = nn.BatchNorm1d(self.input_dims)
 
         self.edge_convs = nn.ModuleList()
-        aggr_func = 'mean'
+
         # First layer: from input_dims to conv_params[0]
         nns = nn.Sequential(
-            nn.Linear(2 * self.input_dims, conv_params[0]),
+            nn.Linear(self.input_dims, conv_params[0]),
             nn.BatchNorm1d(conv_params[0]),
             nn.Dropout(0.6),
             nn.ReLU(),
@@ -40,12 +41,12 @@ class TauMuNet(nn.Module):
             nn.BatchNorm1d(conv_params[0]),
             nn.Dropout(0.6)
         )
-        self.edge_convs.append(EdgeConv(nn=nns, aggr=aggr_func))
+        self.edge_convs.append(GINEConv(nn=nns, edge_dim=num_edge_features))
 
         # Remaining layers
         for in_feat, out_feat in zip(conv_params[:-1], conv_params[1:]):
             nns = nn.Sequential(
-                nn.Linear(2 * in_feat, out_feat),
+                nn.Linear(in_feat, out_feat),
                 nn.BatchNorm1d(out_feat),
                 nn.Dropout(0.6),
                 nn.ReLU(),
@@ -54,7 +55,7 @@ class TauMuNet(nn.Module):
                 nn.BatchNorm1d(out_feat),
                 nn.Dropout(0.6)
             )
-            self.edge_convs.append(EdgeConv(nn=nns, aggr=aggr_func))
+            self.edge_convs.append(GINEConv(nn=nns, edge_dim=num_edge_features))
 
         if self.use_fusion:
             in_chn = sum(x for x in conv_params)
@@ -75,6 +76,7 @@ class TauMuNet(nn.Module):
                 nn.Dropout(drop_rate)
             ))
         # Isnt this way and also in the old code the final layer applied twice? Once with ReLU and Dropout and once without. Is this intended?
+        # Should the last layer have BatchNorm or do we want to take the raw embedding
         # Final fc layer 
         fcs.append(nn.Sequential(
             nn.Linear(fc_params[-1][0], num_classes),
@@ -85,16 +87,16 @@ class TauMuNet(nn.Module):
 
     def forward(self, data):
     
-        x, edge_index = data.x, data.edge_index
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         #batch normalization features
         x = self.bn_fts(x)
         
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
-            x = conv(x, edge_index)
+            x = conv(x, edge_index, edge_attr)
             if self.use_fusion:
                 outputs.append(x)
-        #fuse outputs from all EdgeConv layers
+        #fuse outputs from all GINEConv layers
         if self.use_fusion:
             x = self.fusion_block(torch.cat(outputs, dim=1))
 

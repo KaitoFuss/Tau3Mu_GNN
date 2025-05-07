@@ -105,13 +105,14 @@ def main(epochs, batch_size, learning_rate, name, model_type):
     
     ###--------- Create the Model -----------------------------------------------------------
     # Input parameters for the Model
-    num_node_features = utrain.get_model_parameters(model_type)
+    num_node_features, num_edge_features = utrain.get_model_parameters(model_type)
     
     # Create the model
     model = TauMuNet(
         conv_params= [128, 128, 64 ,64, 32, 32],
         fc_params = [(32, 0.8)], # This specifies the fully connected (non conv) layers in the end; 0.8 is dropout rate 
-        input_dims = num_node_features
+        input_dims = num_node_features, 
+        num_edge_features = num_edge_features
     )
 
     # Define the optimizer

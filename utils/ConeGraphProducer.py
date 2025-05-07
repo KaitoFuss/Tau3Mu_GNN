@@ -320,6 +320,7 @@ class ConeGraphProducer(InMemoryDataset):
                             edge_attr=edge_features,
                             num_nodes=int(features.shape[0]),
                             num_node_features=int(features.shape[1]),
+                            num_edge_features=int(edge_features.shape[1]),
                             pos=pos,
                             y=torch.Tensor([self.label])
                         )
