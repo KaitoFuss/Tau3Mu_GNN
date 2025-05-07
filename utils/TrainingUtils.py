@@ -21,7 +21,7 @@ def Normalize(datasets):
     graph_dict = {}
 
 
-    for directory, key in zip(datasets[:,0], datasets[:,1]):
+    for directory, key in datasets:
         graph_dict[key] = ConeGraphProducer(directory,key)
 
     means, stds = 0., 0.
