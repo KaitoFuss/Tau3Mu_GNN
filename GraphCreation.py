@@ -11,7 +11,7 @@ save_event_number = False
 save_fitted_tau_mass = True
 weights = None
 save_fitted_tau_idx = False
-verbose = False
+verbose = True
 use_displacement = True
 cone_size = 0.5
 
@@ -117,11 +117,11 @@ if __name__ == "__main__":
     # )
 
     root_W_signals_skimmed = [
-        [base_direc_W_signal, ""],
+        [base_direc_W_signal, "skimmed"],
     ]
     for base_direc, signal_identifier in root_W_signals_skimmed:
         output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
-        root_W_signal = base_direc + signal_identifier
+        root_W_signal = base_direc
         create_graph(
             root_W_signal, 
             output_ident_signal, 
@@ -239,11 +239,11 @@ if __name__ == "__main__":
     # )
 
     root_bkgs_skimmed = [
-        [base_direc_bkg, ""]
+        [base_direc_bkg, "skimmed"]
     ]
     for base_direc, bkg_identifier in root_bkgs_skimmed:
         output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
-        root_bkg = base_direc + bkg_identifier
+        root_bkg = base_direc
         create_graph(
         root_bkg, 
         output_ident_bkg, 

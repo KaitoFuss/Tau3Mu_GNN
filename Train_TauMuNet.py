@@ -48,16 +48,25 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
 
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
-    datasets_W_signal = [    
-        [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
-        # [base_directory_W_signal + "summer24", f"W_decay_signal_summer24_{model_type}"],
+
+    datasets_W_signal = [
+        [base_directory_W_signal, f"W_decay_signal_skimmed_{model_type}"],
     ]
 
     datasets_bkg = [
+        [base_directory_bkg, f"background_skimmed_{model_type}"],
+    ]
+
+    # datasets_W_signal = [    
+    #     [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
+        # [base_directory_W_signal + "summer24", f"W_decay_signal_summer24_{model_type}"],
+    # ]
+
+    # datasets_bkg = [
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/" + "250430_100827/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/" + "250430_100852/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/" + "250430_100917/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100811/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/" + "250430_100835/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/" + "250430_100900/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/" + "250430_100925/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
@@ -141,7 +150,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101823/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101839/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101855/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-    ]
+    # ]
 
 
     # base_directory_W_signal = "data/signal_W" 
