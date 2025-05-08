@@ -1,117 +1,118 @@
 from utils.ConeGraphProducer import ConeGraphProducer
 import logging
+import argparse
 
-# edge_connection_modes = ["fully", "knn", "r_threshold"]
-edge_connection_modes = ["fully"]
-# test with delta_r
-cone_sizes = [0.5]
-k_knns = [3]
-delta_r_thresholds = [0.2]
+
+# default values
 max_events_to_process = None
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
 save_fitted_tau_mass = True
-weights = None # will need to be changed later for signal to adapt to data pileup distribution
+weights = None
 save_fitted_tau_idx = False
-verbose = True
+verbose = False
 use_displacement = True
-dzd0 = "_dzd0" if use_displacement else ""
+cone_size = 0.5
 
-def create_graph(root: str, output_ident: str, label: float, mask: bool):
-    for cone_size in cone_sizes:
-        for edge_connection_mode in edge_connection_modes:
-            if edge_connection_mode == "fully":
-                delta_r_threshold = None
-                k_knn = None
-                output_dataset_name = output_ident + dzd0 +  "_cone_size_" + str(cone_size) + "_" + edge_connection_mode
-                ConeGraphProducer(
-                        root, 
-                        output_dataset_name, 
-                        cone_size,
-                        edge_connection_mode=edge_connection_mode,
-                        delta_r_threshold=delta_r_threshold,
-                        k_knn=k_knn,
-                        max_events_to_process=max_events_to_process,
-                        use_relative_angles=use_relative_angles,
-                        save_edge_attributes=save_edge_attributes,
-                        save_event_number=save_event_number,
-                        save_fitted_tau_mass=save_fitted_tau_mass,
-                        weights=weights, 
-                        save_fitted_tau_idx=save_fitted_tau_idx,
-                        mask=mask,
-                        label=label,
-                        verbose=verbose,
-                        use_displacement=use_displacement,
-                    )
-            elif edge_connection_mode == "knn":
-                delta_r_threshold = None
-                for k_knn in k_knns:
-                    output_dataset_name = output_ident + dzd0 + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(k_knn)
-                    ConeGraphProducer(
-                        root, 
-                        output_dataset_name, 
-                        cone_size, 
-                        edge_connection_mode=edge_connection_mode,
-                        delta_r_threshold=delta_r_threshold,
-                        k_knn=k_knn,
-                        max_events_to_process=max_events_to_process,
-                        use_relative_angles=use_relative_angles,
-                        save_edge_attributes=save_edge_attributes,
-                        save_event_number=save_event_number,
-                        save_fitted_tau_mass=save_fitted_tau_mass,
-                        weights=weights, 
-                        save_fitted_tau_idx=save_fitted_tau_idx,
-                        mask=mask,
-                        label=label,
-                        verbose=verbose,
-                        use_displacement=use_displacement,
-                    )
-            elif edge_connection_mode == "r_threshold":
-                k_knn = None
-                for delta_r_threshold in delta_r_thresholds:
-                    output_dataset_name = output_ident + dzd0 + "_cone_size_" + str(cone_size) + "_" + edge_connection_mode + "_" + str(delta_r_threshold)
-                    ConeGraphProducer(
-                        root, 
-                        output_dataset_name, 
-                        cone_size, 
-                        edge_connection_mode=edge_connection_mode,
-                        delta_r_threshold=delta_r_threshold,
-                        k_knn=k_knn,
-                        max_events_to_process=max_events_to_process,
-                        use_relative_angles=use_relative_angles,
-                        save_edge_attributes=save_edge_attributes,
-                        save_event_number=save_event_number,
-                        save_fitted_tau_mass=save_fitted_tau_mass,
-                        weights=weights, 
-                        save_fitted_tau_idx=save_fitted_tau_idx,
-                        mask=mask,
-                        label=label,
-                        verbose=verbose,
-                        use_displacement=use_displacement,
-                    )
+def create_graph(
+    root: str,
+    output_ident: str,
+    label: float,
+    mask: bool,
+    edge_connection_mode: str,
+    k_knn: int = None,
+    delta_r_threshold: float = None
+):
+    dzd0 = "_dzd0" if use_displacement else ""
+    suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
+    if edge_connection_mode == "knn":
+        suffix += f"_{k_knn}"
+    elif edge_connection_mode == "r_threshold":
+        suffix += f"_{delta_r_threshold}"
+
+    output_dataset_name = output_ident + suffix
+
+    ConeGraphProducer(
+        root,
+        output_dataset_name,
+        cone_size,
+        edge_connection_mode=edge_connection_mode,
+        delta_r_threshold=delta_r_threshold,
+        k_knn=k_knn,
+        max_events_to_process=max_events_to_process,
+        use_relative_angles=use_relative_angles,
+        save_edge_attributes=save_edge_attributes,
+        save_event_number=save_event_number,
+        save_fitted_tau_mass=save_fitted_tau_mass,
+        weights=weights,
+        save_fitted_tau_idx=save_fitted_tau_idx,
+        mask=mask,
+        label=label,
+        verbose=verbose,
+        use_displacement=use_displacement,
+    )
                 
 
 
 if __name__ == "__main__":
-    root_W_signal = "data/signal_W" 
-    output_ident = "W_decay_signal"
-    create_graph(root_W_signal, output_ident, label=1., mask=False)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
+    parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
+    parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
+    args = parser.parse_args()
 
-    root_bkg = "data/background" 
-    output_ident = "background"
-    create_graph(root_bkg, output_ident, label=0., mask=True)
+    model_type = args.model_type
+    k = args.k
+    delta_r = args.delta_r
+
+    if model_type == "knn" and k is None:
+        raise ValueError("For 'knn' model_type, --k must be specified.")
+    if model_type == "r_threshold" and delta_r is None:
+        raise ValueError("For 'r_threshold' model_type, --delta_r must be specified.")
+
+    # root_W_signal = "data/signal_W" 
+    # output_ident_signal = "W_decay_signal"
+    # create_graph(
+    #     root_W_signal, 
+    #     output_ident_signal, 
+    #     label=1., 
+    #     mask=False, 
+    #     edge_connection_mode=model_type,
+    #     k_knn=k, 
+    #     delta_r_threshold=delta_r
+    # )
+
+    # root_bkg = "data/background" 
+    # output_ident_bkg = "background"
+    # create_graph(
+    #     root_bkg, 
+    #     output_ident_bkg, 
+    #     label=0., 
+    #     mask=True, 
+    #     edge_connection_mode=model_type,
+    #     k_knn=k, 
+    #     delta_r_threshold=delta_r
+    # )
 
     
     base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
     root_W_signals = [
-        [base_direc_W_signal, "winter24"]
-        [base_direc_W_signal, "summer24"]
+        [base_direc_W_signal, "winter24"],
+        [base_direc_W_signal, "summer24"],
     ]
     for base_direc, signal_identifier in root_W_signals:
-        output_ident = "W_decay_signal_" + signal_identifier.replace("/", "")
+        output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
         root_W_signal = base_direc + signal_identifier
-        create_graph(root_W_signal, output_ident, label=1., mask=False)
+        create_graph(
+        root_W_signal, 
+        output_ident_signal, 
+        label=1., 
+        mask=False, 
+        edge_connection_mode=model_type,
+        k_knn=k, 
+        delta_r_threshold=delta_r
+    )
 
 
     base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
@@ -206,6 +207,14 @@ if __name__ == "__main__":
         [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/", "250430_101855/0000"],
     ]
     for base_direc, bkg_identifier, tail in root_bkgs:
-        output_ident = "background_" + bkg_identifier.replace("/", "")
+        output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
         root_bkg = base_direc + bkg_identifier + tail
-        create_graph(root_bkg, output_ident, label=0., mask=True)
+        create_graph(
+        root_bkg, 
+        output_ident_bkg, 
+        label=0., 
+        mask=True, 
+        edge_connection_mode=model_type,
+        k_knn=k, 
+        delta_r_threshold=delta_r
+    )
