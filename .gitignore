@@ -167,3 +167,8 @@ data/
 
 # Ignore TauMuNet output files
 output/
+
+*.sh
+*.err
+*.log
+*.ipynb
