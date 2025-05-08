@@ -19,7 +19,7 @@ import utils.TrainingUtils as utrain
 # import mdmm
 
 # maximum number of threads in order to not break t3
-torch.set_num_threads(8)
+# torch.set_num_threads(8)
 
 def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     """Train the model and evaluate it.
@@ -43,21 +43,21 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     # create output directory and get path to it
     output_path = utrain.output_directory(name)
 
-    # # Directory for the graphs
-    # base_directory_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
-    # base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
+    # Directory for the graphs
+    base_directory_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
+    base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
 
-    # # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
-    # datasets_W_signal = [    
-    #     [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
-    #     [base_directory_W_signal + "summer24", f"W_decay_signal_summer24_{model_type}"],
-    # ]
+    # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
+    datasets_W_signal = [    
+        [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
+        # [base_directory_W_signal + "summer24", f"W_decay_signal_summer24_{model_type}"],
+    ]
 
-    # datasets_bkg = [
+    datasets_bkg = [
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/" + "250430_100827/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/" + "250430_100852/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/" + "250430_100917/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100811/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100811/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/" + "250430_100835/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/" + "250430_100900/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/" + "250430_100925/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
@@ -141,18 +141,18 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101823/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101839/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
     #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101855/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    ]
+
+
+    # base_directory_W_signal = "data/signal_W" 
+    # base_directory_bkg = "data/background" 
+
+    # datasets_W_signal = [
+    #     [base_directory_bkg, f"background_{model_type}"],
     # ]
-
-
-    base_directory_W_signal = "data/signal_W" 
-    base_directory_bkg = "data/background" 
-
-    datasets_W_signal = [
-        [base_directory_bkg, f"background_{model_type}"],
-    ]
-    datasets_bkg = [
-        [base_directory_W_signal, f"W_decay_signal_{model_type}"]
-    ]
+    # datasets_bkg = [
+    #     [base_directory_W_signal, f"W_decay_signal_{model_type}"]
+    # ]
 
     datasets = datasets_W_signal + datasets_bkg
 
@@ -294,7 +294,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             optimizer.zero_grad() # make sure gradients are empty
             out = model(data) # fill data into model and safe the output
             bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
-            disco_loss = dcor.distance_correlation(out[:,0], data.fitted_tau_mass)  # Penalising just learning the tau mass
+            disco_loss = dcor.distance_correlation(out[:,0].detach().numpy(), data.fitted_tau_mass)  # Penalising just learning the tau mass
             loss_ = bce_loss + disco_reg * disco_loss
             score = out[:,0].cpu() # For what is this score used??
             score = score.detach().numpy()
@@ -314,19 +314,20 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         loss_per_batch = 0
         disco_per_batch = 0
 
-        for batch, data in enumerate(dataloader_validation):
-            model.eval()
-            data = data.to(device)
-            target = data.y
+        with torch.no_grad():
+            for batch, data in enumerate(dataloader_validation):
+                model.eval()
+                data = data.to(device)
+                target = data.y
 
-            out = model(data)
-            score = out[:,0].cpu()
-            score = score.detach().numpy()
+                out = model(data)
+                score = out[:,0].cpu()
+                score = score.detach().numpy()
 
-            loss_ = loss_criterion(out[:,0], target)
-            loss_per_batch += loss_.item()
-            disco_per_batch += dcor.distance_correlation(out[:,0], data.fitted_tau_mass)
-            batch_counter += 1
+                loss_ = loss_criterion(out[:,0], target)
+                loss_per_batch += loss_.item()
+                disco_per_batch += dcor.distance_correlation(out[:,0].detach().numpy(), data.fitted_tau_mass)
+                batch_counter += 1
 
         
         # calculate loss per epoch and log it
