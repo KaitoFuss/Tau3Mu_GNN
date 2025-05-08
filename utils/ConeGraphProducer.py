@@ -43,6 +43,7 @@ class ConeGraphProducer(InMemoryDataset):
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
         tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
+        slimmed (bool): Whether data was pre skimmed and disregarded Meson resonances and bad PV matches
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
@@ -69,6 +70,7 @@ class ConeGraphProducer(InMemoryDataset):
         label:float=0.,
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
+        slimmed=False,
         use_displacement=False  
     ):
 
@@ -91,6 +93,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.label = label
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
+        self.slimmed = slimmed,
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -148,51 +151,53 @@ class ConeGraphProducer(InMemoryDataset):
         return n_initial
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask):
+        prefix = "Slimmed_" if self.slimmed else ""
+        n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
         for i_ev in tqdm(range(i_start, i_stop), disable=not self.verbose):
             n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
             event = events[i_ev]
             if self.mask:
-                n_tau = event["nTauTo3Mu"] 
+                n_tau = event[f"n{n_prefix}TauTo3Mu"] 
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
             else:
-                n_tau = event["nTauTo3Mu"]
+                n_tau = event[f"n{n_prefix}TauTo3Mu"] 
 
-            pfcands_pt = event["PFCands_pt"]
-            pfcands_eta = event["PFCands_eta"]
-            pfcands_phi = event["PFCands_phi"]
-            pfcands_pdgId = event["PFCands_pdgId"]
-            pfcands_mass = event["PFCands_mass"]
-            pfcands_charge = event["PFCands_charge"]
+            pfcands_pt = event[f"{prefix}PFCands_pt"]
+            pfcands_eta = event[f"{prefix}PFCands_eta"]
+            pfcands_phi = event[f"{prefix}PFCands_phi"]
+            pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
+            pfcands_mass = event[f"{prefix}PFCands_mass"]
+            pfcands_charge = event[f"{prefix}PFCands_charge"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
-                tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{self.tau_collection_name}_pt"], dtype=bool)
+                tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
                 
                 # Read data for fitted tau from event
-                fitted_tau_pt = event[f"{self.tau_collection_name}_pt"][tau_mask][nt] 
-                fitted_tau_eta = event[f"{self.tau_collection_name}_eta"][tau_mask][nt] 
-                fitted_tau_phi = event[f"{self.tau_collection_name}_phi"][tau_mask][nt] 
-                fitted_tau_mass = event[f"{self.tau_collection_name}_mass"][tau_mask][nt] 
+                fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
+                fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
+                fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
+                fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
                 
                 # Read data for mu1 from event
-                mu1_idx = event["TauTo3Mu_mu1_idx"][tau_mask][nt] 
-                mu1_eta = event["TauTo3Mu_mu1_eta"][tau_mask][nt] 
-                mu1_phi = event["TauTo3Mu_mu1_phi"][tau_mask][nt] 
-                mu1_pt = event["TauTo3Mu_mu1_pt"][tau_mask][nt] 
+                mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
+                mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
+                mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
+                mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
     
                 # Read data for mu2 from event
-                mu2_idx = event["TauTo3Mu_mu2_idx"][tau_mask][nt] 
-                mu2_eta = event["TauTo3Mu_mu2_eta"][tau_mask][nt] 
-                mu2_phi = event["TauTo3Mu_mu2_phi"][tau_mask][nt] 
-                mu2_pt = event["TauTo3Mu_mu2_pt"][tau_mask][nt] 
+                mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
+                mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
+                mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
+                mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
                 
                 # Read data for mu3 from event
-                mu3_idx = event["TauTo3Mu_mu3_idx"][tau_mask][nt] 
-                mu3_eta = event["TauTo3Mu_mu3_eta"][tau_mask][nt] 
-                mu3_phi = event["TauTo3Mu_mu3_phi"][tau_mask][nt] 
-                mu3_pt = event["TauTo3Mu_mu3_pt"][tau_mask][nt] 
+                mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
+                mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
+                mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
+                mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
 
                 # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
                 cone_mask = self.build_cone(
@@ -218,10 +223,10 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_charge_masked = pfcands_charge[cone_mask]
 
                 if self.use_displacement:
-                    pfcands_d0_masked = event["PFCands_d0"][cone_mask]
-                    pfcands_dz_masked = event["PFCands_dz"][cone_mask]
+                    pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
+                    pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
                 else:
-                    pfcands_d0_masked, pfcands_dz_massked = None, None 
+                    pfcands_d0_masked, pfcands_dz_masked = None, None 
 
                 fitted_tau_idx = nt
 
@@ -378,36 +383,37 @@ class ConeGraphProducer(InMemoryDataset):
                         raise ValueError("No GenCrossSection found in Metadata")
                 else:
                     raise ValueError("No Metadata tree found in file")
-
+        prefix = "Slimmed_" if self.slimmed else ""
+        n_prefix = "Slimmed" if self.slimmed else ""
         branches_to_load = [
-            "nPFCands",
-            "PFCands_pt",
-            "PFCands_eta",
-            "PFCands_phi",
-            "PFCands_pdgId",
-            "PFCands_mass",  
-            "PFCands_charge",
-            "nTauTo3Mu",
-            "TauTo3Mu_mu1_idx",
-            "TauTo3Mu_mu1_eta",
-            "TauTo3Mu_mu1_phi",
-            "TauTo3Mu_mu1_pt",
-            "TauTo3Mu_mu2_idx",
-            "TauTo3Mu_mu2_eta",
-            "TauTo3Mu_mu2_phi",
-            "TauTo3Mu_mu2_pt",
-            "TauTo3Mu_mu3_idx",
-            "TauTo3Mu_mu3_eta",
-            "TauTo3Mu_mu3_phi",
-            "TauTo3Mu_mu3_pt",
-            "TauTo3Mu_fitted_mass",
-            "TauTo3Mu_fitted_eta",
-            "TauTo3Mu_fitted_phi",
-            "TauTo3Mu_fitted_pt",
+            f"n{n_prefix}PFCands",
+            f"{prefix}PFCands_pt",
+            f"{prefix}PFCands_eta",
+            f"{prefix}PFCands_phi",
+            f"{prefix}PFCands_pdgId",
+            f"{prefix}PFCands_mass",  
+            f"{prefix}PFCands_charge",
+            f"n{n_prefix}TauTo3Mu",
+            f"{prefix}TauTo3Mu_mu1_idx",
+            f"{prefix}TauTo3Mu_mu1_eta",
+            f"{prefix}TauTo3Mu_mu1_phi",
+            f"{prefix}TauTo3Mu_mu1_pt",
+            f"{prefix}TauTo3Mu_mu2_idx",
+            f"{prefix}TauTo3Mu_mu2_eta",
+            f"{prefix}TauTo3Mu_mu2_phi",
+            f"{prefix}TauTo3Mu_mu2_pt",
+            f"{prefix}TauTo3Mu_mu3_idx",
+            f"{prefix}TauTo3Mu_mu3_eta",
+            f"{prefix}TauTo3Mu_mu3_phi",
+            f"{prefix}TauTo3Mu_mu3_pt",
+            f"{prefix}TauTo3Mu_fitted_mass",
+            f"{prefix}TauTo3Mu_fitted_eta",
+            f"{prefix}TauTo3Mu_fitted_phi",
+            f"{prefix}TauTo3Mu_fitted_pt",
         ]
 
         if self.use_displacement:
-            branches_to_load += ["PFCands_d0", "PFCands_dz"]
+            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
 
         with uproot.open(f"{file_name}:Events") as in_file:
             events = in_file.arrays(branches_to_load, library="ak")

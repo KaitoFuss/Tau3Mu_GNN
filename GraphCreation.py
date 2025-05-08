@@ -22,7 +22,8 @@ def create_graph(
     mask: bool,
     edge_connection_mode: str,
     k_knn: int = None,
-    delta_r_threshold: float = None
+    delta_r_threshold: float = None,
+    slimmed: bool = False,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -50,6 +51,7 @@ def create_graph(
         mask=mask,
         label=label,
         verbose=verbose,
+        slimmed=slimmed,
         use_displacement=use_displacement,
     )
                 
@@ -62,7 +64,7 @@ if __name__ == "__main__":
     parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
     args = parser.parse_args()
 
-    model_type = args.model_type
+    model_type = args.graph_type
     k = args.k
     delta_r = args.delta_r
 
@@ -97,118 +99,151 @@ if __name__ == "__main__":
 
     
     base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
-    root_W_signals = [
-        [base_direc_W_signal, "winter24"],
-        [base_direc_W_signal, "summer24"],
+    # root_W_signals = [
+    #    [base_direc_W_signal, "winter24"],
+    #    [base_direc_W_signal, "summer24"],
+    # ]
+    # for base_direc, signal_identifier in root_W_signals:
+    #     output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
+    #     root_W_signal = base_direc + signal_identifier
+    #     create_graph(
+    #     root_W_signal, 
+    #     output_ident_signal, 
+    #     label=1., 
+    #     mask=False, 
+    #     edge_connection_mode=model_type,
+    #     k_knn=k, 
+    #     delta_r_threshold=delta_r
+    # )
+
+    root_W_signals_skimmed = [
+        [base_direc_W_signal, ""],
     ]
-    for base_direc, signal_identifier in root_W_signals:
+    for base_direc, signal_identifier in root_W_signals_skimmed:
         output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
         root_W_signal = base_direc + signal_identifier
         create_graph(
-        root_W_signal, 
-        output_ident_signal, 
-        label=1., 
-        mask=False, 
-        edge_connection_mode=model_type,
-        k_knn=k, 
-        delta_r_threshold=delta_r
-    )
-
+            root_W_signal, 
+            output_ident_signal, 
+            label=1., 
+            mask=False, 
+            edge_connection_mode=model_type,
+            k_knn=k, 
+            delta_r_threshold=delta_r,
+            slimmed = True,
+        )
+        
 
     base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
-    root_bkgs = [
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/", "250430_100827/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/", "250430_100852/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/", "250430_100917/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/", "250430_100811/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/", "250430_100835/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/", "250430_100900/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/", "250430_100925/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024C-PromptReco-v1_MINIAOD/", "250430_100819/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v2_MINIAOD/", "250430_100843/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024H-PromptReco-v1_MINIAOD/", "250430_100908/0000"],
+    # root_bkgs = [
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/", "250430_100827/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/", "250430_100852/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/", "250430_100917/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/", "250430_100811/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/", "250430_100835/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/", "250430_100900/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/", "250430_100925/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024C-PromptReco-v1_MINIAOD/", "250430_100819/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v2_MINIAOD/", "250430_100843/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024H-PromptReco-v1_MINIAOD/", "250430_100908/0000"],
 
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024D-PromptReco-v1_MINIAOD/", "250430_100949/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024F-PromptReco-v1_MINIAOD/", "250430_101014/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v1_MINIAOD/", "250430_101038/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024B-PromptReco-v1_MINIAOD/", "250430_100933/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v1_MINIAOD/", "250430_100957/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024G-PromptReco-v1_MINIAOD/", "250430_101022/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v2_MINIAOD/", "250430_101046/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024C-PromptReco-v1_MINIAOD/", "250430_100941/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v2_MINIAOD/", "250430_101005/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024H-PromptReco-v1_MINIAOD/", "250430_101030/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024D-PromptReco-v1_MINIAOD/", "250430_100949/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024F-PromptReco-v1_MINIAOD/", "250430_101014/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v1_MINIAOD/", "250430_101038/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024B-PromptReco-v1_MINIAOD/", "250430_100933/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v1_MINIAOD/", "250430_100957/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024G-PromptReco-v1_MINIAOD/", "250430_101022/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v2_MINIAOD/", "250430_101046/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024C-PromptReco-v1_MINIAOD/", "250430_100941/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v2_MINIAOD/", "250430_101005/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024H-PromptReco-v1_MINIAOD/", "250430_101030/0000"],
         
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024D-PromptReco-v1_MINIAOD/", "250430_101111/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024F-PromptReco-v1_MINIAOD/", "250430_101135/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v1_MINIAOD/", "250430_101159/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024B-PromptReco-v1_MINIAOD/", "250430_101054/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v1_MINIAOD/", "250430_101119/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024G-PromptReco-v1_MINIAOD/", "250430_101143/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v2_MINIAOD/", "250430_101207/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024C-PromptReco-v1_MINIAOD/", "250430_101102/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v2_MINIAOD/", "250430_101127/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024H-PromptReco-v1_MINIAOD/", "250430_101151/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024D-PromptReco-v1_MINIAOD/", "250430_101111/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024F-PromptReco-v1_MINIAOD/", "250430_101135/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v1_MINIAOD/", "250430_101159/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024B-PromptReco-v1_MINIAOD/", "250430_101054/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v1_MINIAOD/", "250430_101119/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024G-PromptReco-v1_MINIAOD/", "250430_101143/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v2_MINIAOD/", "250430_101207/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024C-PromptReco-v1_MINIAOD/", "250430_101102/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v2_MINIAOD/", "250430_101127/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024H-PromptReco-v1_MINIAOD/", "250430_101151/0000"],
         
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024D-PromptReco-v1_MINIAOD/", "250430_101232/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024F-PromptReco-v1_MINIAOD/", "250430_101256/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v1_MINIAOD/", "250430_101320/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024B-PromptReco-v1_MINIAOD/", "250430_101215/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v1_MINIAOD/", "250430_101240/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024G-PromptReco-v1_MINIAOD/", "250430_101304/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v2_MINIAOD/", "250430_101328/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024C-PromptReco-v1_MINIAOD/", "250430_101223/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v2_MINIAOD/", "250430_101248/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024H-PromptReco-v1_MINIAOD/", "250430_101312/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024D-PromptReco-v1_MINIAOD/", "250430_101232/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024F-PromptReco-v1_MINIAOD/", "250430_101256/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v1_MINIAOD/", "250430_101320/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024B-PromptReco-v1_MINIAOD/", "250430_101215/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v1_MINIAOD/", "250430_101240/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024G-PromptReco-v1_MINIAOD/", "250430_101304/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v2_MINIAOD/", "250430_101328/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024C-PromptReco-v1_MINIAOD/", "250430_101223/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v2_MINIAOD/", "250430_101248/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024H-PromptReco-v1_MINIAOD/", "250430_101312/0000"],
 
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024D-PromptReco-v1_MINIAOD/", "250430_101352/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024F-PromptReco-v1_MINIAOD/", "250430_101416/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v1_MINIAOD/", "250430_101443/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024B-PromptReco-v1_MINIAOD/", "250430_101336/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v1_MINIAOD/", "250430_101400/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024G-PromptReco-v1_MINIAOD/", "250430_101424/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v2_MINIAOD/", "250430_101451/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024C-PromptReco-v1_MINIAOD/", "250430_101344/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v2_MINIAOD/", "250430_101408/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024H-PromptReco-v1_MINIAOD/", "250430_101433/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024D-PromptReco-v1_MINIAOD/", "250430_101352/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024F-PromptReco-v1_MINIAOD/", "250430_101416/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v1_MINIAOD/", "250430_101443/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024B-PromptReco-v1_MINIAOD/", "250430_101336/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v1_MINIAOD/", "250430_101400/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024G-PromptReco-v1_MINIAOD/", "250430_101424/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v2_MINIAOD/", "250430_101451/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024C-PromptReco-v1_MINIAOD/", "250430_101344/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v2_MINIAOD/", "250430_101408/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024H-PromptReco-v1_MINIAOD/", "250430_101433/0000"],
         
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024B-PromptReco-v1_MINIAOD/", "250430_101459/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024D-PromptReco-v1_MINIAOD/", "250430_101515/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v2_MINIAOD/", "250430_101531/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024G-PromptReco-v1_MINIAOD/", "250430_101547/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v1_MINIAOD/", "250430_101603/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024C-PromptReco-v1_MINIAOD/", "250430_101507/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v1_MINIAOD/", "250430_101523/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024F-PromptReco-v1_MINIAOD/", "250430_101539/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024H-PromptReco-v1_MINIAOD/", "250430_101555/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v2_MINIAOD/", "250430_101611/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024B-PromptReco-v1_MINIAOD/", "250430_101459/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024D-PromptReco-v1_MINIAOD/", "250430_101515/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v2_MINIAOD/", "250430_101531/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024G-PromptReco-v1_MINIAOD/", "250430_101547/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v1_MINIAOD/", "250430_101603/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024C-PromptReco-v1_MINIAOD/", "250430_101507/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v1_MINIAOD/", "250430_101523/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024F-PromptReco-v1_MINIAOD/", "250430_101539/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024H-PromptReco-v1_MINIAOD/", "250430_101555/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v2_MINIAOD/", "250430_101611/0000"],
         
 
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024B-PromptReco-v1_MINIAOD/", "250430_101619/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024D-PromptReco-v1_MINIAOD/", "250430_101635/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v2_MINIAOD/", "250430_101652/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024G-PromptReco-v1_MINIAOD/", "250430_101711/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v1_MINIAOD/", "250430_101727/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024C-PromptReco-v1_MINIAOD/", "250430_101627/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v1_MINIAOD/", "250430_101643/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024F-PromptReco-v1_MINIAOD/", "250430_101700/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024H-PromptReco-v1_MINIAOD/", "250430_101719/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v2_MINIAOD/", "250430_101735/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024B-PromptReco-v1_MINIAOD/", "250430_101619/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024D-PromptReco-v1_MINIAOD/", "250430_101635/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v2_MINIAOD/", "250430_101652/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024G-PromptReco-v1_MINIAOD/", "250430_101711/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v1_MINIAOD/", "250430_101727/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024C-PromptReco-v1_MINIAOD/", "250430_101627/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v1_MINIAOD/", "250430_101643/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024F-PromptReco-v1_MINIAOD/", "250430_101700/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024H-PromptReco-v1_MINIAOD/", "250430_101719/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v2_MINIAOD/", "250430_101735/0000"],
 
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024B-PromptReco-v1_MINIAOD/", "250430_101743/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024D-PromptReco-v1_MINIAOD/", "250430_101759/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v2_MINIAOD/", "250430_101815/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024G-PromptReco-v1_MINIAOD/", "250430_101831/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v1_MINIAOD/", "250430_101847/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024C-PromptReco-v1_MINIAOD/", "250430_101751/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v1_MINIAOD/", "250430_101807/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/", "250430_101823/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/", "250430_101839/0000"],
-        [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/", "250430_101855/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024B-PromptReco-v1_MINIAOD/", "250430_101743/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024D-PromptReco-v1_MINIAOD/", "250430_101759/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v2_MINIAOD/", "250430_101815/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024G-PromptReco-v1_MINIAOD/", "250430_101831/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v1_MINIAOD/", "250430_101847/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024C-PromptReco-v1_MINIAOD/", "250430_101751/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v1_MINIAOD/", "250430_101807/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/", "250430_101823/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/", "250430_101839/0000"],
+    #     [base_direc_bkg, "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/", "250430_101855/0000"],
+    # ]
+    # for base_direc, bkg_identifier, tail in root_bkgs:
+    #     output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+    #     root_bkg = base_direc + bkg_identifier + tail
+    #     create_graph(
+    #     root_bkg, 
+    #     output_ident_bkg, 
+    #     label=0., 
+    #     mask=True, 
+    #     edge_connection_mode=model_type,
+    #     k_knn=k, 
+    #     delta_r_threshold=delta_r
+    # )
+
+    root_bkgs_skimmed = [
+        [base_direc_bkg, ""]
     ]
-    for base_direc, bkg_identifier, tail in root_bkgs:
+    for base_direc, bkg_identifier in root_bkgs_skimmed:
         output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
-        root_bkg = base_direc + bkg_identifier + tail
+        root_bkg = base_direc + bkg_identifier
         create_graph(
         root_bkg, 
         output_ident_bkg, 
@@ -216,5 +251,6 @@ if __name__ == "__main__":
         mask=True, 
         edge_connection_mode=model_type,
         k_knn=k, 
-        delta_r_threshold=delta_r
+        delta_r_threshold=delta_r,
+        slimmed = True,
     )
