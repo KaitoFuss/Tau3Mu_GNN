@@ -11,6 +11,7 @@ class TauMuNet(nn.Module):
     def __init__(
             self,
             conv_params,
+            dropout,
             fc_params,
             input_dims = 7, # as we want to normally use also dzd0
             num_edge_features = 4, 
@@ -24,6 +25,7 @@ class TauMuNet(nn.Module):
         self.use_fusion = use_fusion
         self.num_classes = num_classes
         self.input_dims = input_dims
+        self.dropout = dropout
 
         #batch normalization features
         self.bn_fts = nn.BatchNorm1d(self.input_dims)
@@ -34,12 +36,12 @@ class TauMuNet(nn.Module):
         nns = nn.Sequential(
             nn.Linear(self.input_dims, conv_params[0]),
             nn.BatchNorm1d(conv_params[0]),
-            nn.Dropout(0.6),
+            nn.Dropout(self.dropout),
             nn.ReLU(),
             nn.Linear(conv_params[0], conv_params[0]),
             nn.ReLU(),
             nn.BatchNorm1d(conv_params[0]),
-            nn.Dropout(0.6)
+            nn.Dropout(self.dropout),
         )
         self.edge_convs.append(GINEConv(nn=nns, edge_dim=num_edge_features))
 
@@ -48,12 +50,12 @@ class TauMuNet(nn.Module):
             nns = nn.Sequential(
                 nn.Linear(in_feat, out_feat),
                 nn.BatchNorm1d(out_feat),
-                nn.Dropout(0.6),
+                nn.Dropout(self.dropout),
                 nn.ReLU(),
                 nn.Linear(out_feat, out_feat),
                 nn.ReLU(),
                 nn.BatchNorm1d(out_feat),
-                nn.Dropout(0.6)
+                nn.Dropout(self.dropout),
             )
             self.edge_convs.append(GINEConv(nn=nns, edge_dim=num_edge_features))
 
