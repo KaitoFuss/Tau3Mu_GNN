@@ -11,6 +11,7 @@ import argparse
 import os
 import pickle
 import numpy as np
+import dcor
 
 import utils.EvaluationUtils as ueval
 import utils.TrainingUtils as utrain
@@ -20,13 +21,14 @@ import utils.TrainingUtils as utrain
 # maximum number of threads in order to not break t3
 torch.set_num_threads(8)
 
-def main(epochs, batch_size, learning_rate, name, model_type):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     """Train the model and evaluate it.
 
     Args:
         epochs(int): number of epochs to train for
         batch_size(int): size of each batch
         learning_rate(float):
+        disco_reg(float): regularisation param
         name(str): name of the training
         model_type (str): Type of the model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
 
@@ -41,107 +43,109 @@ def main(epochs, batch_size, learning_rate, name, model_type):
     # create output directory and get path to it
     output_path = utrain.output_directory(name)
 
-    # Directory for the graphs
-    base_directory_W_signal = "data/signal_W" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/
-    base_directory_bkg = "data/background" # change later to /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/
+    # # Directory for the graphs
+    # base_directory_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
+    # base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
 
-    # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
-    datasets_W_signal = [    
-        [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
-        [base_directory_W_signal + "summer24", f"W_decay_signal_summer24_{model_type}"],
-    ]
+    # # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
+    # datasets_W_signal = [    
+    #     [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
+    #     [base_directory_W_signal + "summer24", f"W_decay_signal_summer24_{model_type}"],
+    # ]
 
-    datasets_bkg = [
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/" + "250430_100827/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/" + "250430_100852/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/" + "250430_100917/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100811/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/" + "250430_100835/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/" + "250430_100900/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/" + "250430_100925/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024C-PromptReco-v1_MINIAOD/" + "250430_100819/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v2_MINIAOD/" + "250430_100843/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024H-PromptReco-v1_MINIAOD/" + "250430_100908/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    # datasets_bkg = [
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/" + "250430_100827/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/" + "250430_100852/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/" + "250430_100917/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100811/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/" + "250430_100835/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/" + "250430_100900/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/" + "250430_100925/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024C-PromptReco-v1_MINIAOD/" + "250430_100819/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v2_MINIAOD/" + "250430_100843/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024H-PromptReco-v1_MINIAOD/" + "250430_100908/0000", "background_" + "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
 
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024D-PromptReco-v1_MINIAOD/" + "250430_100949/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101014/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101038/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100933/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v1_MINIAOD/" + "250430_100957/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101022/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101046/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024C-PromptReco-v1_MINIAOD/" + "250430_100941/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101005/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101030/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024D-PromptReco-v1_MINIAOD/" + "250430_100949/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101014/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101038/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024B-PromptReco-v1_MINIAOD/" + "250430_100933/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v1_MINIAOD/" + "250430_100957/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101022/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101046/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024C-PromptReco-v1_MINIAOD/" + "250430_100941/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101005/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101030/0000", "background_" + "ParkingDoubleMuonLowMass1/_ParkingDoubleMuonLowMass1_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
         
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101111/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101135/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101159/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101054/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101119/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101143/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101207/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101102/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101127/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101151/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101111/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101135/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101159/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101054/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101119/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101143/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101207/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101102/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101127/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101151/0000", "background_" + "ParkingDoubleMuonLowMass2/_ParkingDoubleMuonLowMass2_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
         
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101232/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101256/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101320/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101215/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101240/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101304/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101328/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101223/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101248/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101312/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101232/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101256/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101320/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101215/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101240/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101304/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101328/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101223/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101248/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101312/0000", "background_" + "ParkingDoubleMuonLowMass3/_ParkingDoubleMuonLowMass3_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
 
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101352/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101416/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101443/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101336/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101400/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101424/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101451/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101344/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101408/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101433/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101352/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101416/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101443/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101336/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101400/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101424/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101451/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101344/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101408/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101433/0000", "background_" + "ParkingDoubleMuonLowMass4/_ParkingDoubleMuonLowMass4_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
         
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101459/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101515/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101531/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101547/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101603/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101507/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101523/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101539/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101555/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101611/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101459/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101515/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101531/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101547/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101603/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101507/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101523/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101539/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101555/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101611/0000", "background_" + "ParkingDoubleMuonLowMass5/_ParkingDoubleMuonLowMass5_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
         
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101619/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101635/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101652/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101711/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101727/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101627/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101643/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101700/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101719/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101735/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101619/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101635/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101652/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101711/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101727/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101627/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101643/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101700/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101719/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101735/0000", "background_" + "ParkingDoubleMuonLowMass6/_ParkingDoubleMuonLowMass6_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
 
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101743/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101759/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101815/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101831/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101847/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101751/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101807/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101823/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101839/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
-        [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101855/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
-    ]
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024B-PromptReco-v1_MINIAOD/" + "250430_101743/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024B-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024D-PromptReco-v1_MINIAOD/" + "250430_101759/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024D-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v2_MINIAOD/" + "250430_101815/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024G-PromptReco-v1_MINIAOD/" + "250430_101831/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024G-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v1_MINIAOD/" + "250430_101847/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024C-PromptReco-v1_MINIAOD/" + "250430_101751/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024C-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v1_MINIAOD/" + "250430_101807/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024E-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/" + "250430_101823/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024F-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/" + "250430_101839/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024H-PromptReco-v1_MINIAOD/".replace("/", "") + "_" + model_type],
+    #     [base_directory_bkg + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/" + "250430_101855/0000", "background_" + "ParkingDoubleMuonLowMass7/_ParkingDoubleMuonLowMass7_Run2024I-PromptReco-v2_MINIAOD/".replace("/", "") + "_" + model_type],
+    # ]
 
-    datasets = datasets_W_signal + datasets_bkg
+
+    base_directory_W_signal = "data/signal_W" 
+    base_directory_bkg = "data/background" 
 
     datasets_W_signal = [
         [base_directory_bkg, f"background_{model_type}"],
@@ -192,10 +196,12 @@ def main(epochs, batch_size, learning_rate, name, model_type):
     
     # Create the model
     model = TauMuNet(
-        conv_params= [128, 128, 64 ,64, 32, 32],
+        conv_params= [256, 128, 64, 32], # smaller layer size as we have a fully connected graph
+        dropout=0.6,
         fc_params = [(32, 0.8)], # This specifies the fully connected (non conv) layers in the end; 0.8 is dropout rate 
         input_dims = num_node_features, 
-        num_edge_features = num_edge_features
+        num_edge_features = num_edge_features,
+        use_fusion=True,
     )
 
     # Define the optimizer
@@ -212,7 +218,7 @@ def main(epochs, batch_size, learning_rate, name, model_type):
 
     ###--------- Train the network -----------------------------------------------------------
 
-    training_losses, validation_losses = train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, name)
+    training_losses, validation_losses = train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name)
     print(f"==> Training completed in {time.time()-start:.2f} seconds")
 
     print("==> Saving losses...")
@@ -243,7 +249,7 @@ def main(epochs, batch_size, learning_rate, name, model_type):
 
     return
 
-def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, name):
+def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name):
     """Train and validate model.
 
     Args:
@@ -254,6 +260,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         loss_criterion:
         device: GPU or CPU
         optimizer: ADAM
+        disco_reg(float): regularisation param
         name: name of output directory 
 
 
@@ -285,7 +292,9 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             
             optimizer.zero_grad() # make sure gradients are empty
             out = model(data) # fill data into model and safe the output
-            loss_ =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
+            bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
+            disco_loss = dcor.distance_correlation(out[:,0], data.fitted_tau_mass)  # Penalising just learning the tau mass
+            loss_ = bce_loss + disco_reg * disco_loss
             score = out[:,0].cpu() # For what is this score used??
             score = score.detach().numpy()
             loss_per_batch += loss_.item()
@@ -382,6 +391,13 @@ if __name__ == "__main__":
         help="Learning rate of the model",
         type=float,
         )
+    
+    parser.add_argument(
+        "--disco",
+        default=0.01,
+        help="Regularisation using DisCo of output and tau mass",
+        type=float,
+        )
 
 
     args = parser.parse_args()
@@ -391,6 +407,7 @@ if __name__ == "__main__":
     learning_rate = args.lr
     name = args.name
     model_type = args.model
+    disco_reg = args.disco
 
     print("==> Running TauMuNet ")
 
@@ -407,6 +424,7 @@ if __name__ == "__main__":
     #log hyperparameters in the experiment
     hyper_params = {
         "learning_rate": learning_rate,
+        "regularisation": disco_reg,
         "epochs": epochs,
         "Model" : model_type,
         "remark": "",
@@ -416,5 +434,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, name, model_type)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type)
 
