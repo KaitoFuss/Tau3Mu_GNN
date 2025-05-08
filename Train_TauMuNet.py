@@ -270,6 +270,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
     training_losses = []
     validation_losses = []
+    validation_discos = []
 
 
     # initalize early stopping class
@@ -311,6 +312,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         # validation
         batch_counter = 0
         loss_per_batch = 0
+        disco_per_batch = 0
 
         for batch, data in enumerate(dataloader_validation):
             model.eval()
@@ -323,6 +325,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
             loss_ = loss_criterion(out[:,0], target)
             loss_per_batch += loss_.item()
+            disco_per_batch += dcor.distance_correlation(out[:,0], data.fitted_tau_mass)
             batch_counter += 1
 
         
@@ -330,6 +333,10 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_losses.append(epoch_loss_validation)
         experiment.log_metric("Validation loss", epoch_loss_validation, epoch=epoch)
+        
+        epoch_disco_validation = disco_per_batch/batch_counter
+        validation_discos.append(epoch_disco_validation)
+        experiment.log_metric("Validation disco", epoch_disco_validation, epoch=epoch)
 
         ## check for early stop
         early_stop(epoch_loss_validation,model,epoch,output_path,name)
