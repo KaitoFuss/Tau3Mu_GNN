@@ -38,7 +38,7 @@ class ConeGraphProducer(InMemoryDataset):
         save_event_number (bool): Whether to save the event number in the graph
         save_fitted_tau_mass (bool): Whether to save fitted tau mass in the graph
         extra_label (str): Extra label to add to the processed file name)
-        weights (str): What event weights to use (None, 'xsec') (TODO: implement pt flattening)
+        weights (str): What event weights to use (None, 'xsec', 'npvs_rescale') (TODO: implement pt flattening)
         save_fitted_tau_idx (bool): Whether to save the fitted tau index
         mask (bool): Bool whether to apply a mask extracting only tau3mu cands outside vicinity of tau mass, used to get background events
         label (float): Label to add to the graph for supervised learning
@@ -105,7 +105,7 @@ class ConeGraphProducer(InMemoryDataset):
             "r_threshold": self.connect_r_threshold,
         } 
 
-        assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
+        assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
         assert self.edge_connection_mode in self.edge_connection_methods, f"Unsupported edge_connection_mode: {self.edge_connection_mode}"
 
@@ -154,7 +154,7 @@ class ConeGraphProducer(InMemoryDataset):
                     raise ValueError("No CutFlow tree found in file")
         return n_initial
 
-    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask):
+    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
@@ -360,6 +360,9 @@ class ConeGraphProducer(InMemoryDataset):
                         graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
                 elif self.weights is None:
                     graph.w = 1.
+                elif self.weights == "npvs_rescale":
+                    graph.w = npvs_weights[event["PV_npvs"]]
+                    print(f"adding a weight of {npvs_weights[event["PV_npvs"]]}")
                 
                 # Add the event number if requested
                 if self.save_event_number:
@@ -383,6 +386,7 @@ class ConeGraphProducer(InMemoryDataset):
         if self.weights is None:
             xsec = 1.
             gen_events_before_selection = None
+            npvs_weights = None
 
         if self.weights == "xsec":
             with uproot.open(file_name) as in_file:
@@ -394,6 +398,13 @@ class ConeGraphProducer(InMemoryDataset):
                         raise ValueError("No GenCrossSection found in Metadata")
                 else:
                     raise ValueError("No Metadata tree found in file")
+            npvs_weights = None
+
+        if self.weights == "npvs_rescale":
+            xsec = 1.
+            gen_events_before_selection = None
+            npvs_weights = np.load("npvs_weights.npz")["weight_per_bin"]
+
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         branches_to_load = [
@@ -421,6 +432,7 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}TauTo3Mu_fitted_eta",
             f"{prefix}TauTo3Mu_fitted_phi",
             f"{prefix}TauTo3Mu_fitted_pt",
+            "PV_npvs",
         ]
 
         if self.use_displacement:
@@ -430,10 +442,8 @@ class ConeGraphProducer(InMemoryDataset):
         #     events = in_file.arrays(branches_to_load, library="ak")
         all_chunks = []
         for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
-            # Optional: process events here if you want to avoid keeping them all in memory
             all_chunks.append(events)
 
-        # If you really want to concatenate them all after processing:
         events = ak.concatenate(all_chunks)
         
         bkg_mask = None
@@ -456,6 +466,7 @@ class ConeGraphProducer(InMemoryDataset):
             total_events,
             events_to_process,
             bkg_mask,
+            npvs_weights,
         )
 
         if self.pre_transform is not None:
