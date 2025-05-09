@@ -24,6 +24,7 @@ def create_graph(
     k_knn: int = None,
     delta_r_threshold: float = None,
     slimmed: bool = False,
+    shuffle: bool = False,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -52,6 +53,7 @@ def create_graph(
         label=label,
         verbose=verbose,
         slimmed=slimmed,
+        shuffle=shuffle,
         use_displacement=use_displacement,
     )
                 
@@ -99,39 +101,40 @@ if __name__ == "__main__":
 
     
     base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
-    # root_W_signals = [
-    #    [base_direc_W_signal, "winter24"],
+    root_W_signals = [
+       [base_direc_W_signal, "winter24"],
     #    [base_direc_W_signal, "summer24"],
-    # ]
-    # for base_direc, signal_identifier in root_W_signals:
-    #     output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
-    #     root_W_signal = base_direc + signal_identifier
-    #     create_graph(
-    #     root_W_signal, 
-    #     output_ident_signal, 
-    #     label=1., 
-    #     mask=False, 
-    #     edge_connection_mode=model_type,
-    #     k_knn=k, 
-    #     delta_r_threshold=delta_r
-    # )
+    ]
+    for base_direc, signal_identifier in root_W_signals:
+        output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
+        root_W_signal = base_direc + signal_identifier
+        create_graph(
+        root_W_signal, 
+        output_ident_signal, 
+        label=1., 
+        mask=False, 
+        edge_connection_mode=model_type,
+        k_knn=k, 
+        delta_r_threshold=delta_r,
+        slimmed=False,
+    )
 
     root_W_signals_skimmed = [
         [base_direc_W_signal, "skimmed"],
     ]
-    for base_direc, signal_identifier in root_W_signals_skimmed:
-        output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
-        root_W_signal = base_direc
-        create_graph(
-            root_W_signal, 
-            output_ident_signal, 
-            label=1., 
-            mask=False, 
-            edge_connection_mode=model_type,
-            k_knn=k, 
-            delta_r_threshold=delta_r,
-            slimmed = True,
-        )
+    # for base_direc, signal_identifier in root_W_signals_skimmed:
+    #     output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
+    #     root_W_signal = base_direc
+    #     create_graph(
+    #         root_W_signal, 
+    #         output_ident_signal, 
+    #         label=1., 
+    #         mask=False, 
+    #         edge_connection_mode=model_type,
+    #         k_knn=k, 
+    #         delta_r_threshold=delta_r,
+    #         slimmed = True,
+    #     )
         
 
     base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
@@ -253,4 +256,5 @@ if __name__ == "__main__":
     #     k_knn=k, 
     #     delta_r_threshold=delta_r,
     #     slimmed = True,
+    #     shuffle = True,
     # )

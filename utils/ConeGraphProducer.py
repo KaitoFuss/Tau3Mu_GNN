@@ -7,6 +7,7 @@ import awkward as ak
 from tqdm import tqdm
 import vector
 import logging
+import numba as nb
 
 
 class ConeGraphProducer(InMemoryDataset):
@@ -44,6 +45,7 @@ class ConeGraphProducer(InMemoryDataset):
         verbose (bool): Whether to print progress bars
         tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
         slimmed (bool): Whether data was pre skimmed and disregarded Meson resonances and bad PV matches
+        shuffle (bool): Whether events should be shuffeled before processing
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
@@ -71,6 +73,7 @@ class ConeGraphProducer(InMemoryDataset):
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
         slimmed=False,
+        shuffle=False,
         use_displacement=False  
     ):
 
@@ -94,6 +97,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
         self.slimmed = slimmed
+        self.suffle = shuffle
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -154,7 +158,9 @@ class ConeGraphProducer(InMemoryDataset):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
-        for i_ev in tqdm(range(i_start, i_stop), disable=not self.verbose):
+        
+        indices = range(i_start, i_stop) if not self.shuffle else np.random.choice(np.arange(i_start, i_stop), replace=False)
+        for i_ev in tqdm(indices, disable=not self.verbose):
             n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
             event = events[i_ev]
@@ -230,27 +236,28 @@ class ConeGraphProducer(InMemoryDataset):
 
                 fitted_tau_idx = nt
 
-                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float64)
-                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float64)
-                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float64)
+                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
+                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
+                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
 
                 if self.use_displacement:  
-                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float64)   
-                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float64)   
+                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
+                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
                 else:
-                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
-                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
+                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
+                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
 
                 if self.use_relative_angles:
                     pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
                     # Need care to account for circularity
                     pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
                 
-                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int64)
+                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
-                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float64)
-                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
+                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
+                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
 
+                num_nodes = len(pfcands_charge_masked)
                 pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
 
                 # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
@@ -295,18 +302,24 @@ class ConeGraphProducer(InMemoryDataset):
                     # Build pair-wise invariant masses
                     lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
                     pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
-                    # Only keep connected edges and take log to squeeze the distribution
-                    pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
-                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
-                    # Get pair charge
-                    pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
                     
-                    # Build Cambridge-Aachen and kt distances between constituents
+                    # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
                     R = 0.8
                     d_ca = ((matrix_delta_R**2) / (R**2))
-                    d_ca = np.array([d_ca[i,j] for i,j in edge_index])
                     d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
-                    d_kt = np.array([d_kt[i,j] for i,j in edge_index])
+                    if num_nodes < 200:
+                        pair_masses = np.array(pair_masses[edge_index.t()])
+                        pair_charges = np.array(matrix_charge[edge_index.t()])
+                        d_ca = np.array(d_ca[edge_index.t()])
+                        d_kt = np.array(d_kt[edge_index.t()])
+                    else:
+                        pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
+                        pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
+                        d_ca = np.array([d_ca[i,j] for i,j in edge_index])
+                        d_kt = np.array([d_kt[i,j] for i,j in edge_index])
+                    
+                    # Only keep connected edges and take log to squeeze the distribution
+                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
 
                     edge_features = torch.tensor(np.array([
                         pair_masses,
@@ -500,29 +513,29 @@ class ConeGraphProducer(InMemoryDataset):
             mu3_idx: int
         ) -> ak.Array:
 
-        delta_R_pfcands_tau = self.calc_delta_R(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_pfcands_tau = self.calc_delta_R_sq(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
 
-        delta_R_mu1_tau = self.calc_delta_R(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
-        delta_R_mu2_tau = self.calc_delta_R(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
-        delta_R_mu3_tau = self.calc_delta_R(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
-        if self.cone_size < max(delta_R_mu1_tau, delta_R_mu2_tau, delta_R_mu3_tau):
+        delta_R_sq_mu1_tau = self.calc_delta_R_sq(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_mu2_tau = self.calc_delta_R_sq(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_mu3_tau = self.calc_delta_R_sq(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
+        if self.cone_size ** 2 < max(delta_R_sq_mu1_tau, delta_R_sq_mu2_tau, delta_R_sq_mu3_tau):
             logging.warning("given cone size is not large enough. Using farthest away tau3mu candidate delta_R as cone size instead.")
-            cone_size = max(delta_R_mu1_tau, delta_R_mu2_tau, delta_R_mu3_tau)
+            cone_size_sq = max(delta_R_sq_mu1_tau, delta_R_sq_mu2_tau, delta_R_sq_mu3_tau)
         else:
-            cone_size = self.cone_size
+            cone_size_sq = self.cone_size ** 2
 
-        cone_mask = (delta_R_pfcands_tau < cone_size) # binary ak.array whether pf_cand is inside cone or not
+        cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
         
         # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
 
         return cone_mask
     
-    def calc_delta_R(self, eta, phi, ref_eta, ref_phi):
+    def calc_delta_R_sq(self, eta, phi, ref_eta, ref_phi):
         delta_eta = eta - ref_eta
         delta_phi_internal = np.abs(phi - ref_phi)
         delta_phi_external = 2*np.pi - np.abs(phi - ref_phi)
         delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
-        delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-        return delta_R
+        delta_R_sq = delta_eta**2 + delta_phi**2
+        return delta_R_sq
 
         
