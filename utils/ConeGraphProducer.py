@@ -45,7 +45,7 @@ class ConeGraphProducer(InMemoryDataset):
         verbose (bool): Whether to print progress bars
         tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
         slimmed (bool): Whether data was pre skimmed and disregarded Meson resonances and bad PV matches
-        shuffle (bool): Whether events should be shuffeled before processing
+        shuffle_bool (bool): Whether events should be shuffeled before processing
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
@@ -73,7 +73,7 @@ class ConeGraphProducer(InMemoryDataset):
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
         slimmed=False,
-        shuffle=False,
+        shuffle_bool=False,
         use_displacement=False  
     ):
 
@@ -97,7 +97,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
         self.slimmed = slimmed
-        self.suffle = shuffle
+        self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -158,8 +158,7 @@ class ConeGraphProducer(InMemoryDataset):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
-        
-        indices = range(i_start, i_stop) if not self.shuffle else np.random.choice(np.arange(i_start, i_stop), replace=False)
+        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         for i_ev in tqdm(indices, disable=not self.verbose):
             n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
@@ -308,10 +307,12 @@ class ConeGraphProducer(InMemoryDataset):
                     d_ca = ((matrix_delta_R**2) / (R**2))
                     d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
                     if num_nodes < 200:
-                        pair_masses = np.array(pair_masses[edge_index.t()])
-                        pair_charges = np.array(matrix_charge[edge_index.t()])
-                        d_ca = np.array(d_ca[edge_index.t()])
-                        d_kt = np.array(d_kt[edge_index.t()])
+                        # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
+                        np_edge_index = np.array(edge_index.t())
+                        pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
+                        pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
+                        d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
+                        d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
                     else:
                         pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
                         pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
