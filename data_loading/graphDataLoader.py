@@ -31,6 +31,7 @@ class GraphDataLoader(DataLoader):
             attributes of the data object should not be batched together. If None,
             the default behavior is used.
         sample (Optional(Bool)): Wether or not to use weighted random sampling (True by default)
+        drop_last (bool): Whether to drop last batch 
         **kwargs: Additional keyword arguments to be passed to the DataLoader.
 
     Returns:
@@ -49,6 +50,7 @@ class GraphDataLoader(DataLoader):
             exclude_keys: Optional[List[str]] = None,
             device: torch.device=None,
             sample = True,
+            drop_last=False,
             **kwargs,
     ):
         self.dataset_paths = dataset_paths
@@ -101,7 +103,7 @@ class GraphDataLoader(DataLoader):
         sampler = WeightedRandomSampler(weights, len(data), replacement=True) if sample else None
         batch_size = batch_size if batch_size > 0 else len(data)
 
-        super(GraphDataLoader, self).__init__(data, batch_size, False, follow_batch, exclude_keys, sampler=sampler, **kwargs)
-
+        super(GraphDataLoader, self).__init__(data, batch_size, False, follow_batch, exclude_keys, sampler=sampler, drop_last=drop_last, **kwargs)
+        
     def get_permutation(self):
         return self.permutation

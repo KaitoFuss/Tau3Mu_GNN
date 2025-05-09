@@ -82,7 +82,7 @@ class TauMuNet(nn.Module):
         # Final fc layer 
         fcs.append(nn.Sequential(
             nn.Linear(fc_params[-1][0], num_classes),
-            nn.BatchNorm1d(num_classes)
+            # nn.BatchNorm1d(num_classes)
         ))
 
         self.fc = nn.Sequential(*fcs)

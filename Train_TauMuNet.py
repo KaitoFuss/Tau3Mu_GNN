@@ -19,9 +19,46 @@ import utils.TrainingUtils as utrain
 # import mdmm
 
 # maximum number of threads in order to not break t3
-# torch.set_num_threads(8)
+if "t3ui" in os.uname()[1]:
+	torch.set_num_threads(8)
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
+arch_configs = {
+    "arch1": {
+        "conv_params": [256, 128, 64, 32],
+        "fc_params": [(32, 0.8)],
+    },
+    "arch2": {
+        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+        "fc_params": [(32, 0.8)],
+    },
+    "arch3": {
+        "conv_params": [512, 256, 128, 64, 32],
+        "fc_params": [(32, 0.8)],
+    },
+    "arch4": {
+        "conv_params": [512, 256, 128, 64, 32, 16, 8],
+        "fc_params": [(32, 0.8)],
+    },
+    "arch5": {
+        "conv_params": [256, 128, 64, 32],
+        "fc_params": [(64, 0.8)],
+    },
+    "arch6": {
+        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+        "fc_params": [(64, 0.8)],
+    },
+    "arch7": {
+        "conv_params": [512, 256, 128, 64, 32],
+        "fc_params": [(64, 0.8)],
+    },
+    "arch8": {
+        "conv_params": [512, 256, 128, 64, 32, 16, 8],
+        "fc_params": [(64, 0.8)],
+    },
+}
+
+
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params):
     """Train the model and evaluate it.
 
     Args:
@@ -50,11 +87,11 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
 
     datasets_W_signal = [
-        [base_directory_W_signal, f"W_decay_signal_skimmed_{model_type}"],
+        [base_directory_W_signal, f"W_decay_signal_{model_type}"],
     ]
 
     datasets_bkg = [
-        [base_directory_bkg, f"background_skimmed_{model_type}"],
+        [base_directory_bkg, f"background_{model_type}"],
     ]
 
     # datasets_W_signal = [    
@@ -189,6 +226,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
         dataset_fraction=df,
         batch_size=batch_size,
         normalizer=normalizer,
+        drop_last=True,
     )
     
     dataloader_validation = GraphDataLoader(
@@ -197,6 +235,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
         dataset_fraction=df,
         batch_size=batch_size,
         normalizer=normalizer,
+        drop_last=True,
     )
     
     ###--------- Create the Model -----------------------------------------------------------
@@ -205,11 +244,11 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type):
     
     # Create the model
     model = TauMuNet(
-        conv_params= [256, 128, 64, 32], # smaller layer size as we have a fully connected graph
+        conv_params=params["conv_params"],
         dropout=0.6,
-        fc_params = [(32, 0.8)], # This specifies the fully connected (non conv) layers in the end; 0.8 is dropout rate 
-        input_dims = num_node_features, 
-        num_edge_features = num_edge_features,
+        fc_params=params["fc_params"],
+        input_dims=num_node_features,
+        num_edge_features=num_edge_features,
         use_fusion=True,
     )
 
@@ -299,14 +338,14 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             model.train() # set into training modus for backpropagation
             data = data.to(device) # send data to ram of gpu!
             target = data.y # this is my label
-            
             optimizer.zero_grad() # make sure gradients are empty
             out = model(data) # fill data into model and safe the output
-            bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
-            disco_loss = dcor.distance_correlation(out[:,0].detach().numpy(), data.fitted_tau_mass)  # Penalising just learning the tau mass
-            loss_ = bce_loss + disco_reg * disco_loss
-            score = out[:,0].cpu() # For what is this score used??
+            score = out[:,0].cpu()
             score = score.detach().numpy()
+            bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
+            disco_loss = dcor.distance_correlation(score, data.fitted_tau_mass)  # Penalising just learning the tau mass
+            loss_ = bce_loss + disco_reg * disco_loss
+            
             loss_per_batch += loss_.item()
 
             loss_.backward()
@@ -335,7 +374,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
                 loss_ = loss_criterion(out[:,0], target)
                 loss_per_batch += loss_.item()
-                disco_per_batch += dcor.distance_correlation(out[:,0].detach().numpy(), data.fitted_tau_mass)
+                disco_per_batch += dcor.distance_correlation(score, data.fitted_tau_mass)
                 batch_counter += 1
 
         
@@ -415,6 +454,18 @@ if __name__ == "__main__":
         help="Regularisation using DisCo of output and tau mass",
         type=float,
         )
+    
+    parser.add_argument(
+    "--arch",
+    type=str,
+    choices=[
+        "arch1", "arch2", "arch3", "arch4",
+        "arch5", "arch6", "arch7", "arch8"
+    ],
+    default="arch1",
+    help="Choose model architecture"
+)
+
 
 
     args = parser.parse_args()
@@ -425,6 +476,7 @@ if __name__ == "__main__":
     name = args.name
     model_type = args.model
     disco_reg = args.disco
+    arch = args.arch
 
     print("==> Running TauMuNet ")
 
@@ -440,6 +492,7 @@ if __name__ == "__main__":
     
     #log hyperparameters in the experiment
     hyper_params = {
+        "architecture": arch,
         "learning_rate": learning_rate,
         "regularisation": disco_reg,
         "epochs": epochs,
@@ -451,5 +504,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch])
 

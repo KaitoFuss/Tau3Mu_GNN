@@ -230,16 +230,13 @@ class ConeGraphProducer(InMemoryDataset):
 
                 fitted_tau_idx = nt
 
-                # Order everything by pt
-                # Is this still necessary? Just seems now as useless calculation as we do not cut off at a certain pf_cand number
-                permutation = ak.argsort(pfcands_pt_masked, ascending=False)
-                pfcands_pt_masked = np.array(pfcands_pt_masked[permutation], dtype=np.float64)
-                pfcands_eta_masked = np.array(pfcands_eta_masked[permutation], dtype=np.float64)
-                pfcands_phi_masked = np.array(pfcands_phi_masked[permutation], dtype=np.float64)
+                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float64)
+                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float64)
+                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float64)
 
                 if self.use_displacement:  
-                    pfcands_d0_masked = np.array(pfcands_d0_masked[permutation], dtype=np.float64)   
-                    pfcands_dz_masked = np.array(pfcands_dz_masked[permutation], dtype=np.float64)   
+                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float64)   
+                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float64)   
                 else:
                     pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
                     pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
@@ -249,10 +246,10 @@ class ConeGraphProducer(InMemoryDataset):
                     # Need care to account for circularity
                     pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
                 
-                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked[permutation], dtype=np.int64)
+                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int64)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
-                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked[permutation]), a_min=0., a_max=None, dtype=np.float64)
-                pfcands_charge_masked = np.array(pfcands_charge_masked[permutation], dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
+                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float64)
+                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
 
                 pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
 
@@ -415,13 +412,20 @@ class ConeGraphProducer(InMemoryDataset):
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
 
-        with uproot.open(f"{file_name}:Events") as in_file:
-            events = in_file.arrays(branches_to_load, library="ak")
+        # with uproot.open(f"{file_name}:Events") as in_file:
+        #     events = in_file.arrays(branches_to_load, library="ak")
+        all_chunks = []
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
+            # Optional: process events here if you want to avoid keeping them all in memory
+            all_chunks.append(events)
+
+        # If you really want to concatenate them all after processing:
+        events = ak.concatenate(all_chunks)
         
         bkg_mask = None
         total_events = len(events)
         if self.mask:
-            bkg_mask = abs(events["TauTo3Mu_fitted_mass"] - 1.78) > 0.08
+            bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
             # Filters events that do not have single bkg-looking event
             events = events[ak.any(bkg_mask, axis=1)] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
             bkg_mask = bkg_mask[ak.any(bkg_mask, axis=1)]

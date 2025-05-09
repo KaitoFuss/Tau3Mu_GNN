@@ -4,7 +4,7 @@ import argparse
 
 
 # default values
-max_events_to_process = None
+max_events_to_process = 100000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -241,16 +241,16 @@ if __name__ == "__main__":
     root_bkgs_skimmed = [
         [base_direc_bkg, "skimmed"]
     ]
-    for base_direc, bkg_identifier in root_bkgs_skimmed:
-        output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
-        root_bkg = base_direc
-        create_graph(
-        root_bkg, 
-        output_ident_bkg, 
-        label=0., 
-        mask=True, 
-        edge_connection_mode=model_type,
-        k_knn=k, 
-        delta_r_threshold=delta_r,
-        slimmed = True,
-    )
+    # for base_direc, bkg_identifier in root_bkgs_skimmed:
+    #     output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+    #     root_bkg = base_direc
+    #     create_graph(
+    #     root_bkg, 
+    #     output_ident_bkg, 
+    #     label=0., 
+    #     mask=True, 
+    #     edge_connection_mode=model_type,
+    #     k_knn=k, 
+    #     delta_r_threshold=delta_r,
+    #     slimmed = True,
+    # )
