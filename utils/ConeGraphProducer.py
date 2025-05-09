@@ -362,7 +362,6 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.w = 1.
                 elif self.weights == "npvs_rescale":
                     graph.w = npvs_weights[event["PV_npvs"]]
-                    print(f"adding a weight of {npvs_weights[event["PV_npvs"]]}")
                 
                 # Add the event number if requested
                 if self.save_event_number:
@@ -403,7 +402,7 @@ class ConeGraphProducer(InMemoryDataset):
         if self.weights == "npvs_rescale":
             xsec = 1.
             gen_events_before_selection = None
-            npvs_weights = np.load("npvs_weights.npz")["weight_per_bin"]
+            npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
 
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""

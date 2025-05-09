@@ -9,7 +9,6 @@ use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
 save_fitted_tau_mass = True
-weights = None
 save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
@@ -25,6 +24,7 @@ def create_graph(
     delta_r_threshold: float = None,
     slimmed: bool = False,
     shuffle: bool = False,
+    weights = None,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -134,6 +134,7 @@ if __name__ == "__main__":
             k_knn=k, 
             delta_r_threshold=delta_r,
             slimmed = True,
+            weights="npvs_rescale"
         )
         
 
