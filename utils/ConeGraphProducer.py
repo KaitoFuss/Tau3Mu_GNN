@@ -93,7 +93,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.label = label
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
-        self.slimmed = slimmed,
+        self.slimmed = slimmed
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
