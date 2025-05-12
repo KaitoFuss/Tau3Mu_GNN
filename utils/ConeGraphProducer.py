@@ -161,11 +161,19 @@ class ConeGraphProducer(InMemoryDataset):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
-        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
-        for i_ev in tqdm(indices, disable=not self.verbose):
-            n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
+        # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
+        # for i_ev in tqdm(indices, disable=not self.verbose):
+
+        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop - i_start, replace=False)
+        events = events[indices] 
+        bkg_mask = bkg_mask[indices]
+
+        for i_ev in tqdm(range(len(events)), disable=not self.verbose):
+            n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
+            
             event = events[i_ev]
+
             if self.mask:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
@@ -459,7 +467,7 @@ class ConeGraphProducer(InMemoryDataset):
         # with uproot.open(f"{file_name}:Events") as in_file:
         #     events = in_file.arrays(branches_to_load, library="ak")
         all_chunks = []
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="1 GB"):
             all_chunks.append(events)
 
         events = ak.concatenate(all_chunks)
