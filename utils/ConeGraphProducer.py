@@ -383,6 +383,10 @@ class ConeGraphProducer(InMemoryDataset):
                     abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
                     rel_iso = abs_iso / fitted_tau_pt
                     graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
+                    
+                    abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
+                    rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
+                    graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
                         
                 graphs.append(graph)
 
@@ -444,6 +448,9 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}TauTo3Mu_iso_ptChargedFromPV",
             f"{prefix}TauTo3Mu_iso_ptPhotons",
             f"{prefix}TauTo3Mu_iso_ptChargedFromPU",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
+            f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
         if self.use_displacement:
