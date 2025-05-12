@@ -13,6 +13,7 @@ save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
 cone_size = 0.5
+save_benchmark_score = True
 
 def create_graph(
     root: str,
@@ -47,6 +48,7 @@ def create_graph(
         save_edge_attributes=save_edge_attributes,
         save_event_number=save_event_number,
         save_fitted_tau_mass=save_fitted_tau_mass,
+        save_benchmark_score=save_benchmark_score,
         weights=weights,
         save_fitted_tau_idx=save_fitted_tau_idx,
         mask=mask,

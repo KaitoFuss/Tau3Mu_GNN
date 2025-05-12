@@ -37,6 +37,7 @@ class ConeGraphProducer(InMemoryDataset):
         save_edge_attributes (bool): Whether to save the edge attributes (pairwise invariant masses, Cambridge-Aachen and kt distances)
         save_event_number (bool): Whether to save the event number in the graph
         save_fitted_tau_mass (bool): Whether to save fitted tau mass in the graph
+        save_benchmark_score (bool): Whether to save score of current discrimination approach
         extra_label (str): Extra label to add to the processed file name)
         weights (str): What event weights to use (None, 'xsec', 'npvs_rescale') (TODO: implement pt flattening)
         save_fitted_tau_idx (bool): Whether to save the fitted tau index
@@ -66,6 +67,7 @@ class ConeGraphProducer(InMemoryDataset):
         save_edge_attributes=False,
         save_event_number=False,
         save_fitted_tau_mass=True,
+        save_benchmark_score=False,
         weights=None,
         save_fitted_tau_idx=False,
         mask=False,
@@ -90,6 +92,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
         self.save_fitted_tau_mass = save_fitted_tau_mass
+        self.save_benchmark_score = save_benchmark_score
         self.weights = weights
         self.save_fitted_tau_idx = save_fitted_tau_idx
         self.mask = mask
@@ -374,6 +377,12 @@ class ConeGraphProducer(InMemoryDataset):
                 # Add fitted_tau_mass if requested
                 if self.save_fitted_tau_mass:
                     graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
+
+                # Add previous isolation approach score if requested
+                if self.save_benchmark_score:
+                    abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
+                    rel_iso = abs_iso / fitted_tau_pt
+                    graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
                         
                 graphs.append(graph)
 
@@ -432,6 +441,9 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}TauTo3Mu_fitted_phi",
             f"{prefix}TauTo3Mu_fitted_pt",
             "PV_npvs",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPV",
+            f"{prefix}TauTo3Mu_iso_ptPhotons",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPU",
         ]
 
         if self.use_displacement:
