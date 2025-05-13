@@ -167,7 +167,9 @@ class ConeGraphProducer(InMemoryDataset):
 
         indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop - i_start, replace=False)
         events = events[indices] 
-        bkg_mask = bkg_mask[indices]
+        
+        if self.mask:
+            bkg_mask = bkg_mask[indices]
 
         for i_ev in tqdm(range(len(events)), disable=not self.verbose):
             n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
@@ -201,19 +203,19 @@ class ConeGraphProducer(InMemoryDataset):
                 mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
                 mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
                 mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
-                mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
+                # mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
     
                 # Read data for mu2 from event
                 mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
                 mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
                 mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
-                mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
+                # mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
                 
                 # Read data for mu3 from event
                 mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
                 mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
                 mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
-                mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
+                # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
 
                 # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
                 cone_mask = self.build_cone(
@@ -392,9 +394,9 @@ class ConeGraphProducer(InMemoryDataset):
                     rel_iso = abs_iso / fitted_tau_pt
                     graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
                     
-                    abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
-                    rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
-                    graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
+                    # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
+                    # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
+                    # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
                         
                 graphs.append(graph)
 
@@ -439,15 +441,15 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
             f"{prefix}TauTo3Mu_mu1_phi",
-            f"{prefix}TauTo3Mu_mu1_pt",
+            # f"{prefix}TauTo3Mu_mu1_pt",
             f"{prefix}TauTo3Mu_mu2_idx",
             f"{prefix}TauTo3Mu_mu2_eta",
             f"{prefix}TauTo3Mu_mu2_phi",
-            f"{prefix}TauTo3Mu_mu2_pt",
+            # f"{prefix}TauTo3Mu_mu2_pt",
             f"{prefix}TauTo3Mu_mu3_idx",
             f"{prefix}TauTo3Mu_mu3_eta",
             f"{prefix}TauTo3Mu_mu3_phi",
-            f"{prefix}TauTo3Mu_mu3_pt",
+            # f"{prefix}TauTo3Mu_mu3_pt",
             f"{prefix}TauTo3Mu_fitted_mass",
             f"{prefix}TauTo3Mu_fitted_eta",
             f"{prefix}TauTo3Mu_fitted_phi",
@@ -456,9 +458,9 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}TauTo3Mu_iso_ptChargedFromPV",
             f"{prefix}TauTo3Mu_iso_ptPhotons",
             f"{prefix}TauTo3Mu_iso_ptChargedFromPU",
-            f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
-            f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
-            f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
         if self.use_displacement:
@@ -467,7 +469,7 @@ class ConeGraphProducer(InMemoryDataset):
         # with uproot.open(f"{file_name}:Events") as in_file:
         #     events = in_file.arrays(branches_to_load, library="ak")
         all_chunks = []
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="1 GB"):
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
             all_chunks.append(events)
 
         events = ak.concatenate(all_chunks)
@@ -508,7 +510,11 @@ class ConeGraphProducer(InMemoryDataset):
             graphs += self.get_graphs(file)
         
         data, slices = self.collate(graphs)
-        torch.save((data, slices), self.processed_paths[-1])
+        if "t3wn" in os.uname()[1] and self.processed_paths[-1].startswith("/pnfs"):
+            torch.save((data, slices), "/tmp/tmp.pt")
+            os.system(f"xrdcp /tmp/tmp.pt root://t3se01.psi.ch:1094//{self.processed_paths[-1]}")
+        else:
+            torch.save((data, slices), self.processed_paths[-1])    
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
         adjacency = np.ones_like(delta_R) - np.identity(delta_R.shape[0])

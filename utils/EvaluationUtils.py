@@ -62,7 +62,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     test_scores_bkg = [] 
     tau_mass_bkg = []
     benchmark_bkg = []
-    benchmark_bkg_pt05 = []
+    # benchmark_bkg_pt05 = []
     
 
     for dataset in datasets_bkg:
@@ -85,7 +85,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             target_labels_bkg.append(np.array(target.cpu()))
             test_scores_bkg.append(score.detach().numpy())
             benchmark_bkg.append(np.array(graphs.benchmark_score))
-            benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
+            # benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
             
         
     weights_bkg =  np.concatenate(weights_bkg)
@@ -93,7 +93,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     test_scores_bkg = np.concatenate(test_scores_bkg)
     target_labels_bkg = np.concatenate(target_labels_bkg)
     benchmark_bkg = np.concatenate(benchmark_bkg)
-    benchmark_bkg_pt05 = np.concatenate(benchmark_bkg_pt05)
+    # benchmark_bkg_pt05 = np.concatenate(benchmark_bkg_pt05)
 
 
     # Run signal through network and save it togheter with the bkg
@@ -103,7 +103,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
         test_scores_sig = []
         tau_mass_sig = []
         benchmark_signal = []
-        benchmark_signal_pt05 = []
+        # benchmark_signal_pt05 = []
 
         dataloader_sig = GraphDataLoader(
             [dataset],
@@ -124,21 +124,21 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             target_labels_sig.append(np.array(target.cpu()))
             test_scores_sig.append(score.detach().numpy())
             benchmark_signal.append(np.array(graphs.benchmark_score))
-            benchmark_signal_pt05.append(np.array(graphs.benchmark_score_pt05))
+            # benchmark_signal_pt05.append(np.array(graphs.benchmark_score_pt05))
 
         weights_sig =  np.concatenate(weights_sig)
         tau_mass_sig = np.concatenate(tau_mass_sig)
         test_scores_sig = np.concatenate(test_scores_sig)
         target_labels_sig = np.concatenate(target_labels_sig)
         benchmark_signal = np.concatenate(benchmark_signal)
-        benchmark_signal_pt05 = np.concatenate(benchmark_signal_pt05)
+        # benchmark_signal_pt05 = np.concatenate(benchmark_signal_pt05)
 
         weights = np.append(weights_sig, weights_bkg)
         tau_mass = np.append(tau_mass_sig, tau_mass_bkg)
         test_scores = np.append(test_scores_sig, test_scores_bkg)
         target_labels = np.append(target_labels_sig, target_labels_bkg)
         benchmark = np.append(benchmark_signal, benchmark_bkg)
-        benchmark_pt05 = np.append(benchmark_signal_pt05, benchmark_bkg_pt05)
+        # benchmark_pt05 = np.append(benchmark_signal_pt05, benchmark_bkg_pt05)
 
         disco = dcor.distance_correlation(np.array(test_scores), np.array(tau_mass))
 
@@ -151,7 +151,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             'tau_mass': tau_mass,
             'disco': disco,
             'benchmark': benchmark,
-            'benchmark_pt05': benchmark_pt05,
+            # 'benchmark_pt05': benchmark_pt05,
         }
     
     
@@ -178,7 +178,7 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         tau_mass = evaluation_dict[key]["tau_mass"]
         disco = evaluation_dict[key]["disco"]
         benchmark = evaluation_dict[key]["benchmark"]
-        benchmark_pt05 = evaluation_dict[key]["benchmark_pt05"]
+        # benchmark_pt05 = evaluation_dict[key]["benchmark_pt05"]
 
         if np.all(target == 0) or np.all(target == 1):
             continue
@@ -186,10 +186,10 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
         fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
-        fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
+        # fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
         auc_ = roc_auc_score(target, score)
         auc_benchmark = roc_auc_score(target, benchmark)
-        auc_benchmark_pt05 = roc_auc_score(target, benchmark_pt05)
+        # auc_benchmark_pt05 = roc_auc_score(target, benchmark_pt05)
         
         #calculate sic
         sic_ = np.zeros_like(tpr_, dtype=float)
@@ -210,10 +210,10 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "tpr_benchmark": tpr_benchmark,
             "treshold_benchmark": thres_benchmark,
             "auc_benchmark": auc_benchmark,
-            "fpr_benchmark_pt05": fpr_benchmark_pt05,
-            "tpr_benchmark_pt05": tpr_benchmark_pt05,
-            "treshold_benchmark_pt05": thres_benchmark_pt05,
-            "auc_benchmark_pt05": auc_benchmark_pt05,
+            # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+            # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+            # "treshold_benchmark_pt05": thres_benchmark_pt05,
+            # "auc_benchmark_pt05": auc_benchmark_pt05,
             }
         
         roc[key] = {   
@@ -225,10 +225,10 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "tpr_benchmark": tpr_benchmark,
             "treshold_benchmark": thres_benchmark,
             "auc_benchmark": auc_benchmark,
-            "fpr_benchmark_pt05": fpr_benchmark_pt05,
-            "tpr_benchmark_pt05": tpr_benchmark_pt05,
-            "treshold_benchmark_pt05": thres_benchmark_pt05,
-            "auc_benchmark_pt05": auc_benchmark_pt05,
+            # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+            # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+            # "treshold_benchmark_pt05": thres_benchmark_pt05,
+            # "auc_benchmark_pt05": auc_benchmark_pt05,
             }
         
         auc[key] = auc_
@@ -316,8 +316,8 @@ def plot_roc(roc, auc, name, suffix = "_eval"):
         # m_z = parts[1]
         # plt.plot(roc[key]["fpr"], roc[key]["tpr"], color=colors[m_z], linewidth = 0.9, linestyle=line_styles[rinv_value], label=label)
         plt.plot(roc[key]["fpr"], roc[key]["tpr"], linewidth = 0.9, label=f"AUC: {auc[key]:.3f}, " + key.replace("W_decay_signal_skimmed_",""))
-        plt.plot(roc[key]["fpr_benchmark"], roc[key]["tpr_benchmark"], linewidth = 0.9, label=f"AUC: {roc[key]["auc_benchmark"]:.3f}, Benchmark")
-        plt.plot(roc[key]["fpr_benchmark_pt05"], roc[key]["tpr_benchmark_pt05"], linewidth = 0.9, label=f"AUC: {roc[key]["auc_benchmark_pt05"]:.3f}, Benchmark pT05")
+        plt.plot(roc[key]["fpr_benchmark"], roc[key]["tpr_benchmark"], linewidth = 0.9, label=f"AUC: {roc[key]['auc_benchmark']:.3f}, Benchmark")
+        # plt.plot(roc[key]["fpr_benchmark_pt05"], roc[key]["tpr_benchmark_pt05"], linewidth = 0.9, label=f"AUC: {roc[key]["auc_benchmark_pt05"]:.3f}, Benchmark pT05")
 
     # Create dummy plots for separate legends
     # Dummy plots for MZ values
