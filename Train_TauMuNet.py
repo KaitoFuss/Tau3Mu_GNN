@@ -11,7 +11,6 @@ import argparse
 import os
 import pickle
 import numpy as np
-import dcor
 
 import utils.EvaluationUtils as ueval
 import utils.TrainingUtils as utrain
@@ -23,37 +22,25 @@ if "t3ui" in os.uname()[1]:
 	torch.set_num_threads(8)
 
 arch_configs = {
-    "arch1": {
-        "conv_params": [256, 128, 64, 32],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch2": {
-        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch3": {
-        "conv_params": [512, 256, 128, 64, 32],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch4": {
-        "conv_params": [512, 256, 128, 64, 32, 16, 8],
-        "fc_params": [(32, 0.8)],
-    },
     "arch5": {
         "conv_params": [256, 128, 64, 32],
         "fc_params": [(64, 0.8)],
+        "use_fusion" : True,
     },
     "arch6": {
         "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
         "fc_params": [(64, 0.8)],
+        "use_fusion" : True,
     },
     "arch7": {
         "conv_params": [512, 256, 128, 64, 32],
         "fc_params": [(64, 0.8)],
+        "use_fusion" : True,
     },
     "arch8": {
         "conv_params": [512, 256, 128, 64, 32, 16, 8],
         "fc_params": [(64, 0.8)],
+        "use_fusion" : True,
     },
 }
 
@@ -249,7 +236,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
         fc_params=params["fc_params"],
         input_dims=num_node_features,
         num_edge_features=num_edge_features,
-        use_fusion=True,
+        use_fusion=params["use_fusion"],
     )
 
     # Define the optimizer
@@ -284,8 +271,8 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
-    ueval.plot_auc_simple(auc, name)
-    ueval.plot_roc(roc, name)
+    # ueval.plot_auc_simple(auc, name)
+    ueval.plot_roc(roc, auc, name)
     # ueval.plot_scores(evaluation_dict,name)
     # ueval.plot_sic(roc, name)
     ueval.plot_dnn(evaluation_dict, name) # plots GNN scores of bkg and signal
@@ -343,7 +330,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             score = out[:,0].cpu()
             score = score.detach().numpy()
             bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
-            disco_loss = dcor.distance_correlation(score, data.fitted_tau_mass)  # Penalising just learning the tau mass
+            disco_loss = utrain.distance_corr(out[:,0], data.fitted_tau_mass)  # Penalising just learning the tau mass
             loss_ = bce_loss + disco_reg * disco_loss
             
             loss_per_batch += loss_.item()
@@ -374,7 +361,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
                 loss_ = loss_criterion(out[:,0], target)
                 loss_per_batch += loss_.item()
-                disco_per_batch += dcor.distance_correlation(score, data.fitted_tau_mass)
+                disco_per_batch += utrain.distance_corr(out[:,0], data.fitted_tau_mass)
                 batch_counter += 1
 
         
@@ -402,7 +389,26 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
             }, os.path.join(output_path, name + ".pt"))
+        
+        # Safe val_disco and val_loss for disco_param
+        val_disco_loss = {
+            "last_validation_disco": validation_discos[-1],
+            "last_val_loss": validation_losses[-1],
+            "lambda": disco_reg,
+        }
+    else:
+        # Save val_disco and val_loss for disco_param
+        best_idx = np.where(np.array(validation_losses) == early_stop.best_loss)[0][-1]
+        val_disco_loss = {
+            "last_validation_disco": validation_discos[best_idx],
+            "last_val_loss": early_stop.best_loss,
+            "lambda": disco_reg,
+        }
+
     print("Model saved to ", output_path + "/" + name + ".pt")
+
+    with open(os.path.join(output_path, name + "_disco_loss.pkl"), "wb") as f:
+        pickle.dump(val_disco_loss, f)
 
        
 
