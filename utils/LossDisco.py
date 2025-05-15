@@ -1,25 +1,8 @@
 import os
-import pickle
 import matplotlib.pyplot as plt
 import numpy as np
+from ModelEval import CPU_Unpickler, load_pkl
 
-def load_pickled_data_from_subdirs(root_dir):
-    """Load pickled data from the root directory and one level deeper"""
-    data = []
-    
-    # Iterate over directories and files in root_dir, but don't go deeper than one level
-    for dirpath, dirnames, filenames in os.walk(root_dir):
-        # Only process directories in the first level under root_dir
-        if dirpath == root_dir or os.path.dirname(dirpath) == root_dir:
-            for filename in filenames:
-                if filename.endswith("_disco_loss.pkl"):  # Assuming the pickled files end with .pkl
-                    file_path = os.path.join(dirpath, filename)
-                    with open(file_path, "rb") as f:
-                        try:
-                            data.append(pickle.load(f))
-                        except Exception as e:
-                            print(f"Error loading {file_path}: {e}")
-    return data
 
 def extract_data_from_pickled_dict(pickled_data):
     """Extract relevant fields (loss, disco, disco_param) from pickled data"""
@@ -49,14 +32,15 @@ def plot_data(losses, discos, disco_params, output_path):
     plt.close()
     
 
-# Main
-root_directory = "output/" 
+if __name__ == "__main__":
+        
+    root_directory = "/work/kfuss/SVJ_GNN/output/" 
 
-# Step 1: Load pickled data
-pickled_data = load_pickled_data_from_subdirs(root_directory)
+    # Step 1: Load pickled data
+    pickled_data = load_pkl(root_directory, "disco_loss.pkl")
 
-# Step 2: Extract relevant data
-losses, discos, disco_params = extract_data_from_pickled_dict(pickled_data)
+    # Step 2: Extract relevant data
+    losses, discos, disco_params = extract_data_from_pickled_dict(pickled_data)
 
-# Step 3: Plot the data
-plot_data(losses, discos, disco_params, root_directory)
+    # Step 3: Plot the data
+    plot_data(losses, discos, disco_params, root_directory)

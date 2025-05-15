@@ -1,8 +1,9 @@
 from torch_geometric.utils import to_networkx
 import matplotlib.pyplot as plt
 import networkx as nx
+from ConeGraphProducer import ConeGraphProducer
 
-def plot_graph(graph_data, title="Graph", feature_index=3):
+def plot_graph(graph_data, title="", feature_index=3):
     """
     Plots a PyTorch Geometric graph using NetworkX with positions and color-coded nodes.
 
@@ -21,7 +22,7 @@ def plot_graph(graph_data, title="Graph", feature_index=3):
     # Node color from selected feature
     node_color = graph_data.x[:, feature_index].numpy()
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots()
 
     # Draw graph
     nodes = nx.draw_networkx_nodes(G, pos=pos, ax=ax, node_color=node_color,
@@ -33,10 +34,12 @@ def plot_graph(graph_data, title="Graph", feature_index=3):
 
     # Axes and colorbar
     ax.set_xlabel(r'$\eta$')
-    ax.set_ylabel(r'$\varphi$')
+    ax.set_ylabel(r'$\phi$')
     ax.set_title(title)
-    ax.grid(True)
     # plt.colorbar(nodes, ax=ax, label=f"Node feature at index {feature_index}")
-    plt.show()
+    plt.savefig("/work/kfuss/SVJ_GNN/npv_histograms/graph.png", dpi=300) 
 
     return
+
+graph = ConeGraphProducer("/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W", "W_decay_signal_skimmed_dzd0_cone_size_0.5_knn_3")
+plot_graph(graph[0])
