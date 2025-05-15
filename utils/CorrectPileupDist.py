@@ -43,7 +43,7 @@ def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: st
 
     # Create figure and two y-axes
     fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
+    # ax2 = ax1.twinx()
 
     # Plot histograms on primary y-axis
     ax1.hist(npvs_signal, bins=bins, alpha=0.7, color='blue', label="signal", density=True)
@@ -56,16 +56,16 @@ def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: st
     # Create per-event weights
     event_weights = rescaled_weights[signal_bin_indices]
     ax1.hist(npvs_signal, bins=bins, weights=event_weights, alpha=0.7, color='green', label="rescaled signal", density=True)
-    ax1.set_ylabel("Counts")
-    ax1.set_xlabel("Number of PV")
+    ax1.set_ylabel("Normalised Counts")
+    ax1.set_xlabel("Number of PVs")
     ax1.set_yscale('log')
     ax1.legend(loc="upper left")
     ax1.grid(True)
 
-    # Plot step on secondary y-axis
-    ax2.step(uniform_bin_centers, rescaled_weights, where='mid', color='lightblue', label="weight")
-    ax2.set_ylabel("Weight (bkg/sig)")
-    ax2.legend(loc="upper right")
+    # # Plot step on secondary y-axis
+    # ax2.step(uniform_bin_centers, rescaled_weights, where='mid', color='lightblue', label="weight")
+    # ax2.set_ylabel("Weight (bkg/sig)")
+    # ax2.legend(loc="upper right")
 
     plt.title("Comparison of Number of PVs")
     output_name = output_path + "npvs"
@@ -73,9 +73,9 @@ def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: st
     plt.close()
 
     # Save weight array and bin edges
-    np.savez(output_path + "npvs_weights.npz",
-             weight_per_bin=rescaled_weights,
-             bins=uniform_bins)
+    # np.savez(output_path + "npvs_weights.npz",
+    #          weight_per_bin=rescaled_weights,
+    #          bins=uniform_bins)
 
     plt.figure()
     plt.hist(rescaled_weights, bins=np.linspace(0, 25, 26), color='blue', alpha=0.7)
@@ -84,7 +84,7 @@ def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: st
     plt.grid(True)
     plt.title("Weights distribution")
     output_name = output_path + "weights"
-    plt.savefig(output_name, dpi=300)
+    # plt.savefig(output_name, dpi=300)
     plt.close()
 
     
