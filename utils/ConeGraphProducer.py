@@ -200,19 +200,19 @@ class ConeGraphProducer(InMemoryDataset):
                 fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
                 
                 # Read data for mu1 from event
-                mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
+                # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
                 mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
                 mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
                 # mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
     
                 # Read data for mu2 from event
-                mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
+                # mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
                 mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
                 mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
                 # mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
                 
                 # Read data for mu3 from event
-                mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
+                # mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
                 mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
                 mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
                 # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
@@ -225,13 +225,13 @@ class ConeGraphProducer(InMemoryDataset):
                     fitted_tau_phi, 
                     mu1_eta, 
                     mu1_phi, 
-                    mu1_idx, 
+                    # mu1_idx, 
                     mu2_eta, 
                     mu2_phi, 
-                    mu2_idx, 
+                    # mu2_idx, 
                     mu3_eta, 
                     mu3_phi, 
-                    mu3_idx
+                    # mu3_idx
                 )
                 pfcands_pt_masked = pfcands_pt[cone_mask]
                 pfcands_eta_masked = pfcands_eta[cone_mask]
@@ -391,7 +391,7 @@ class ConeGraphProducer(InMemoryDataset):
                 # Add previous isolation approach score if requested
                 if self.save_benchmark_score:
                     abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
-                    rel_iso = abs_iso / fitted_tau_pt
+                    rel_iso = -1 * abs_iso / fitted_tau_pt
                     graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
                     
                     # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
@@ -430,7 +430,7 @@ class ConeGraphProducer(InMemoryDataset):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         branches_to_load = [
-            f"n{n_prefix}PFCands",
+            # f"n{n_prefix}PFCands",
             f"{prefix}PFCands_pt",
             f"{prefix}PFCands_eta",
             f"{prefix}PFCands_phi",
@@ -438,15 +438,15 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}PFCands_mass",  
             f"{prefix}PFCands_charge",
             f"n{n_prefix}TauTo3Mu",
-            f"{prefix}TauTo3Mu_mu1_idx",
+            # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
             f"{prefix}TauTo3Mu_mu1_phi",
             # f"{prefix}TauTo3Mu_mu1_pt",
-            f"{prefix}TauTo3Mu_mu2_idx",
+            # f"{prefix}TauTo3Mu_mu2_idx",
             f"{prefix}TauTo3Mu_mu2_eta",
             f"{prefix}TauTo3Mu_mu2_phi",
             # f"{prefix}TauTo3Mu_mu2_pt",
-            f"{prefix}TauTo3Mu_mu3_idx",
+            # f"{prefix}TauTo3Mu_mu3_idx",
             f"{prefix}TauTo3Mu_mu3_eta",
             f"{prefix}TauTo3Mu_mu3_phi",
             # f"{prefix}TauTo3Mu_mu3_pt",
@@ -548,13 +548,13 @@ class ConeGraphProducer(InMemoryDataset):
             fitted_tau_phi: float, 
             mu1_eta: float,
             mu1_phi: float, 
-            mu1_idx: int, 
+            # mu1_idx: int, 
             mu2_eta: float, 
             mu2_phi: float, 
-            mu2_idx: int, 
+            # mu2_idx: int, 
             mu3_eta: float, 
             mu3_phi: float, 
-            mu3_idx: int
+            # mu3_idx: int
         ) -> ak.Array:
 
         delta_R_sq_pfcands_tau = self.calc_delta_R_sq(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
