@@ -188,7 +188,6 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
     # ]
 
     datasets = datasets_W_signal + datasets_bkg
-
     # create on the fly normalizer and save the mean and std 
     means, stds = utrain.Normalize(datasets)
     normalizer = OnTheFlyNormalizer(["x"], means, stds)
@@ -244,6 +243,8 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
 
     # Load model on gpu if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
+    print(f"torch.cuda.is_available(): {torch.cuda.is_available()}")
     model = model.to(device)
     
     # Define the loss
@@ -330,7 +331,8 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             score = out[:,0].cpu()
             score = score.detach().numpy()
             bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
-            disco_loss = utrain.distance_corr(out[:,0], data.fitted_tau_mass)  # Penalising just learning the tau mass
+            normedweight = torch.ones_like(out[:, 0]) 
+            disco_loss = utrain.distance_corr(out[:,0], data.fitted_tau_mass, normedweight)  # Penalising just learning the tau mass
             loss_ = bce_loss + disco_reg * disco_loss
             
             loss_per_batch += loss_.item()
@@ -338,6 +340,9 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             loss_.backward()
             optimizer.step()
             batch_counter += 1
+            
+            del loss_, score, out
+            torch.cuda.empty_cache()
 
         # calculate loss per epoch and log it
         epoch_loss_training = loss_per_batch/batch_counter
@@ -361,8 +366,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
                 loss_ = loss_criterion(out[:,0], target)
                 loss_per_batch += loss_.item()
-                disco_per_batch += utrain.distance_corr(out[:,0], data.fitted_tau_mass)
+                normedweight = torch.ones_like(out[:, 0]) 
+                disco_per_batch += utrain.distance_corr(out[:,0], data.fitted_tau_mass, normedweight)
                 batch_counter += 1
+
+                del loss_, score, out
+                torch.cuda.empty_cache()
 
         
         # calculate loss per epoch and log it
