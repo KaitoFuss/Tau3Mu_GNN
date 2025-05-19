@@ -10,6 +10,8 @@ import logging
 from torch_geometric.utils import negative_sampling
 from utils.LundTreeUtils import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
 import utils.AwkwardArrayUtils as akUtl
+import matplotlib.pyplot as plt
+import ROOT
 
 def __cast_unknown_type_branches(ak_array, field):
 
@@ -386,7 +388,7 @@ class ScoreProducer:
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
 
-        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop - i_start, replace=False)
+        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
         events = events[indices] 
         
         if self.mask:
@@ -623,7 +625,7 @@ class ScoreProducer:
 
         return graphs
 
-    def get_graphs(self, file_name):
+    def get_all_scores(self, file_name):
 
        # Check if xsec weights are requested
         if self.weights is None:
@@ -687,56 +689,56 @@ class ScoreProducer:
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
 
-        # with uproot.open(f"{file_name}:Events") as in_file:
-        #     events = in_file.arrays(branches_to_load, library="ak")
-        all_chunks = []
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
-            all_chunks.append(events)
+        all_scores = []
+        all_tau_masses = []
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="1000 MB"):
+            bkg_mask = None
+            total_events = len(events)
+            if self.mask:
+                bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
+                # Filters events that do not have single bkg-looking event
+                events = events[ak.any(bkg_mask, axis=1)] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
+                bkg_mask = bkg_mask[ak.any(bkg_mask, axis=1)]
+                
+            if gen_events_before_selection is None:
+                gen_events_before_selection = total_events
+            events_to_process = min(self.max_events_to_process, len(events)) if self.max_events_to_process else len(events)
+            graphDataset = self.process_event(
+                0,
+                events_to_process,
+                events,
+                xsec,
+                gen_events_before_selection,
+                total_events,
+                events_to_process,
+                bkg_mask,
+                npvs_weights,
+            )
+            score, tau_mass = self.create_score(graphDataset)
+            all_scores.append(score)
+            all_tau_masses.append(tau_mass)
+            break
 
-        events = ak.concatenate(all_chunks)
+        all_scores = ak.flatten(all_scores)
+        all_tau_masses = ak.flatten(all_tau_masses)
         
-        bkg_mask = None
-        total_events = len(events)
-        if self.mask:
-            bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
-            # Filters events that do not have single bkg-looking event
-            events = events[ak.any(bkg_mask, axis=1)] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
-            bkg_mask = bkg_mask[ak.any(bkg_mask, axis=1)]
-            
-        if gen_events_before_selection is None:
-            gen_events_before_selection = total_events
-        events_to_process = min(self.max_events_to_process, len(events)) if self.max_events_to_process else len(events)
-        graphDataset = self.process_event(
-            0,
-            events_to_process,
-            events,
-            xsec,
-            gen_events_before_selection,
-            total_events,
-            events_to_process,
-            bkg_mask,
-            npvs_weights,
-        )
+        return all_scores, all_tau_masses
 
-        return graphDataset
+    def create_score(self, graphs):
+        # Dictionary to hold scores
+        scores = []
+        tau_mass = []
 
-
-    def process(self):
-        # Read data into huge `Data` list.
-        graphs = []
         model = self.model
         device = self.device
         model = model.to(device)
         model.eval()
-        
-        # Dictionary to hold scores
-        scores = []
-        graphs = self.get_graphs(self.root_file)
 
         with torch.no_grad():
             # Compute scores for each graph
             for graph in tqdm(graphs, desc="Computing scores", disable=not self.verbose):
                 graph.x = graph.x.float()  # Ensure float32
+                tau_mass.append(graph.fitted_tau_mass)
 
                 if self.normalizer is not None:
                     means = torch.tensor(self.normalizer["means"], dtype=torch.float, device=graph.x.device)
@@ -747,38 +749,48 @@ class ScoreProducer:
                 out = model(graph)
                 score = out[:,0].cpu().detach().numpy()
                 scores.append(score)
+        return scores, tau_mass
 
-            
 
-        # Read the original ROOT file
-        with uproot.open(self.root_file) as root_file: # whole file is way too big
-            events_tree = root_file["Events"]
-            original_data = events_tree.arrays(library="ak")
-            if "Metadata" in root_file:
-                metadata = root_file["Metadata"]
-                original_metadata = metadata.arrays(library="ak")
-            if "CutFlow" in root_file:
-                cutflow = root_file["CutFlow"]
-                original_cutflow = cutflow.arrays(library="ak")
-            trees = {"Metadata": original_metadata, "CutFlow": original_cutflow}
-            
-            prefix = "Slimmed_" if self.slimmed else ""
-            scores = ak.unflatten(scores, ak.num(root_file["Events"][f"{prefix}{self.tau_collection_name}_pt"].array()))
+    def process(self):
 
-            
-        # Add new branch to the data
-        original_data[f"{self.tau_collection_name}_GNNScore"] = ak.Array(scores)
+        all_scores, all_tau_masses = self.get_all_scores(self.root_file)
 
-        # Write the updated data to a new ROOT file
-        output_file = (os.path.join(self.output_folder, os.path.basename(self.root_file).replace(".root","_with_scores.root")) if self.output_folder else self.root_file.replace(".root","_with_scores.root"))
+        os.makedirs(self.output_folder, exist_ok=True)
+        # Save raw arrays to compressed npz
+        np.savez_compressed(
+            os.path.join(self.output_folder, "raw_scores_and_tau_mass.npz"),
+            scores=all_scores,
+            tau_mass=all_tau_masses,
+        )
 
-        with uproot.recreate(output_file) as new_file:
-            print(f"Writing to {output_file}")
-            write_tree_maker_root_file(
-                output_file_name=output_file,
-                events=original_data,
-                trees=trees,
-            )
+        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass.npz')}")
+        
+        rdf = ROOT.RDataFrame("Events", self.root_file)
+        n_prefix = "Slimmed" if self.slimmed else ""
+        size_branch = f"n{n_prefix}TauTo3Mu"
+
+        n_per_event = np.array(rdf.AsNumpy([size_branch])[size_branch])
+        jagged_scores = ak.unflatten(all_scores, n_per_event)
+
+        stdvec = ROOT.std.vector(ROOT.std.vector("float"))(
+            [ROOT.std.vector("float")(row) for row in jagged_scores]
+        )
+
+        rdf = rdf.Define("GNN_Score", lambda: stdvec)
+        branches = ROOT.std.vector("string")()
+        branches.push_back(size_branch)     
+        branches.push_back("GNN_Score")     
+
+        output_file = os.path.join(
+            self.output_folder,
+            os.path.basename(self.root_file).replace(".root", "_with_scores.root")
+        )
+
+        rdf.Snapshot("Events", output_file, branches)
+
+        print(f"GNN scores added to: {output_file}")
+
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
         adjacency = np.ones_like(delta_R) - np.identity(delta_R.shape[0])
