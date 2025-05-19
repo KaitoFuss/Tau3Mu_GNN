@@ -304,58 +304,71 @@ class ScoreProducer:
     def __init__(
         self,
         root_file,
-        delta_r_threshold=0.2,
-        n_store_cands=None,
+        cone_size=0.5,
+        n_cones=1,
+        edge_connection_mode="fully",
+        delta_r_threshold=None,
+        k_knn=None,
         max_events_to_process=None,
         use_relative_angles=True,
-        save_n_constituents=False,
+        transform=None,
+        pre_transform=None,
+        pre_filter=None,
+        save_edge_attributes=False,
         save_event_number=False,
-        n_lund_vars=3,
-        save_4vectors_in_lund_tree=False,
-        save_energy_fractions=True,
-        kt_cut=None,
+        save_fitted_tau_mass=True,
+        save_benchmark_score=False,
         weights=None,
-        save_jet_idx=False,
-        mask=None,
+        save_fitted_tau_idx=False,
+        mask=False,
         label:float=0.,
         verbose=False,
-        input_format="PFNanoAOD",
-        jet_collection="FatJet",
+        tau_collection_name="TauTo3Mu_fitted",
+        slimmed=False,
+        shuffle_bool=False,
         use_displacement=False,
         model=None,
+        device=None,
         normalizer=None,
         output_folder=None,
-        alpha=1,
     ):
 
         self.root_file = root_file
-        self.n_store_cands = n_store_cands
+        self.cone_size = cone_size
+        self.n_cones = n_cones
+        self.edge_connection_mode = edge_connection_mode
         self.delta_r_threshold = delta_r_threshold
+        self.k_knn = k_knn
         self.max_events_to_process = max_events_to_process
         self.use_relative_angles = use_relative_angles
-        self.save_n_constituents = save_n_constituents
+        self.pre_transform = pre_transform
+        self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
-        self.n_lund_vars = n_lund_vars
-        self.save_4vectors_in_lund_tree = save_4vectors_in_lund_tree
-        self.save_energy_fractions = save_energy_fractions
-        self.kt_cut = kt_cut
+        self.save_fitted_tau_mass = save_fitted_tau_mass
+        self.save_benchmark_score = save_benchmark_score
         self.weights = weights
-        self.save_jet_idx = save_jet_idx
+        self.save_fitted_tau_idx = save_fitted_tau_idx
         self.mask = mask
         self.label = label
         self.verbose = verbose
-        self.input_format = input_format
-        self.jet_collection = jet_collection
-        self.use_displacement = use_displacement
+        self.tau_collection_name = tau_collection_name
+        self.slimmed = slimmed
+        self.shuffle_bool = shuffle_bool
+        self.use_displacement = use_displacement 
         self.model = model
+        self.device = device
         self.normalizer = normalizer
         self.output_folder = output_folder
-        self.alpha = alpha
+        self.edge_connection_methods = {
+            "fully": self.connect_fully,
+            "knn": self.connect_knn,
+            "r_threshold": self.connect_r_threshold,
+        } 
 
         if self.output_folder:
             os.makedirs(self.output_folder, exist_ok=True)
 
-        assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
+        assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
         # Assert that no incompatible flags are used
 
@@ -365,162 +378,246 @@ class ScoreProducer:
         self.model.eval()
         self.process()
 
-
-    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, file_name):
-
+    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights):
+        prefix = "Slimmed_" if self.slimmed else ""
+        n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
 
-        for i_ev in tqdm(range(i_start, i_stop), disable=not self.verbose):
-            if self.input_format == "PFNanoAOD":
-                n_jets = events.nFatJet[i_ev]
-            elif self.input_format == "TreeMaker2":
-                if events[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"][i_ev] is None:
-                    continue
-                n_jets = min(self.n_store_jets, len(events[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"][i_ev]))
-            for nj in range(n_jets):
-                event = events[i_ev]
-                if self.input_format == "PFNanoAOD":
-                    jet_pt = event[f"{self.jet_collection}_pt"][nj]
-                    jet_eta = event[f"{self.jet_collection}_eta"][nj]
-                    jet_phi = event[f"{self.jet_collection}_phi"][nj]
-                    pf_cands_matching_filter = event[f"{self.jet_collection}PFCands_pFCandsIdx"][event[f"{self.jet_collection}PFCands_jetIdx"] == nj].to_numpy().astype(np.int32)
-                    pt = event["PFCands_pt"][pf_cands_matching_filter]
-                    eta = event["PFCands_eta"][pf_cands_matching_filter]
-                    phi = event["PFCands_phi"][pf_cands_matching_filter]
-                    pdgId = event["PFCands_pdgId"][pf_cands_matching_filter]
-                    mass = event["PFCands_mass"][pf_cands_matching_filter]
-                    if self.use_displacement:
-                        d0 = event["PFCands_d0"][pf_cands_matching_filter]   
-                        dz = event["PFCands_dz"][pf_cands_matching_filter]   
-                    else:
-                        d0, dz = None, None
-                    jet_idx = nj
-                elif self.input_format == "TreeMaker2":
-                    jet_pt = event[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"][nj]
-                    jet_eta = event[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fEta"][nj]
-                    jet_phi = event[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPhi"][nj]
-                    # In the TreeMaker2 format, we have to count how many constituents are matched to the first nj-1 jets
-                    n_constituents_prev = sum([
-                        event[f"{self.jet_collection}_constituentsIndexCounts"]
-                        for i in range(nj-1)
-                              ]) if nj > 0 else 0
-                    cands_idx = event[f"{self.jet_collection}_constituentsIndex"][
-                        n_constituents_prev:(n_constituents_prev + event[f"{self.jet_collection}_constituentsIndexCounts"][nj])
-                        ]
-                    pt = event["JetsConstituents/JetsConstituents.fCoordinates.fPt"][cands_idx]
-                    eta = event["JetsConstituents/JetsConstituents.fCoordinates.fEta"][cands_idx]
-                    phi = event["JetsConstituents/JetsConstituents.fCoordinates.fPhi"][cands_idx]
-                    energy = event["JetsConstituents/JetsConstituents.fCoordinates.fE"][cands_idx]
-                    mass = vector.array({"pt": pt, "eta": eta, "phi": phi, "E": energy}).mass
-                    pdgId = event["JetsConstituents_PdgId"][cands_idx]
+        # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
+        # for i_ev in tqdm(indices, disable=not self.verbose):
 
-                # Order everything by pt and keep the desired number of candidates
-                permutation = ak.argsort(pt, ascending=False)
-                n_constituents = min(len(permutation), self.n_store_cands) if self.n_store_cands else len(permutation)
-                pt = np.array(pt[permutation][:n_constituents], dtype=np.float64)
-                eta = np.array(eta[permutation][:n_constituents], dtype=np.float64)
-                phi = np.array(phi[permutation][:n_constituents], dtype=np.float64)
+        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop - i_start, replace=False)
+        events = events[indices] 
+        
+        if self.mask:
+            bkg_mask = bkg_mask[indices]
+
+        for i_ev in tqdm(range(len(events)), disable=not self.verbose):
+            n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
+            
+            event = events[i_ev]
+
+            if self.mask:
+                n_tau = event[f"n{n_prefix}TauTo3Mu"] 
+                n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
+            else:
+                n_tau = event[f"n{n_prefix}TauTo3Mu"] 
+
+            pfcands_pt = event[f"{prefix}PFCands_pt"]
+            pfcands_eta = event[f"{prefix}PFCands_eta"]
+            pfcands_phi = event[f"{prefix}PFCands_phi"]
+            pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
+            pfcands_mass = event[f"{prefix}PFCands_mass"]
+            pfcands_charge = event[f"{prefix}PFCands_charge"]
+            
+            # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
+            for nt in range(n_tau):
+                tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
+                
+                # Read data for fitted tau from event
+                fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
+                fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
+                fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
+                fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
+                
+                # Read data for mu1 from event
+                # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
+                mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
+                mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
+                # mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
+    
+                # Read data for mu2 from event
+                # mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
+                mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
+                mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
+                # mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
+                
+                # Read data for mu3 from event
+                # mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
+                mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
+                mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
+                # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
+
+                # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
+                cone_mask = self.build_cone(
+                    pfcands_eta, 
+                    pfcands_phi, 
+                    fitted_tau_eta, 
+                    fitted_tau_phi, 
+                    mu1_eta, 
+                    mu1_phi, 
+                    # mu1_idx, 
+                    mu2_eta, 
+                    mu2_phi, 
+                    # mu2_idx, 
+                    mu3_eta, 
+                    mu3_phi, 
+                    # mu3_idx
+                )
+                pfcands_pt_masked = pfcands_pt[cone_mask]
+                pfcands_eta_masked = pfcands_eta[cone_mask]
+                pfcands_phi_masked = pfcands_phi[cone_mask]
+                pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
+                pfcands_mass_masked = pfcands_mass[cone_mask]
+                pfcands_charge_masked = pfcands_charge[cone_mask]
+
+                if self.use_displacement:
+                    pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
+                    pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
+                else:
+                    pfcands_d0_masked, pfcands_dz_masked = None, None 
+
+                fitted_tau_idx = nt
+
+                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
+                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
+                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
 
                 if self.use_displacement:  
-                    d0 = np.array(d0[permutation][:n_constituents], dtype=np.float64)   
-                    dz = np.array(dz[permutation][:n_constituents], dtype=np.float64)   
+                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
+                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
                 else:
-                    d0 = np.zeros(len(pt), dtype=np.float64)   
-                    dz = np.zeros(len(pt), dtype=np.float64)   
-
+                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
+                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
 
                 if self.use_relative_angles:
-                    eta = eta - jet_eta
+                    pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
                     # Need care to account for circularity
-                    phi = (phi - jet_phi + np.pi) % (2*np.pi) - np.pi
-                pdgId = np.array(pdgId[permutation][:n_constituents], dtype=np.int64)
-                # Clip masses to zero since for some reason sometimes they are slightly negative
-                mass = np.clip(np.array(mass[permutation][:n_constituents]), a_min=0., a_max=None, dtype=np.float64)
-
-                # If requested, use random values for features
-
-
+                    pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
                 
-                # Initialize energy fractions
-                energy_fractions = np.array([
-                    1.*(np.abs(pdgId) == 11), # electrons
-                    1.*(np.abs(pdgId) == 13), # muons
-                    1.*(pdgId == 22), # photons
-                    1.*((np.abs(pdgId) != 11) & \
-                        (np.abs(pdgId) != 13) & \
-                        (np.abs(pdgId) != 22)), # hadrons
-                ])
+                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
+                # Clip masses to zero since for some reason sometimes they are slightly negative
+                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
+                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
 
-                # Get lund decomposition
-                ret = get_lund_decomp(
-                    pt,
-                    eta,
-                    phi,
-                    mass,
-                    d0,   
-                    dz,   
-                    n_lund_vars=self.n_lund_vars,
-                    save_4vectors=self.save_4vectors_in_lund_tree,
-                    fractions=energy_fractions,
-                    save_fractions=self.save_energy_fractions,
-                    use_displacement=self.use_displacement  
-                    )
+                num_nodes = len(pfcands_charge_masked)
+                pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
 
-                feature_matrix, adjacency_matrix = ret
+                # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
+                if self.use_displacement: 
+                    features = torch.tensor(np.array([
+                        pfcands_pt_masked,
+                        pfcands_eta_masked,
+                        pfcands_phi_masked,
+                        pfcands_pdgId_masked,
+                        pfcands_mass_masked,
+                        pfcands_d0_masked,   
+                        pfcands_dz_masked   
+                    ]).T, dtype=torch.float)
+                else:
+                    features = torch.tensor(np.array([
+                        pfcands_pt_masked,
+                        pfcands_eta_masked,
+                        pfcands_phi_masked,
+                        pfcands_pdgId_masked,
+                        pfcands_mass_masked
+                    ]).T, dtype=torch.float)
+                
+                # TODO do this calc outside loop and then just mask inside 
+                # Calculate edges and edge features
+                matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
+                matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
+                matrix_pt = np.repeat(pfcands_pt_masked, len(pfcands_pt_masked)).reshape((len(pfcands_pt_masked), -1))
+                matrix_mass = np.repeat(pfcands_mass_masked, len(pfcands_mass_masked)).reshape((len(pfcands_mass_masked), -1))
+                matrix_charge = np.repeat(pfcands_charge_masked, len(pfcands_charge_masked)).reshape((len(pfcands_charge_masked), -1))
+                matrix_delta_eta = matrix_eta - matrix_eta.T
 
-                # Pass features to torch tensor
-                features = torch.tensor(np.array(feature_matrix).T, dtype=torch.float)
+                # Calculate delta phi accounting for circularity
+                matrix_delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
+                matrix_delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
+                matrix_delta_phi = np.minimum(matrix_delta_phi_internal, matrix_delta_phi_external)
+                matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
+
+                # build graph connections according to specified mode
+                edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
+                
+                if self.save_edge_attributes:
+                    # Build pair-wise invariant masses
+                    lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
+                    pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
                     
-                # Initialize adjacency matrix
-                adjacency = torch.tensor(np.array(adjacency_matrix))
+                    # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
+                    R = 0.8
+                    d_ca = ((matrix_delta_R**2) / (R**2))
+                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
+                    if num_nodes < 200:
+                        # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
+                        np_edge_index = np.array(edge_index.t())
+                        pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
+                        pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
+                        d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
+                        d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
+                    else:
+                        pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
+                        pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
+                        d_ca = np.array([d_ca[i,j] for i,j in edge_index])
+                        d_kt = np.array([d_kt[i,j] for i,j in edge_index])
+                    
+                    # Only keep connected edges and take log to squeeze the distribution
+                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
 
-                if self.kt_cut is not None:
-                    # Convert to tree representation
-                    root_node = tensor_to_tree(features, adjacency)
-                    # Prune the tree
-                    root_node, n_nodes = prune_tree(root_node, 0, self.kt_cut)
-                    # Convert back to tensor representation
-                    features, adjacency = tree_to_tensor(root_node, (n_nodes, features.shape[1]))
-                    # TODO: deal with 1-node or empty graphs after pruning
+                    edge_features = torch.tensor(np.array([
+                        pair_masses,
+                        pair_charges,
+                        d_ca,
+                        d_kt,
+                    ]).T, dtype=torch.float)
 
-                # Build the graph
-                graph = Data(
-                        x=features,                                   
-                        #edge_index=torch.tensor(adjacency, dtype=torch.int32),
-                        edge_index = adjacency.clone().detach(),
-                        num_nodes=len(features),                            
-                        num_node_features=int(features.shape[1]),
-                        y=torch.Tensor([self.label])
-                    )
-                        
+                    # Build the graph
+                    graph = Data(
+                            x=features,
+                            edge_index=edge_index.t().contiguous(),
+                            edge_attr=edge_features,
+                            num_nodes=int(features.shape[0]),
+                            num_node_features=int(features.shape[1]),
+                            num_edge_features=int(edge_features.shape[1]),
+                            pos=pos,
+                            y=torch.Tensor([self.label])
+                        )
+
+                else:
+                    # Build the graph
+                    graph = Data(
+                            x=features,
+                            edge_index=edge_index.t().contiguous(),
+                            num_nodes=int(features.shape[0]),
+                            num_node_features=int(features.shape[1]),
+                            pos=pos,
+                            y=torch.Tensor([self.label])
+                        )
+                            
                 # Add the event weight
                 if self.weights == "xsec":
-                    if self.input_format == "PFNanoAOD":
-                        if not self.max_events_to_process:
-                            graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
-                        else:
-                            graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
-                    elif self.input_format == "TreeMaker2":
-                        graph.w = torch.tensor(event["Weight"], dtype=torch.float)
-                        
-                # Add the number of constituents if requested
-                if self.save_n_constituents:
-                    graph.n_constituents = torch.tensor([n_constituents], dtype=torch.int32)
-
+                    if not self.max_events_to_process:
+                        graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
+                    else:
+                        graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
+                elif self.weights is None:
+                    graph.w = 1.
+                elif self.weights == "npvs_rescale":
+                    graph.w = npvs_weights[event["PV_npvs"]]
+                
                 # Add the event number if requested
                 if self.save_event_number:
-                    graph.event_number = torch.tensor([i_ev], dtype=torch.int32)
+                    graph.event_number = torch.tensor([i_ev], dtype=torch.long)
 
-                # Add jet index if requested
-                if self.save_jet_idx:
-                    graph["jet_idx"] = torch.tensor([jet_idx], dtype=torch.int32)
+                # Add tau index if requested
+                if self.save_fitted_tau_idx:
+                    graph.fitted_tau_index = torch.tensor([fitted_tau_idx], dtype=torch.int)
 
-                # Add any extra jet-level observables if requested
+                # Add fitted_tau_mass if requested
+                if self.save_fitted_tau_mass:
+                    graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
 
-                graph.event_number = torch.tensor([i_ev], dtype=torch.int32)
-                graph.jet_number = torch.tensor([nj], dtype=torch.int32)
-                graph.score = torch.tensor([0.], dtype=torch.float)
-                graph.file_name = file_name
+                # Add previous isolation approach score if requested
+                if self.save_benchmark_score:
+                    abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
+                    rel_iso = -1 * abs_iso / fitted_tau_pt
+                    graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
+                    
+                    # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
+                    # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
+                    # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
                         
                 graphs.append(graph)
 
@@ -528,84 +625,87 @@ class ScoreProducer:
 
     def get_graphs(self, file_name):
 
-        # Check if xsec weights are requested
+       # Check if xsec weights are requested
         if self.weights is None:
             xsec = 1.
             gen_events_before_selection = None
+            npvs_weights = None
 
-        if self.input_format == "PFNanoAOD":
-            if self.weights == "xsec":
-                with uproot.open(file_name) as in_file:
-                    if "Metadata" in in_file:
-                        if "GenCrossSection" in in_file["Metadata"].keys():
-                            xsec = in_file["Metadata"]["GenCrossSection"].array()[0]
-                            gen_events_before_selection = in_file["CutFlow"]["Initial"].array()[0]
-                        else:
-                            raise ValueError("No GenCrossSection found in Metadata")
+        if self.weights == "xsec":
+            with uproot.open(file_name) as in_file:
+                if "Metadata" in in_file:
+                    if "GenCrossSection" in in_file["Metadata"].keys():
+                        xsec = in_file["Metadata"]["GenCrossSection"].array()[0]
+                        gen_events_before_selection = self.get_total_initial_events()
                     else:
-                        raise ValueError("No Metadata tree found in file")
+                        raise ValueError("No GenCrossSection found in Metadata")
+                else:
+                    raise ValueError("No Metadata tree found in file")
+            npvs_weights = None
 
-            branches_to_load = [
-                "PFCands_pt",
-                "PFCands_eta",
-                "PFCands_phi",
-                "PFCands_pdgId",
-                "PFCands_mass",
-                "FatJetPFCands_jetIdx",
-                "FatJetPFCands_pFCandsIdx",
-                "nFatJet",
-                "FatJet_eta",
-                "FatJet_phi",
-                "FatJet_pt",
-            ]
-            
-            if self.use_displacement:
-                branches_to_load += [
-                    "PFCands_d0",
-                    "PFCands_dz"
-                ]
-
-
-
-            with uproot.open(f"{file_name}:Events") as in_file:
-                events = in_file.arrays(branches_to_load, library="ak")
-
-        elif self.input_format == "TreeMaker2":
-            branches_to_load = [
-                "JetsConstituents/JetsConstituents.fCoordinates.fPt",
-                "JetsConstituents/JetsConstituents.fCoordinates.fEta",
-                "JetsConstituents/JetsConstituents.fCoordinates.fPhi",
-                "JetsConstituents/JetsConstituents.fCoordinates.fE",
-                "JetsConstituents_PdgId",
-                f"{self.jet_collection}_constituentsIndex",
-                f"{self.jet_collection}_constituentsIndexCounts",
-                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt",
-                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fEta",
-                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPhi",
-                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fE",
-                "Weight",
-            ]
-
-            xsec = None
+        if self.weights == "npvs_rescale":
+            xsec = 1.
             gen_events_before_selection = None
-       
-            for obs in self.extra_obs_to_save_per_event: ####
-                if obs not in branches_to_load: branches_to_load.append(obs) ####
-            for obs in self.extra_obs_to_save_per_jet: ####
-                if obs not in branches_to_load: branches_to_load.append(obs) ####
+            npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
 
-            with uproot.open(f"{file_name}:TreeMaker2/PreSelection") as in_file:
-                events = in_file.arrays(branches_to_load, library="ak")
+        prefix = "Slimmed_" if self.slimmed else ""
+        n_prefix = "Slimmed" if self.slimmed else ""
+        branches_to_load = [
+            # f"n{n_prefix}PFCands",
+            f"{prefix}PFCands_pt",
+            f"{prefix}PFCands_eta",
+            f"{prefix}PFCands_phi",
+            f"{prefix}PFCands_pdgId",
+            f"{prefix}PFCands_mass",  
+            f"{prefix}PFCands_charge",
+            f"n{n_prefix}TauTo3Mu",
+            # f"{prefix}TauTo3Mu_mu1_idx",
+            f"{prefix}TauTo3Mu_mu1_eta",
+            f"{prefix}TauTo3Mu_mu1_phi",
+            # f"{prefix}TauTo3Mu_mu1_pt",
+            # f"{prefix}TauTo3Mu_mu2_idx",
+            f"{prefix}TauTo3Mu_mu2_eta",
+            f"{prefix}TauTo3Mu_mu2_phi",
+            # f"{prefix}TauTo3Mu_mu2_pt",
+            # f"{prefix}TauTo3Mu_mu3_idx",
+            f"{prefix}TauTo3Mu_mu3_eta",
+            f"{prefix}TauTo3Mu_mu3_phi",
+            # f"{prefix}TauTo3Mu_mu3_pt",
+            f"{prefix}TauTo3Mu_fitted_mass",
+            f"{prefix}TauTo3Mu_fitted_eta",
+            f"{prefix}TauTo3Mu_fitted_phi",
+            f"{prefix}TauTo3Mu_fitted_pt",
+            "PV_npvs",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPV",
+            f"{prefix}TauTo3Mu_iso_ptPhotons",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPU",
+            # f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
+        ]
 
-            if self.mask:
-                events = ak.mask(events, ak.num(events[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"], axis = 1) > 1)
+        if self.use_displacement:
+            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
 
-        total_events = len(events)
-        if self.input_format == "PFNanoAOD":
-            if gen_events_before_selection is None:
-                gen_events_before_selection = total_events
+        # with uproot.open(f"{file_name}:Events") as in_file:
+        #     events = in_file.arrays(branches_to_load, library="ak")
+        all_chunks = []
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
+            all_chunks.append(events)
+
+        events = ak.concatenate(all_chunks)
         
-        events_to_process = min(self.max_events_to_process, total_events) if self.max_events_to_process else total_events
+        bkg_mask = None
+        total_events = len(events)
+        if self.mask:
+            bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
+            # Filters events that do not have single bkg-looking event
+            events = events[ak.any(bkg_mask, axis=1)] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
+            bkg_mask = bkg_mask[ak.any(bkg_mask, axis=1)]
+            
+        if gen_events_before_selection is None:
+            gen_events_before_selection = total_events
+        events_to_process = min(self.max_events_to_process, len(events)) if self.max_events_to_process else len(events)
         graphDataset = self.process_event(
             0,
             events_to_process,
@@ -614,7 +714,8 @@ class ScoreProducer:
             gen_events_before_selection,
             total_events,
             events_to_process,
-            file_name,
+            bkg_mask,
+            npvs_weights,
         )
 
         return graphDataset
@@ -624,38 +725,33 @@ class ScoreProducer:
         # Read data into huge `Data` list.
         graphs = []
         model = self.model
+        device = self.device
+        model = model.to(device)
         model.eval()
         
         # Dictionary to hold scores
         scores = []
         graphs = self.get_graphs(self.root_file)
 
-        # Compute scores for each graph
-        for graph in tqdm(graphs, desc="Computing scores", disable=not self.verbose):
-            x = graph.x
-            edges = graph.edge_index
-            negative_edge_index = negative_sampling(edges)
-            if negative_edge_index.numel()==0:
-                scores.append(float(-1.0))
-            else:
-                if self.normalizer is not None:
-                    x = (x-self.normalizer["means"])/self.normalizer["stds"]
-                
-                # Calculate losses
-                features_loss = model.features_loss(x, edges)
-                edges_loss = model.edges_loss(
-                    x,
-                    edges,
-                    negative_sampling(edges),
-                )
-                loss = edges_loss + self.alpha * features_loss
+        with torch.no_grad():
+            # Compute scores for each graph
+            for graph in tqdm(graphs, desc="Computing scores", disable=not self.verbose):
+                graph.x = graph.x.float()  # Ensure float32
 
-                scores.append(float(loss.detach()))
+                if self.normalizer is not None:
+                    means = torch.tensor(self.normalizer["means"], dtype=torch.float, device=graph.x.device)
+                    stds = torch.tensor(self.normalizer["stds"], dtype=torch.float, device=graph.x.device)
+                    graph.x = (graph.x - means) / stds
+                    
+                graph = graph.to(device)
+                out = model(graph)
+                score = out[:,0].cpu().detach().numpy()
+                scores.append(score)
 
             
 
         # Read the original ROOT file
-        with uproot.open(self.root_file) as root_file:
+        with uproot.open(self.root_file) as root_file: # whole file is way too big
             events_tree = root_file["Events"]
             original_data = events_tree.arrays(library="ak")
             if "Metadata" in root_file:
@@ -666,12 +762,12 @@ class ScoreProducer:
                 original_cutflow = cutflow.arrays(library="ak")
             trees = {"Metadata": original_metadata, "CutFlow": original_cutflow}
             
-
-            scores = ak.unflatten(scores, ak.num(root_file["Events"]["FatJet_pt"].array()))
+            prefix = "Slimmed_" if self.slimmed else ""
+            scores = ak.unflatten(scores, ak.num(root_file["Events"][f"{prefix}{self.tau_collection_name}_pt"].array()))
 
             
         # Add new branch to the data
-        original_data["FatJet_GNNScore"] = ak.Array(scores)
+        original_data[f"{self.tau_collection_name}_GNNScore"] = ak.Array(scores)
 
         # Write the updated data to a new ROOT file
         output_file = (os.path.join(self.output_folder, os.path.basename(self.root_file).replace(".root","_with_scores.root")) if self.output_folder else self.root_file.replace(".root","_with_scores.root"))
@@ -683,3 +779,71 @@ class ScoreProducer:
                 events=original_data,
                 trees=trees,
             )
+    
+    def connect_fully(self, delta_R: np.ndarray) -> tuple:
+        adjacency = np.ones_like(delta_R) - np.identity(delta_R.shape[0])
+        edge_connections = np.where(adjacency == 1)
+        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+        return edge_index
+        
+    def connect_knn(self, delta_R: np.ndarray) -> tuple:
+        nn_matrix = np.argsort(delta_R, axis=1)
+        knn_matrix = nn_matrix[:, 1:(self.k_knn+1)] # as closest pf_cand is the pf_cand itself and we dont want self loops for now
+        edge_set = set()
+        for i in range(knn_matrix.shape[0]):
+            for j in knn_matrix[i]:
+                edge_set.add((i,j))
+                edge_set.add((j,i))
+         
+        edge_index = torch.tensor(list(edge_set), dtype=torch.long) 
+        return edge_index
+
+    def connect_r_threshold(self, delta_R: np.ndarray) -> tuple:
+        adjacency = (delta_R < self.delta_r_threshold).astype(int) - np.identity(delta_R.shape[0])
+        edge_connections = np.where(adjacency == 1)
+        edge_index = torch.tensor([ edge for edge in zip(edge_connections[0], edge_connections[1]) ], dtype=torch.long)
+        return edge_index
+
+    def build_cone(
+            self, 
+            pfcands_eta: ak.Array, 
+            pfcands_phi: ak.Array, 
+            fitted_tau_eta: float, 
+            fitted_tau_phi: float, 
+            mu1_eta: float,
+            mu1_phi: float, 
+            # mu1_idx: int, 
+            mu2_eta: float, 
+            mu2_phi: float, 
+            # mu2_idx: int, 
+            mu3_eta: float, 
+            mu3_phi: float, 
+            # mu3_idx: int
+        ) -> ak.Array:
+
+        delta_R_sq_pfcands_tau = self.calc_delta_R_sq(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
+
+        delta_R_sq_mu1_tau = self.calc_delta_R_sq(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_mu2_tau = self.calc_delta_R_sq(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_mu3_tau = self.calc_delta_R_sq(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
+        if self.cone_size ** 2 < max(delta_R_sq_mu1_tau, delta_R_sq_mu2_tau, delta_R_sq_mu3_tau):
+            logging.warning("given cone size is not large enough. Using farthest away tau3mu candidate delta_R as cone size instead.")
+            cone_size_sq = max(delta_R_sq_mu1_tau, delta_R_sq_mu2_tau, delta_R_sq_mu3_tau)
+        else:
+            cone_size_sq = self.cone_size ** 2
+
+        cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
+        
+        # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
+
+        return cone_mask
+    
+    def calc_delta_R_sq(self, eta, phi, ref_eta, ref_phi):
+        delta_eta = eta - ref_eta
+        delta_phi_internal = np.abs(phi - ref_phi)
+        delta_phi_external = 2*np.pi - np.abs(phi - ref_phi)
+        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+        delta_R_sq = delta_eta**2 + delta_phi**2
+        return delta_R_sq
+
+        

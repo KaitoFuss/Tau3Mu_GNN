@@ -28,7 +28,7 @@ arch_configs = {
         "use_fusion" : True,
     },
     "arch6": {
-        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+        "conv_params": [256, 256, 128, 64, 64, 32, 32],
         "fc_params": [(64, 0.8)],
         "use_fusion" : True,
     },
