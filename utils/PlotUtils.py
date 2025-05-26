@@ -148,7 +148,8 @@ def plot_histogram_root(file_path, column, output_path, score_column=None, score
     f = uproot.open(file_path)
     df = f["Events"].arrays([column] + ([score_column] if score_column else []))
 
-    raw_data = ak.flatten(df[column])
+    # raw_data = ak.flatten(df[column])
+    raw_data = df[column]
 
     # If no score filtering, plot everything
     if not score_column or not score_cuts:
