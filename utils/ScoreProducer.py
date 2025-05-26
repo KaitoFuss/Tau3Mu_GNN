@@ -12,6 +12,7 @@ from utils.LundTreeUtils import tensor_to_tree, prune_tree, tree_to_tensor, get_
 import utils.AwkwardArrayUtils as akUtl
 import matplotlib.pyplot as plt
 import ROOT
+import csv
 
 def __cast_unknown_type_branches(ak_array, field):
 
@@ -380,17 +381,21 @@ class ScoreProducer:
         self.model.eval()
         self.process()
 
-    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights):
+    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
-        graphs = []
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
 
         indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
         events = events[indices] 
-        
+        runs = events["run"]
+        lumis = events["luminosityBlock"]
+        event_ids = events["event"]
+        tau_masses = []
+        scores = []
+
         if self.mask:
             bkg_mask = bkg_mask[indices]
 
@@ -413,217 +418,222 @@ class ScoreProducer:
             pfcands_charge = event[f"{prefix}PFCands_charge"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
-            for nt in range(n_tau):
-                tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
-                
-                # Read data for fitted tau from event
-                fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
-                fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
-                fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
-                fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
-                
-                # Read data for mu1 from event
-                # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
-                mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
-                mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
-                # mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
-    
-                # Read data for mu2 from event
-                # mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
-                mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
-                mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
-                # mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
-                
-                # Read data for mu3 from event
-                # mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
-                mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
-                mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
-                # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
+            nt = 0
+            key = (runs[i_ev], lumis[i_ev], event_ids[i_ev])
+            tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
+            
+            # Read data for fitted tau from event
+            fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
+            fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
+            fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
+            fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
+            
+            # Read data for mu1 from event
+            # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
+            mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
+            mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
+            # mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
 
-                # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
-                cone_mask = self.build_cone(
-                    pfcands_eta, 
-                    pfcands_phi, 
-                    fitted_tau_eta, 
-                    fitted_tau_phi, 
-                    mu1_eta, 
-                    mu1_phi, 
-                    # mu1_idx, 
-                    mu2_eta, 
-                    mu2_phi, 
-                    # mu2_idx, 
-                    mu3_eta, 
-                    mu3_phi, 
-                    # mu3_idx
-                )
-                pfcands_pt_masked = pfcands_pt[cone_mask]
-                pfcands_eta_masked = pfcands_eta[cone_mask]
-                pfcands_phi_masked = pfcands_phi[cone_mask]
-                pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
-                pfcands_mass_masked = pfcands_mass[cone_mask]
-                pfcands_charge_masked = pfcands_charge[cone_mask]
+            # Read data for mu2 from event
+            # mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
+            mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
+            mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
+            # mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
+            
+            # Read data for mu3 from event
+            # mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
+            mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
+            mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
+            # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
 
-                if self.use_displacement:
-                    pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
-                    pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
+            # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
+            cone_mask = self.build_cone(
+                pfcands_eta, 
+                pfcands_phi, 
+                fitted_tau_eta, 
+                fitted_tau_phi, 
+                mu1_eta, 
+                mu1_phi, 
+                # mu1_idx, 
+                mu2_eta, 
+                mu2_phi, 
+                # mu2_idx, 
+                mu3_eta, 
+                mu3_phi, 
+                # mu3_idx
+            )
+            pfcands_pt_masked = pfcands_pt[cone_mask]
+            pfcands_eta_masked = pfcands_eta[cone_mask]
+            pfcands_phi_masked = pfcands_phi[cone_mask]
+            pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
+            pfcands_mass_masked = pfcands_mass[cone_mask]
+            pfcands_charge_masked = pfcands_charge[cone_mask]
+
+            if self.use_displacement:
+                pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
+                pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
+            else:
+                pfcands_d0_masked, pfcands_dz_masked = None, None 
+
+            fitted_tau_idx = nt
+
+            pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
+            pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
+            pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
+
+            if self.use_displacement:  
+                pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
+                pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
+            else:
+                pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
+                pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
+
+            if self.use_relative_angles:
+                pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
+                # Need care to account for circularity
+                pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
+            
+            pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
+            # Clip masses to zero since for some reason sometimes they are slightly negative
+            pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
+            pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
+
+            num_nodes = len(pfcands_charge_masked)
+            pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
+
+            # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
+            if self.use_displacement: 
+                features = torch.tensor(np.array([
+                    pfcands_pt_masked,
+                    pfcands_eta_masked,
+                    pfcands_phi_masked,
+                    pfcands_pdgId_masked,
+                    pfcands_mass_masked,
+                    pfcands_d0_masked,   
+                    pfcands_dz_masked   
+                ]).T, dtype=torch.float)
+            else:
+                features = torch.tensor(np.array([
+                    pfcands_pt_masked,
+                    pfcands_eta_masked,
+                    pfcands_phi_masked,
+                    pfcands_pdgId_masked,
+                    pfcands_mass_masked
+                ]).T, dtype=torch.float)
+            
+            # TODO do this calc outside loop and then just mask inside 
+            # Calculate edges and edge features
+            matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
+            matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
+            matrix_pt = np.repeat(pfcands_pt_masked, len(pfcands_pt_masked)).reshape((len(pfcands_pt_masked), -1))
+            matrix_mass = np.repeat(pfcands_mass_masked, len(pfcands_mass_masked)).reshape((len(pfcands_mass_masked), -1))
+            matrix_charge = np.repeat(pfcands_charge_masked, len(pfcands_charge_masked)).reshape((len(pfcands_charge_masked), -1))
+            matrix_delta_eta = matrix_eta - matrix_eta.T
+
+            # Calculate delta phi accounting for circularity
+            matrix_delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
+            matrix_delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
+            matrix_delta_phi = np.minimum(matrix_delta_phi_internal, matrix_delta_phi_external)
+            matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
+
+            # build graph connections according to specified mode
+            edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
+            
+            if self.save_edge_attributes:
+                # Build pair-wise invariant masses
+                lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
+                pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
+                
+                # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
+                R = 0.8
+                d_ca = ((matrix_delta_R**2) / (R**2))
+                d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
+                if num_nodes < 200:
+                    # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
+                    np_edge_index = np.array(edge_index.t())
+                    pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
+                    pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
+                    d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
+                    d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
                 else:
-                    pfcands_d0_masked, pfcands_dz_masked = None, None 
-
-                fitted_tau_idx = nt
-
-                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
-                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
-                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
-
-                if self.use_displacement:  
-                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
-                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
-                else:
-                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
-                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
-
-                if self.use_relative_angles:
-                    pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
-                    # Need care to account for circularity
-                    pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
+                    pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
+                    pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
+                    d_ca = np.array([d_ca[i,j] for i,j in edge_index])
+                    d_kt = np.array([d_kt[i,j] for i,j in edge_index])
                 
-                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
-                # Clip masses to zero since for some reason sometimes they are slightly negative
-                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
-                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
+                # Only keep connected edges and take log to squeeze the distribution
+                # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
 
-                num_nodes = len(pfcands_charge_masked)
-                pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
+                edge_features = torch.tensor(np.array([
+                    pair_masses,
+                    pair_charges,
+                    d_ca,
+                    d_kt,
+                ]).T, dtype=torch.float)
 
-                # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
-                if self.use_displacement: 
-                    features = torch.tensor(np.array([
-                        pfcands_pt_masked,
-                        pfcands_eta_masked,
-                        pfcands_phi_masked,
-                        pfcands_pdgId_masked,
-                        pfcands_mass_masked,
-                        pfcands_d0_masked,   
-                        pfcands_dz_masked   
-                    ]).T, dtype=torch.float)
-                else:
-                    features = torch.tensor(np.array([
-                        pfcands_pt_masked,
-                        pfcands_eta_masked,
-                        pfcands_phi_masked,
-                        pfcands_pdgId_masked,
-                        pfcands_mass_masked
-                    ]).T, dtype=torch.float)
-                
-                # TODO do this calc outside loop and then just mask inside 
-                # Calculate edges and edge features
-                matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
-                matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
-                matrix_pt = np.repeat(pfcands_pt_masked, len(pfcands_pt_masked)).reshape((len(pfcands_pt_masked), -1))
-                matrix_mass = np.repeat(pfcands_mass_masked, len(pfcands_mass_masked)).reshape((len(pfcands_mass_masked), -1))
-                matrix_charge = np.repeat(pfcands_charge_masked, len(pfcands_charge_masked)).reshape((len(pfcands_charge_masked), -1))
-                matrix_delta_eta = matrix_eta - matrix_eta.T
+                # Build the graph
+                graph = Data(
+                        x=features,
+                        edge_index=edge_index.t().contiguous(),
+                        edge_attr=edge_features,
+                        num_nodes=int(features.shape[0]),
+                        num_node_features=int(features.shape[1]),
+                        num_edge_features=int(edge_features.shape[1]),
+                        pos=pos,
+                        y=torch.Tensor([self.label])
+                    )
 
-                # Calculate delta phi accounting for circularity
-                matrix_delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
-                matrix_delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
-                matrix_delta_phi = np.minimum(matrix_delta_phi_internal, matrix_delta_phi_external)
-                matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
-
-                # build graph connections according to specified mode
-                edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
-                
-                if self.save_edge_attributes:
-                    # Build pair-wise invariant masses
-                    lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
-                    pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
-                    
-                    # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
-                    R = 0.8
-                    d_ca = ((matrix_delta_R**2) / (R**2))
-                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
-                    if num_nodes < 200:
-                        # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
-                        np_edge_index = np.array(edge_index.t())
-                        pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
-                        pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
-                        d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
-                        d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
-                    else:
-                        pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
-                        pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
-                        d_ca = np.array([d_ca[i,j] for i,j in edge_index])
-                        d_kt = np.array([d_kt[i,j] for i,j in edge_index])
-                    
-                    # Only keep connected edges and take log to squeeze the distribution
-                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
-
-                    edge_features = torch.tensor(np.array([
-                        pair_masses,
-                        pair_charges,
-                        d_ca,
-                        d_kt,
-                    ]).T, dtype=torch.float)
-
-                    # Build the graph
-                    graph = Data(
-                            x=features,
-                            edge_index=edge_index.t().contiguous(),
-                            edge_attr=edge_features,
-                            num_nodes=int(features.shape[0]),
-                            num_node_features=int(features.shape[1]),
-                            num_edge_features=int(edge_features.shape[1]),
-                            pos=pos,
-                            y=torch.Tensor([self.label])
-                        )
-
-                else:
-                    # Build the graph
-                    graph = Data(
-                            x=features,
-                            edge_index=edge_index.t().contiguous(),
-                            num_nodes=int(features.shape[0]),
-                            num_node_features=int(features.shape[1]),
-                            pos=pos,
-                            y=torch.Tensor([self.label])
-                        )
-                            
-                # Add the event weight
-                if self.weights == "xsec":
-                    if not self.max_events_to_process:
-                        graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
-                    else:
-                        graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
-                elif self.weights is None:
-                    graph.w = 1.
-                elif self.weights == "npvs_rescale":
-                    graph.w = npvs_weights[event["PV_npvs"]]
-                
-                # Add the event number if requested
-                if self.save_event_number:
-                    graph.event_number = torch.tensor([i_ev], dtype=torch.long)
-
-                # Add tau index if requested
-                if self.save_fitted_tau_idx:
-                    graph.fitted_tau_index = torch.tensor([fitted_tau_idx], dtype=torch.int)
-
-                # Add fitted_tau_mass if requested
-                if self.save_fitted_tau_mass:
-                    graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
-
-                # Add previous isolation approach score if requested
-                if self.save_benchmark_score:
-                    abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
-                    rel_iso = -1 * abs_iso / fitted_tau_pt
-                    graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
-                    
-                    # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
-                    # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
-                    # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
+            else:
+                # Build the graph
+                graph = Data(
+                        x=features,
+                        edge_index=edge_index.t().contiguous(),
+                        num_nodes=int(features.shape[0]),
+                        num_node_features=int(features.shape[1]),
+                        pos=pos,
+                        y=torch.Tensor([self.label])
+                    )
                         
-                graphs.append(graph)
+            # Add the event weight
+            if self.weights == "xsec":
+                if not self.max_events_to_process:
+                    graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
+                else:
+                    graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
+            elif self.weights is None:
+                graph.w = 1.
+            elif self.weights == "npvs_rescale":
+                graph.w = npvs_weights[event["PV_npvs"]]
+            
+            # Add the event number if requested
+            if self.save_event_number:
+                graph.event_number = torch.tensor([i_ev], dtype=torch.long)
 
-        return graphs
+            # Add tau index if requested
+            if self.save_fitted_tau_idx:
+                graph.fitted_tau_index = torch.tensor([fitted_tau_idx], dtype=torch.int)
+
+            # Add fitted_tau_mass if requested
+            if self.save_fitted_tau_mass:
+                graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
+
+            # Add previous isolation approach score if requested
+            if self.save_benchmark_score:
+                abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
+                rel_iso = -1 * abs_iso / fitted_tau_pt
+                graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
+                
+                # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
+                # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
+                # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
+            score, tau_mass = self.create_score(graph)
+
+            score_dict[key] = score[0]
+
+            scores.append(score[0])
+            tau_masses.append(tau_mass[0])
+
+        return scores, tau_masses
 
     def get_all_scores(self, file_name):
 
@@ -684,6 +694,10 @@ class ScoreProducer:
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
             # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
+            f"{prefix}TauTo3Mu_fitted_pt",
+            "run",
+            "luminosityBlock",
+            "event",   
         ]
 
         if self.use_displacement:
@@ -691,6 +705,7 @@ class ScoreProducer:
 
         all_scores = []
         all_tau_masses = []
+        score_dict = {}
         for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="1000 MB"):
             bkg_mask = None
             total_events = len(events)
@@ -703,7 +718,7 @@ class ScoreProducer:
             if gen_events_before_selection is None:
                 gen_events_before_selection = total_events
             events_to_process = min(self.max_events_to_process, len(events)) if self.max_events_to_process else len(events)
-            graphDataset = self.process_event(
+            score, tau_mass = self.process_event(
                 0,
                 events_to_process,
                 events,
@@ -713,21 +728,19 @@ class ScoreProducer:
                 events_to_process,
                 bkg_mask,
                 npvs_weights,
+                score_dict,
             )
-            score, tau_mass = self.create_score(graphDataset)
+            # score, tau_mass = self.create_score(graphDataset)
             all_scores.append(score)
             all_tau_masses.append(tau_mass)
-            break
 
         all_scores = ak.flatten(all_scores)
         all_tau_masses = ak.flatten(all_tau_masses)
         
-        return all_scores, all_tau_masses
+        return all_scores, all_tau_masses, score_dict
 
-    def create_score(self, graphs):
+    def create_score(self, graph):
         # Dictionary to hold scores
-        scores = []
-        tau_mass = []
 
         model = self.model
         device = self.device
@@ -736,25 +749,23 @@ class ScoreProducer:
 
         with torch.no_grad():
             # Compute scores for each graph
-            for graph in tqdm(graphs, desc="Computing scores", disable=not self.verbose):
-                graph.x = graph.x.float()  # Ensure float32
-                tau_mass.append(graph.fitted_tau_mass)
+            graph.x = graph.x.float()  # Ensure float32
+            tau_mass = graph.fitted_tau_mass
 
-                if self.normalizer is not None:
-                    means = torch.tensor(self.normalizer["means"], dtype=torch.float, device=graph.x.device)
-                    stds = torch.tensor(self.normalizer["stds"], dtype=torch.float, device=graph.x.device)
-                    graph.x = (graph.x - means) / stds
-                    
-                graph = graph.to(device)
-                out = model(graph)
-                score = out[:,0].cpu().detach().numpy()
-                scores.append(score)
-        return scores, tau_mass
+            if self.normalizer is not None:
+                means = torch.tensor(self.normalizer["means"], dtype=torch.float, device=graph.x.device)
+                stds = torch.tensor(self.normalizer["stds"], dtype=torch.float, device=graph.x.device)
+                graph.x = (graph.x - means) / stds
+                
+            graph = graph.to(device)
+            out = model(graph)
+            score = out[:,0].cpu().detach().numpy()
+        return score, tau_mass
 
 
     def process(self):
 
-        all_scores, all_tau_masses = self.get_all_scores(self.root_file)
+        all_scores, all_tau_masses, score_dict = self.get_all_scores(self.root_file)
 
         os.makedirs(self.output_folder, exist_ok=True)
         # Save raw arrays to compressed npz
@@ -765,31 +776,19 @@ class ScoreProducer:
         )
 
         print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass.npz')}")
+
+        csv_path = os.path.join(self.output_folder, "scores.csv")
+
+        # Write the CSV file
+        with open(csv_path, "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["run", "luminosityBlock", "event", "score"])
+            for (run, lumi, event), score in score_dict.items():
+                writer.writerow([run, lumi, event, score])
+
+        print(f"Saved scores to {csv_path}")
         
-        rdf = ROOT.RDataFrame("Events", self.root_file)
-        n_prefix = "Slimmed" if self.slimmed else ""
-        size_branch = f"n{n_prefix}TauTo3Mu"
-
-        n_per_event = np.array(rdf.AsNumpy([size_branch])[size_branch])
-        jagged_scores = ak.unflatten(all_scores, n_per_event)
-
-        stdvec = ROOT.std.vector(ROOT.std.vector("float"))(
-            [ROOT.std.vector("float")(row) for row in jagged_scores]
-        )
-
-        rdf = rdf.Define("GNN_Score", lambda: stdvec)
-        branches = ROOT.std.vector("string")()
-        branches.push_back(size_branch)     
-        branches.push_back("GNN_Score")     
-
-        output_file = os.path.join(
-            self.output_folder,
-            os.path.basename(self.root_file).replace(".root", "_with_scores.root")
-        )
-
-        rdf.Snapshot("Events", output_file, branches)
-
-        print(f"GNN scores added to: {output_file}")
+        
 
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
