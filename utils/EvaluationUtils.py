@@ -7,7 +7,9 @@ import numpy as np
 import re
 import pickle
 import os
-import dcor
+import torch
+import utils.TrainingUtils as utrain
+import gc
 
 from utils.TrainingUtils import output_directory
 
@@ -61,82 +63,112 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     target_labels_bkg = []
     test_scores_bkg = [] 
     tau_mass_bkg = []
+    benchmark_bkg = []
+    # benchmark_bkg_pt05 = []
+
+    model.eval()
     
+    with torch.no_grad():
+        for dataset in datasets_bkg:
+            dataloader_bkg = GraphDataLoader(
+                [dataset],
+                window_to_load=[window_to_load for _ in range(1)],
+                batch_size=batch_size,
+                normalizer=normalizer,
+                )
 
-    for dataset in datasets_bkg:
-        dataloader_bkg = GraphDataLoader(
-            [dataset],
-            window_to_load=[window_to_load for _ in range(1)],
-            batch_size=batch_size,
-            normalizer=normalizer,
-            )
-        
-        model.eval()
-
-        for graphs in dataloader_bkg:
-            weights_bkg.append(np.array(graphs.w))
-            tau_mass_bkg.append(np.array(graphs.fitted_tau_mass)) 
-            graphs = graphs.to(device)
-            target = graphs.y
-            out = model(graphs)
-            score = out[:,0].cpu()
-            target_labels_bkg.append(np.array(target.cpu()))
-            test_scores_bkg.append(score.detach().numpy())
-            
+            for graphs in dataloader_bkg:
+                weights_bkg.append(graphs.w.detach().numpy())
+                tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
+                benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
+                graphs = graphs.to(device)
+                out = model(graphs)
+                score = out[:,0].cpu()
+                # target_labels_bkg.append(np.array(target.cpu()))
+                target_labels_bkg.append(np.zeros(len(score), dtype=np.uint8))  # all bkg = 0
+                test_scores_bkg.append(score.detach())
+                # benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
+                del graphs, out
+                torch.cuda.empty_cache()
         
     weights_bkg =  np.concatenate(weights_bkg)
-    tau_mass_bkg = np.concatenate(tau_mass_bkg)
-    test_scores_bkg = np.concatenate(test_scores_bkg)
+    # tau_mass_bkg = np.concatenate(tau_mass_bkg)
+    tau_mass_bkg = torch.cat(tau_mass_bkg)
+    test_scores_bkg = torch.cat(test_scores_bkg)
     target_labels_bkg = np.concatenate(target_labels_bkg)
-
+    benchmark_bkg = np.concatenate(benchmark_bkg)
+    # benchmark_bkg_pt05 = np.concatenate(benchmark_bkg_pt05)
 
     # Run signal through network and save it togheter with the bkg
-    for dataset in datasets_signal:
-        weights_sig = []
-        target_labels_sig = []
-        test_scores_sig = []
-        tau_mass_sig = []
+    with torch.no_grad():
+        for dataset in datasets_signal:
+            weights_sig = []
+            target_labels_sig = []
+            test_scores_sig = []
+            tau_mass_sig = []
+            benchmark_signal = []
+            # benchmark_signal_pt05 = []
 
-        dataloader_sig = GraphDataLoader(
-            [dataset],
-            window_to_load=[window_to_load for _ in range(1)],
-            batch_size=batch_size,
-            normalizer=normalizer,
-            )
-    
-        model.eval()
+            dataloader_sig = GraphDataLoader(
+                [dataset],
+                window_to_load=[window_to_load for _ in range(1)],
+                batch_size=batch_size,
+                normalizer=normalizer,
+                )
 
-        for graphs in dataloader_sig:
-            weights_sig.append(np.array(graphs.w))
-            tau_mass_sig.append(np.array(graphs.fitted_tau_mass))
-            graphs = graphs.to(device)
-            target = graphs.y
-            out = model(graphs)
-            score = out[:,0].cpu()
-            target_labels_sig.append(np.array(target.cpu()))
-            test_scores_sig.append(score.detach().numpy())
+            for graphs in dataloader_sig:
+                weights_sig.append(graphs.w.detach().numpy())
+                tau_mass_sig.append(graphs.fitted_tau_mass.detach())
+                benchmark_signal.append(graphs.benchmark_score.detach().numpy())
+                graphs = graphs.to(device)
+                out = model(graphs)
+                score = out[:,0].cpu()
+                # target_labels_sig.append(np.array(target.cpu()))
+                target_labels_sig.append(np.ones(len(score), dtype=np.uint8))
+                test_scores_sig.append(score.detach())
+                # benchmark_signal_pt05.append(np.array(graphs.benchmark_score_pt05))
+                del graphs, out
+                torch.cuda.empty_cache()
 
-        weights_sig =  np.concatenate(weights_sig)
-        tau_mass_sig = np.concatenate(tau_mass_sig)
-        test_scores_sig = np.concatenate(test_scores_sig)
-        target_labels_sig = np.concatenate(target_labels_sig)
+            weights_sig =  np.concatenate(weights_sig)
+            tau_mass_sig = torch.cat(tau_mass_sig)
+            test_scores_sig = torch.cat(test_scores_sig)
+            target_labels_sig = np.concatenate(target_labels_sig)
+            benchmark_signal = np.concatenate(benchmark_signal)
+            # benchmark_signal_pt05 = np.concatenate(benchmark_signal_pt05)
 
-        weights = np.append(weights_sig, weights_bkg)
-        tau_mass = np.append(tau_mass_sig, tau_mass_bkg)
-        test_scores = np.append(test_scores_sig, test_scores_bkg)
-        target_labels = np.append(target_labels_sig, target_labels_bkg)
+            weights = np.concatenate([weights_sig, weights_bkg])
+            del weights_sig, weights_bkg
+            gc.collect()
+            tau_mass = torch.cat([tau_mass_sig, tau_mass_bkg])
+            del tau_mass_sig, tau_mass_bkg
+            gc.collect()
+            test_scores = torch.cat([test_scores_sig, test_scores_bkg])
+            del test_scores_sig, test_scores_bkg
+            gc.collect()
+            target_labels = np.concatenate([target_labels_sig, target_labels_bkg])
+            del target_labels_sig, target_labels_bkg
+            gc.collect()
+            benchmark = np.concatenate([benchmark_signal, benchmark_bkg])
+            del benchmark_signal, benchmark_bkg
+            gc.collect()
+            # benchmark_pt05 = np.append(benchmark_signal_pt05, benchmark_bkg_pt05)
 
-        disco = dcor.distance_correlation(np.array(test_scores), np.array(tau_mass))
+            sample = torch.tensor(np.random.choice(np.arange(0, len(test_scores)), size=5000, replace=False))
+            normedweight = torch.ones(5000)
+            disco = utrain.distance_corr(test_scores[sample], tau_mass[sample], normedweight)  # Penalising just learning the tau mass
 
-        print("DisCo = ", disco)
+            print("DisCo = ", disco)
 
-        evaluation_dict[dataset[1]] = {
-            'weights': weights,
-            'target_labels': target_labels,
-            'scores': test_scores,
-            'tau_mass': tau_mass,
-            'disco': disco,
-        }
+            evaluation_dict[dataset[1]] = {
+                'weights': weights,
+                'target_labels': target_labels,
+                'scores': test_scores.numpy(),
+                'tau_mass': tau_mass.numpy(),
+                'disco': disco,
+                'benchmark': benchmark,
+                # 'benchmark_pt05': benchmark_pt05,
+            }
     
     
     return evaluation_dict
@@ -161,13 +193,19 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         weights = evaluation_dict[key]["weights"]
         tau_mass = evaluation_dict[key]["tau_mass"]
         disco = evaluation_dict[key]["disco"]
+        benchmark = evaluation_dict[key]["benchmark"]
+        # benchmark_pt05 = evaluation_dict[key]["benchmark_pt05"]
 
         if np.all(target == 0) or np.all(target == 1):
             continue
 
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
+        fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
+        # fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
         auc_ = roc_auc_score(target, score)
+        auc_benchmark = roc_auc_score(target, benchmark)
+        # auc_benchmark_pt05 = roc_auc_score(target, benchmark_pt05)
         
         #calculate sic
         sic_ = np.zeros_like(tpr_, dtype=float)
@@ -184,6 +222,14 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "sic": sic_,
             "disco": disco,
             "fitted_tau_mass": tau_mass,
+            "fpr_benchmark": fpr_benchmark,
+            "tpr_benchmark": tpr_benchmark,
+            "treshold_benchmark": thres_benchmark,
+            "auc_benchmark": auc_benchmark,
+            # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+            # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+            # "treshold_benchmark_pt05": thres_benchmark_pt05,
+            # "auc_benchmark_pt05": auc_benchmark_pt05,
             }
         
         roc[key] = {   
@@ -191,6 +237,14 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "tpr": tpr_,
             "threshold": thres_,
             "sic": sic_,
+            "fpr_benchmark": fpr_benchmark,
+            "tpr_benchmark": tpr_benchmark,
+            "treshold_benchmark": thres_benchmark,
+            "auc_benchmark": auc_benchmark,
+            # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+            # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+            # "treshold_benchmark_pt05": thres_benchmark_pt05,
+            # "auc_benchmark_pt05": auc_benchmark_pt05,
             }
         
         auc[key] = auc_
@@ -245,7 +299,7 @@ def add_legends_low(ax, legends, loc='lower right', spacing=0.26):
         legend = ax.legend(handles=handles, loc=loc, bbox_to_anchor=(x_offset, base_anchor[1]))
         ax.add_artist(legend)
 
-def plot_roc(roc, name, suffix = "_eval"):
+def plot_roc(roc, auc, name, suffix = "_eval"):
 
     # Define line styles for each value of rinv
     line_styles = {
@@ -277,7 +331,9 @@ def plot_roc(roc, name, suffix = "_eval"):
         # rinv_value = f"0.{parts[2].split('p')[1]}"
         # m_z = parts[1]
         # plt.plot(roc[key]["fpr"], roc[key]["tpr"], color=colors[m_z], linewidth = 0.9, linestyle=line_styles[rinv_value], label=label)
-        plt.plot(roc[key]["fpr"], roc[key]["tpr"], linewidth = 0.9, label=key)
+        plt.plot(roc[key]["fpr"], roc[key]["tpr"], linewidth = 0.9, label=f"AUC: {auc[key]:.3f}, " + key.replace("W_decay_signal_skimmed_",""))
+        plt.plot(roc[key]["fpr_benchmark"], roc[key]["tpr_benchmark"], linewidth = 0.9, label=f"AUC: {roc[key]['auc_benchmark']:.3f}, Benchmark")
+        # plt.plot(roc[key]["fpr_benchmark_pt05"], roc[key]["tpr_benchmark_pt05"], linewidth = 0.9, label=f"AUC: {roc[key]["auc_benchmark_pt05"]:.3f}, Benchmark pT05")
 
     # Create dummy plots for separate legends
     # Dummy plots for MZ values
@@ -586,7 +642,7 @@ def plot_dnn(evaluation_dict, name, suffix = "_eval"):
 
     # Plot the scores in a histogram
     plt.xlabel("GNN Score")
-    plt.ylabel("Number of Graphs")
+    plt.ylabel("Density of Graphs")
 
 
     plt.grid()

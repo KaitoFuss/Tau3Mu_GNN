@@ -7,6 +7,7 @@ import awkward as ak
 from tqdm import tqdm
 import vector
 import logging
+import numba as nb
 
 
 class ConeGraphProducer(InMemoryDataset):
@@ -36,14 +37,16 @@ class ConeGraphProducer(InMemoryDataset):
         save_edge_attributes (bool): Whether to save the edge attributes (pairwise invariant masses, Cambridge-Aachen and kt distances)
         save_event_number (bool): Whether to save the event number in the graph
         save_fitted_tau_mass (bool): Whether to save fitted tau mass in the graph
+        save_benchmark_score (bool): Whether to save score of current discrimination approach
         extra_label (str): Extra label to add to the processed file name)
-        weights (str): What event weights to use (None, 'xsec') (TODO: implement pt flattening)
+        weights (str): What event weights to use (None, 'xsec', 'npvs_rescale') (TODO: implement pt flattening)
         save_fitted_tau_idx (bool): Whether to save the fitted tau index
         mask (bool): Bool whether to apply a mask extracting only tau3mu cands outside vicinity of tau mass, used to get background events
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
         tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
         slimmed (bool): Whether data was pre skimmed and disregarded Meson resonances and bad PV matches
+        shuffle_bool (bool): Whether events should be shuffeled before processing
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
     """
 
@@ -64,6 +67,7 @@ class ConeGraphProducer(InMemoryDataset):
         save_edge_attributes=False,
         save_event_number=False,
         save_fitted_tau_mass=True,
+        save_benchmark_score=False,
         weights=None,
         save_fitted_tau_idx=False,
         mask=False,
@@ -71,6 +75,7 @@ class ConeGraphProducer(InMemoryDataset):
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
         slimmed=False,
+        shuffle_bool=False,
         use_displacement=False  
     ):
 
@@ -87,13 +92,15 @@ class ConeGraphProducer(InMemoryDataset):
         self.save_edge_attributes = save_edge_attributes
         self.save_event_number = save_event_number
         self.save_fitted_tau_mass = save_fitted_tau_mass
+        self.save_benchmark_score = save_benchmark_score
         self.weights = weights
         self.save_fitted_tau_idx = save_fitted_tau_idx
         self.mask = mask
         self.label = label
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
-        self.slimmed = slimmed,
+        self.slimmed = slimmed
+        self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -101,7 +108,7 @@ class ConeGraphProducer(InMemoryDataset):
             "r_threshold": self.connect_r_threshold,
         } 
 
-        assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
+        assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
         assert self.edge_connection_mode in self.edge_connection_methods, f"Unsupported edge_connection_mode: {self.edge_connection_mode}"
 
@@ -150,14 +157,25 @@ class ConeGraphProducer(InMemoryDataset):
                     raise ValueError("No CutFlow tree found in file")
         return n_initial
 
-    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask):
+    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights):
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         graphs = []
-        for i_ev in tqdm(range(i_start, i_stop), disable=not self.verbose):
-            n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
 
+        # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
+        # for i_ev in tqdm(indices, disable=not self.verbose):
+
+        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
+        events = events[indices] 
+        
+        if self.mask:
+            bkg_mask = bkg_mask[indices]
+
+        for i_ev in tqdm(range(len(events)), disable=not self.verbose):
+            n_cones = self.n_cones # TODO implement option to build three cones instead of one big one if n_cones == 3; or maybe change to bool 
+            
             event = events[i_ev]
+
             if self.mask:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
@@ -182,22 +200,22 @@ class ConeGraphProducer(InMemoryDataset):
                 fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
                 
                 # Read data for mu1 from event
-                mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
+                # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
                 mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
                 mu1_phi = event[f"{prefix}TauTo3Mu_mu1_phi"][tau_mask][nt] 
-                mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
+                # mu1_pt = event[f"{prefix}TauTo3Mu_mu1_pt"][tau_mask][nt] 
     
                 # Read data for mu2 from event
-                mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
+                # mu2_idx = event[f"{prefix}TauTo3Mu_mu2_idx"][tau_mask][nt] 
                 mu2_eta = event[f"{prefix}TauTo3Mu_mu2_eta"][tau_mask][nt] 
                 mu2_phi = event[f"{prefix}TauTo3Mu_mu2_phi"][tau_mask][nt] 
-                mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
+                # mu2_pt = event[f"{prefix}TauTo3Mu_mu2_pt"][tau_mask][nt] 
                 
                 # Read data for mu3 from event
-                mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
+                # mu3_idx = event[f"{prefix}TauTo3Mu_mu3_idx"][tau_mask][nt] 
                 mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
                 mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
-                mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
+                # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
 
                 # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
                 cone_mask = self.build_cone(
@@ -207,13 +225,13 @@ class ConeGraphProducer(InMemoryDataset):
                     fitted_tau_phi, 
                     mu1_eta, 
                     mu1_phi, 
-                    mu1_idx, 
+                    # mu1_idx, 
                     mu2_eta, 
                     mu2_phi, 
-                    mu2_idx, 
+                    # mu2_idx, 
                     mu3_eta, 
                     mu3_phi, 
-                    mu3_idx
+                    # mu3_idx
                 )
                 pfcands_pt_masked = pfcands_pt[cone_mask]
                 pfcands_eta_masked = pfcands_eta[cone_mask]
@@ -230,27 +248,28 @@ class ConeGraphProducer(InMemoryDataset):
 
                 fitted_tau_idx = nt
 
-                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float64)
-                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float64)
-                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float64)
+                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
+                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
+                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
 
                 if self.use_displacement:  
-                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float64)   
-                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float64)   
+                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
+                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
                 else:
-                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
-                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float64)   
+                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
+                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
 
                 if self.use_relative_angles:
                     pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
                     # Need care to account for circularity
                     pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
                 
-                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int64)
+                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
                 # Clip masses to zero since for some reason sometimes they are slightly negative
-                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float64)
-                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int64) # is i64 fine for charge? Saw that it was saved as i32 in root
+                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
+                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
 
+                num_nodes = len(pfcands_charge_masked)
                 pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
 
                 # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
@@ -295,18 +314,26 @@ class ConeGraphProducer(InMemoryDataset):
                     # Build pair-wise invariant masses
                     lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
                     pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
-                    # Only keep connected edges and take log to squeeze the distribution
-                    pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
-                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
-                    # Get pair charge
-                    pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
                     
-                    # Build Cambridge-Aachen and kt distances between constituents
+                    # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
                     R = 0.8
                     d_ca = ((matrix_delta_R**2) / (R**2))
-                    d_ca = np.array([d_ca[i,j] for i,j in edge_index])
                     d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
-                    d_kt = np.array([d_kt[i,j] for i,j in edge_index])
+                    if num_nodes < 200:
+                        # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
+                        np_edge_index = np.array(edge_index.t())
+                        pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
+                        pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
+                        d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
+                        d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
+                    else:
+                        pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
+                        pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
+                        d_ca = np.array([d_ca[i,j] for i,j in edge_index])
+                        d_kt = np.array([d_kt[i,j] for i,j in edge_index])
+                    
+                    # Only keep connected edges and take log to squeeze the distribution
+                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
 
                     edge_features = torch.tensor(np.array([
                         pair_masses,
@@ -346,6 +373,8 @@ class ConeGraphProducer(InMemoryDataset):
                         graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
                 elif self.weights is None:
                     graph.w = 1.
+                elif self.weights == "npvs_rescale":
+                    graph.w = npvs_weights[event["PV_npvs"]]
                 
                 # Add the event number if requested
                 if self.save_event_number:
@@ -358,6 +387,16 @@ class ConeGraphProducer(InMemoryDataset):
                 # Add fitted_tau_mass if requested
                 if self.save_fitted_tau_mass:
                     graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
+
+                # Add previous isolation approach score if requested
+                if self.save_benchmark_score:
+                    abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
+                    rel_iso = -1 * abs_iso / fitted_tau_pt
+                    graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
+                    
+                    # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
+                    # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
+                    # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
                         
                 graphs.append(graph)
 
@@ -369,6 +408,7 @@ class ConeGraphProducer(InMemoryDataset):
         if self.weights is None:
             xsec = 1.
             gen_events_before_selection = None
+            npvs_weights = None
 
         if self.weights == "xsec":
             with uproot.open(file_name) as in_file:
@@ -380,10 +420,17 @@ class ConeGraphProducer(InMemoryDataset):
                         raise ValueError("No GenCrossSection found in Metadata")
                 else:
                     raise ValueError("No Metadata tree found in file")
+            npvs_weights = None
+
+        if self.weights == "npvs_rescale":
+            xsec = 1.
+            gen_events_before_selection = None
+            npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
+
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
         branches_to_load = [
-            f"n{n_prefix}PFCands",
+            # f"n{n_prefix}PFCands",
             f"{prefix}PFCands_pt",
             f"{prefix}PFCands_eta",
             f"{prefix}PFCands_phi",
@@ -391,22 +438,29 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}PFCands_mass",  
             f"{prefix}PFCands_charge",
             f"n{n_prefix}TauTo3Mu",
-            f"{prefix}TauTo3Mu_mu1_idx",
+            # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
             f"{prefix}TauTo3Mu_mu1_phi",
-            f"{prefix}TauTo3Mu_mu1_pt",
-            f"{prefix}TauTo3Mu_mu2_idx",
+            # f"{prefix}TauTo3Mu_mu1_pt",
+            # f"{prefix}TauTo3Mu_mu2_idx",
             f"{prefix}TauTo3Mu_mu2_eta",
             f"{prefix}TauTo3Mu_mu2_phi",
-            f"{prefix}TauTo3Mu_mu2_pt",
-            f"{prefix}TauTo3Mu_mu3_idx",
+            # f"{prefix}TauTo3Mu_mu2_pt",
+            # f"{prefix}TauTo3Mu_mu3_idx",
             f"{prefix}TauTo3Mu_mu3_eta",
             f"{prefix}TauTo3Mu_mu3_phi",
-            f"{prefix}TauTo3Mu_mu3_pt",
+            # f"{prefix}TauTo3Mu_mu3_pt",
             f"{prefix}TauTo3Mu_fitted_mass",
             f"{prefix}TauTo3Mu_fitted_eta",
             f"{prefix}TauTo3Mu_fitted_phi",
             f"{prefix}TauTo3Mu_fitted_pt",
+            "PV_npvs",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPV",
+            f"{prefix}TauTo3Mu_iso_ptPhotons",
+            f"{prefix}TauTo3Mu_iso_ptChargedFromPU",
+            # f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
+            # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
         if self.use_displacement:
@@ -416,10 +470,8 @@ class ConeGraphProducer(InMemoryDataset):
         #     events = in_file.arrays(branches_to_load, library="ak")
         all_chunks = []
         for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
-            # Optional: process events here if you want to avoid keeping them all in memory
             all_chunks.append(events)
 
-        # If you really want to concatenate them all after processing:
         events = ak.concatenate(all_chunks)
         
         bkg_mask = None
@@ -442,6 +494,7 @@ class ConeGraphProducer(InMemoryDataset):
             total_events,
             events_to_process,
             bkg_mask,
+            npvs_weights,
         )
 
         if self.pre_transform is not None:
@@ -457,7 +510,11 @@ class ConeGraphProducer(InMemoryDataset):
             graphs += self.get_graphs(file)
         
         data, slices = self.collate(graphs)
-        torch.save((data, slices), self.processed_paths[-1])
+        if "t3wn" in os.uname()[1] and self.processed_paths[-1].startswith("/pnfs"):
+            torch.save((data, slices), "/tmp/tmp.pt")
+            os.system(f"xrdcp /tmp/tmp.pt root://t3se01.psi.ch:1094//{self.processed_paths[-1]}")
+        else:
+            torch.save((data, slices), self.processed_paths[-1])    
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
         adjacency = np.ones_like(delta_R) - np.identity(delta_R.shape[0])
@@ -491,38 +548,38 @@ class ConeGraphProducer(InMemoryDataset):
             fitted_tau_phi: float, 
             mu1_eta: float,
             mu1_phi: float, 
-            mu1_idx: int, 
+            # mu1_idx: int, 
             mu2_eta: float, 
             mu2_phi: float, 
-            mu2_idx: int, 
+            # mu2_idx: int, 
             mu3_eta: float, 
             mu3_phi: float, 
-            mu3_idx: int
+            # mu3_idx: int
         ) -> ak.Array:
 
-        delta_R_pfcands_tau = self.calc_delta_R(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_pfcands_tau = self.calc_delta_R_sq(pfcands_eta, pfcands_phi, fitted_tau_eta, fitted_tau_phi)
 
-        delta_R_mu1_tau = self.calc_delta_R(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
-        delta_R_mu2_tau = self.calc_delta_R(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
-        delta_R_mu3_tau = self.calc_delta_R(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
-        if self.cone_size < max(delta_R_mu1_tau, delta_R_mu2_tau, delta_R_mu3_tau):
+        delta_R_sq_mu1_tau = self.calc_delta_R_sq(mu1_eta, mu1_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_mu2_tau = self.calc_delta_R_sq(mu2_eta, mu2_phi, fitted_tau_eta, fitted_tau_phi)
+        delta_R_sq_mu3_tau = self.calc_delta_R_sq(mu3_eta, mu3_phi, fitted_tau_eta, fitted_tau_phi)
+        if self.cone_size ** 2 < max(delta_R_sq_mu1_tau, delta_R_sq_mu2_tau, delta_R_sq_mu3_tau):
             logging.warning("given cone size is not large enough. Using farthest away tau3mu candidate delta_R as cone size instead.")
-            cone_size = max(delta_R_mu1_tau, delta_R_mu2_tau, delta_R_mu3_tau)
+            cone_size_sq = max(delta_R_sq_mu1_tau, delta_R_sq_mu2_tau, delta_R_sq_mu3_tau)
         else:
-            cone_size = self.cone_size
+            cone_size_sq = self.cone_size ** 2
 
-        cone_mask = (delta_R_pfcands_tau < cone_size) # binary ak.array whether pf_cand is inside cone or not
+        cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
         
         # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
 
         return cone_mask
     
-    def calc_delta_R(self, eta, phi, ref_eta, ref_phi):
+    def calc_delta_R_sq(self, eta, phi, ref_eta, ref_phi):
         delta_eta = eta - ref_eta
         delta_phi_internal = np.abs(phi - ref_phi)
         delta_phi_external = 2*np.pi - np.abs(phi - ref_phi)
         delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
-        delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-        return delta_R
+        delta_R_sq = delta_eta**2 + delta_phi**2
+        return delta_R_sq
 
         
