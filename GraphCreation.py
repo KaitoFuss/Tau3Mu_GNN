@@ -9,11 +9,11 @@ use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
 save_fitted_tau_mass = True
-weights = None
 save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
 cone_size = 0.5
+save_benchmark_score = True
 
 def create_graph(
     root: str,
@@ -25,6 +25,8 @@ def create_graph(
     k_knn: int = None,
     delta_r_threshold: float = None,
     slimmed: bool = False,
+    shuffle: bool = False,
+    weights = None,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -47,12 +49,14 @@ def create_graph(
         save_edge_attributes=save_edge_attributes,
         save_event_number=save_event_number,
         save_fitted_tau_mass=save_fitted_tau_mass,
+        save_benchmark_score=save_benchmark_score,
         weights=weights,
         save_fitted_tau_idx=save_fitted_tau_idx,
         mask=mask,
         label=label,
         verbose=verbose,
         slimmed=slimmed,
+        shuffle_bool=shuffle,
         use_displacement=use_displacement,
     )
                 
@@ -117,7 +121,8 @@ if __name__ == "__main__":
     #     mask=False, 
     #     edge_connection_mode=model_type,
     #     k_knn=k, 
-    #     delta_r_threshold=delta_r
+    #     delta_r_threshold=delta_r,
+    #     slimmed=False,
     # )
 
     root_W_signals_skimmed = [

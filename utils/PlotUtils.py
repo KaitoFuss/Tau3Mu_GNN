@@ -1,7 +1,10 @@
+import os
 from numpy import random
 import networkx as nx
 from torch_geometric.utils import to_networkx
 import matplotlib.pyplot as plt
+import awkward as ak
+import uproot
 
 
 def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, leaf_vs_root_factor = 0.5):
@@ -137,3 +140,41 @@ def plot_tree(graph, idx_of_feature_to_plot, label, file_name, root=None, show=F
     plt.savefig(f"{file_name}.pdf")
     if show: plt.show()
     plt.close()
+
+def plot_histogram_root(file_path, column, output_path, score_column=None, score_cuts=None,
+                        title=None, xlabel=None, ylabel=None,
+                        bins=None, xlim=None, ylim=None):
+    # Open the ROOT file and extract the Events tree
+    f = uproot.open(file_path)
+    df = f["Events"].arrays([column] + ([score_column] if score_column else []))
+
+    # raw_data = ak.flatten(df[column])
+    raw_data = df[column]
+
+    # If no score filtering, plot everything
+    if not score_column or not score_cuts:
+        data = ak.to_numpy(ak.concatenate([raw_data]))
+        plt.hist(data, bins=bins, alpha=0.7, color='blue', label='No cut')
+    else:
+        # Handle multiple score cuts
+        scores = ak.flatten(df[score_column])
+        for cut in score_cuts:
+            mask = scores > cut
+            filtered_data = ak.to_numpy(ak.concatenate([raw_data[mask]]))
+            plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{score_column} > {cut}")
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    if xlim:
+        plt.xlim(xlim)
+    if ylim: 
+        plt.ylim(ylim)
+    plt.grid(True)
+
+    os.makedirs(output_path, exist_ok=True)
+
+    # Create full output file path
+    filename = os.path.join(output_path, f"{column}_hist.png")
+    plt.savefig(filename, dpi=300)
+    print(f"Histogram saved to: {filename}")

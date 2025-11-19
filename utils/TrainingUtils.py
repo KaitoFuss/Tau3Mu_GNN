@@ -46,6 +46,60 @@ def Normalize(datasets):
 
     return means, stds
 
+def distance_corr(
+        var_1:torch.tensor,
+        var_2:torch.tensor,
+        normedweight:torch.tensor,
+        power=1,
+        )->torch.tensor:
+    """
+    Compute the distance correlation function
+    between two variables.
+
+    Args:
+        var_1 (torch.tensor): The first variable.
+        var_2 (torch.tensor): The second variable.
+        normedweight (torch.tensor): The weight matrix.
+        power (int): The power of the distance correlation.
+
+    Returns:
+        torch.tensor: The distance correlation between the two variables.
+    """
+    
+    # Normalize the weights
+    normedweight = normedweight/torch.sum(normedweight)*len(var_1)
+    
+    xx = var_1.view(-1, 1).repeat(1, len(var_1)).view(len(var_1),len(var_1))
+    yy = var_1.repeat(len(var_1),1).view(len(var_1),len(var_1))
+    amat = (xx-yy).abs()
+
+    xx = var_2.view(-1, 1).repeat(1, len(var_2)).view(len(var_2),len(var_2))
+    yy = var_2.repeat(len(var_2),1).view(len(var_2),len(var_2))
+    bmat = (xx-yy).abs()
+
+    amatavg = torch.mean(amat*normedweight,dim=1)
+    Amat=amat-amatavg.repeat(len(var_1),1).view(len(var_1),len(var_1))\
+        -amatavg.view(-1, 1).repeat(1, len(var_1)).view(len(var_1),len(var_1))\
+        +torch.mean(amatavg*normedweight)
+
+    bmatavg = torch.mean(bmat*normedweight,dim=1)
+    Bmat=bmat-bmatavg.repeat(len(var_2),1).view(len(var_2),len(var_2))\
+        -bmatavg.view(-1, 1).repeat(1, len(var_2)).view(len(var_2),len(var_2))\
+        +torch.mean(bmatavg*normedweight)
+
+    ABavg = torch.mean(Amat*Bmat*normedweight,dim=1)
+    AAavg = torch.mean(Amat*Amat*normedweight,dim=1)
+    BBavg = torch.mean(Bmat*Bmat*normedweight,dim=1)
+
+    if(power==1):
+        dCorr=(torch.mean(ABavg*normedweight))/torch.sqrt((torch.mean(AAavg*normedweight)*torch.mean(BBavg*normedweight)))
+    elif(power==2):
+        dCorr=(torch.mean(ABavg*normedweight))**2/(torch.mean(AAavg*normedweight)*torch.mean(BBavg*normedweight))
+    else:
+        dCorr=((torch.mean(ABavg*normedweight))/torch.sqrt((torch.mean(AAavg*normedweight)*torch.mean(BBavg*normedweight))))**power
+    
+    return dCorr
+
 def get_model_parameters(model_type):
     """Get model(graph) parameters.
 
