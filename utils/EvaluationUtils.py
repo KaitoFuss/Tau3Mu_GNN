@@ -145,7 +145,7 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
     """ Calculate ROC and AUC
 
     Args:
-        evaluation_dict(dict): with weights, target_labels, scorces
+        evaluation_dict(dict): with weights, target_labels, scores
 
     Returns: roc(dict), auc(dict)
         
@@ -248,36 +248,56 @@ def add_legends_low(ax, legends, loc='lower right', spacing=0.26):
 def plot_roc(roc, name, suffix = "_eval"):
 
     # Define line styles for each value of rinv
-    line_styles = {
-        '0.3': '-',
-        '0.5': '--',
-        '0.7': ':'
-    }
+    '''linestyles = [
+        '-',          # solid
+        '--',         # dashed
+        ':',          # dotted
+        '-.',         # dash-dot
+        (0, (5, 10)), # loosely dashed
+        (0, (5, 1)),  # densely dashed
+        (0, (1, 10)), # loosely dotted
+        (0, (1, 1)),  # densely dotted
+        (0, (10, 2)), # long dash
+        (0, (3, 5, 1, 5)) # complex dash pattern
+    ]'''
 
-    colors = {
-        '700': 'rebeccapurple',        
-        '800': 'plum',     
-        '900': 'lightcoral',    
-        '1000': 'firebrick',        
-        '1100': 'gold',      
-        '1200': 'olive',     
-        '1300': 'yellowgreen',     
-        '1400': '#A8DADC',      # powder blue
-        '1500': '#457B9D',    # Steel blue
-        '3000': '#1D3557',    # Dark blue
-    }
+    colors = [
+    (0.894, 0.102, 0.110),  # Red
+    (0.216, 0.494, 0.722),  # Blue
+    (0.302, 0.686, 0.290),  # Green
+    (0.596, 0.306, 0.639),  # Purple
+    (1.000, 0.498, 0.000),  # Orange
+    (1.000, 1.000, 0.200),  # Yellow
+    (0.651, 0.337, 0.157),  # Brown
+    (0.969, 0.506, 0.749),  # Pink
+    (0.600, 0.600, 0.600),  # Gray
+    (0.105, 0.619, 0.466),  # Teal
+    (0.850, 0.372, 0.007),  # Dark Orange
+    (0.494, 0.184, 0.556),  # Violet
+    (0.466, 0.674, 0.188),  # Olive Green
+    (0.282, 0.470, 0.816),  # Sky Blue
+    (0.769, 0.305, 0.322),  # Brick Red
+    (0.329, 0.545, 0.384),  # Forest Green
+    (0.890, 0.467, 0.761),  # Magenta
+    (0.556, 0.349, 0.008),  # Dark Brown
+    (0.125, 0.694, 0.929),  # Cyan
+    (0.435, 0.258, 0.678)   # Indigo
+]
+
 
     plt.figure()
     ax = plt.gca()
  
     # Iterate over each key in roc dictionary and plot the curves
+    it = 0
     for key in roc:
         # parts = key.split("_")
         # label = f"$M_{{Z'}} = {parts[1]},  r_{{inv}} = 0.{parts[2].split('p')[1]}$"
         # rinv_value = f"0.{parts[2].split('p')[1]}"
         # m_z = parts[1]
         # plt.plot(roc[key]["fpr"], roc[key]["tpr"], color=colors[m_z], linewidth = 0.9, linestyle=line_styles[rinv_value], label=label)
-        plt.plot(roc[key]["fpr"], roc[key]["tpr"], linewidth = 0.9, label=key)
+        plt.semilogx(roc[key]["fpr"], roc[key]["tpr"], color = colors[it], linewidth = 0.9, label=key)
+        it +=1
 
     # Create dummy plots for separate legends
     # Dummy plots for MZ values
@@ -294,7 +314,7 @@ def plot_roc(roc, name, suffix = "_eval"):
     plt.grid()
     plt.legend()
 
-    output_path = output_directory(name)
+    output_path = output_directory("comparison/" + name) 
     outout_plot_name = name + suffix + "_roc.png"
     print(f"{outout_plot_name} has been saved.")
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)

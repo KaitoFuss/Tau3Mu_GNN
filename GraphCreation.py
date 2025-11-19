@@ -4,7 +4,7 @@ import argparse
 
 
 # default values
-max_events_to_process = 100000
+# max_events_to_process = 100
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -21,6 +21,7 @@ def create_graph(
     label: float,
     mask: bool,
     edge_connection_mode: str,
+    max_events_to_process: int,
     k_knn: int = None,
     delta_r_threshold: float = None,
     slimmed: bool = False,
@@ -62,11 +63,13 @@ if __name__ == "__main__":
     parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
     parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
     parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
+    parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
     args = parser.parse_args()
 
     model_type = args.graph_type
     k = args.k
     delta_r = args.delta_r
+    max_events_to_process = args.nevents
 
     if model_type == "knn" and k is None:
         raise ValueError("For 'knn' model_type, --k must be specified.")
@@ -98,7 +101,8 @@ if __name__ == "__main__":
     # )
 
     
-    base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
+    base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal/"
+    base_direc_ds_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/"
     # root_W_signals = [
     #    [base_direc_W_signal, "winter24"],
     #    [base_direc_W_signal, "summer24"],
@@ -117,14 +121,21 @@ if __name__ == "__main__":
     # )
 
     root_W_signals_skimmed = [
-        [base_direc_W_signal, "skimmed"],
+        [base_direc_W_signal, "signal_skimmed"],
     ]
-    for base_direc, signal_identifier in root_W_signals_skimmed:
-        output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
-        root_W_signal = base_direc
+
+    root_ds_signals_skimmed = [
+        [base_direc_ds_signal, "signal_skimmed"],
+    ]
+    for base_direc, signal_identifier in root_ds_signals_skimmed:
+        print(base_direc)
+        print(signal_identifier)
+        output_ident_signal = "ds_decay_signal_" + signal_identifier.replace("/", "")
+        root_ds_signal = base_direc
         create_graph(
-            root_W_signal, 
+            root_ds_signal, 
             output_ident_signal, 
+            max_events_to_process=max_events_to_process,
             label=1., 
             mask=False, 
             edge_connection_mode=model_type,
@@ -132,9 +143,9 @@ if __name__ == "__main__":
             delta_r_threshold=delta_r,
             slimmed = True,
         )
-        
 
-    base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/"
+    base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data/"
+    base_direc_bkg_ds = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/"
     # root_bkgs = [
     #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/", "250430_100827/0000"],
     #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/", "250430_100852/0000"],
@@ -239,18 +250,19 @@ if __name__ == "__main__":
     # )
 
     root_bkgs_skimmed = [
-        [base_direc_bkg, "skimmed"]
+        [base_direc_bkg_ds, "data_skimmed"]
     ]
-    # for base_direc, bkg_identifier in root_bkgs_skimmed:
-    #     output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
-    #     root_bkg = base_direc
-    #     create_graph(
-    #     root_bkg, 
-    #     output_ident_bkg, 
-    #     label=0., 
-    #     mask=True, 
-    #     edge_connection_mode=model_type,
-    #     k_knn=k, 
-    #     delta_r_threshold=delta_r,
-    #     slimmed = True,
-    # )
+    for base_direc, bkg_identifier in root_bkgs_skimmed:
+        output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+        root_bkg = base_direc
+        create_graph(
+        root_bkg, 
+        output_ident_bkg, 
+        max_events_to_process=int(max_events_to_process/4),
+        label=0., 
+        mask=True, 
+        edge_connection_mode=model_type,
+        k_knn=k, 
+        delta_r_threshold=delta_r,
+        slimmed = True,
+    )

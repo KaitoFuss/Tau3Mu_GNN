@@ -22,19 +22,23 @@ def Normalize(datasets):
 
 
     for directory, key in datasets:
+        print(directory, key)
         graph_dict[key] = ConeGraphProducer(directory,key)
+
+
 
     means, stds = 0., 0.
     weights = []
 
     for key in graph_dict:
         for graph in graph_dict[key]:
-            means += graph.x.sum(dim=0)*graph.w
+            means += torch.nan_to_num(graph.x.sum(dim=0)*graph.w)
             weights.append(graph.w)
     means /= sum(weights)
 
     for key in graph_dict:
-        for graph in graph_dict[key]:   
+        for graph in graph_dict[key]:
+            graph.x = torch.nan_to_num(graph.x)   
             stds += ((graph.x - means)**2).sum(dim=0)*graph.w
 
     stds /= sum(weights)

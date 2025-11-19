@@ -129,6 +129,7 @@ class ConeGraphProducer(InMemoryDataset):
 
         super().__init__(root, transform, pre_transform, pre_filter)
 
+
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -170,6 +171,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
             pfcands_mass = event[f"{prefix}PFCands_mass"]
             pfcands_charge = event[f"{prefix}PFCands_charge"]
+            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -221,6 +223,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
                 pfcands_mass_masked = pfcands_mass[cone_mask]
                 pfcands_charge_masked = pfcands_charge[cone_mask]
+                pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
                 if self.use_displacement:
                     pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
@@ -261,6 +264,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_phi_masked,
                         pfcands_pdgId_masked,
                         pfcands_mass_masked,
+                        pfcands_puppiWeight_masked,
                         pfcands_d0_masked,   
                         pfcands_dz_masked   
                     ]).T, dtype=torch.float)
@@ -270,7 +274,8 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_eta_masked,
                         pfcands_phi_masked,
                         pfcands_pdgId_masked,
-                        pfcands_mass_masked
+                        pfcands_mass_masked, 
+                        pfcands_puppiWeight_masked
                     ]).T, dtype=torch.float)
                 
                 # TODO do this calc outside loop and then just mask inside 
@@ -390,6 +395,7 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}PFCands_pdgId",
             f"{prefix}PFCands_mass",  
             f"{prefix}PFCands_charge",
+            f"{prefix}PFCands_Weight",
             f"n{n_prefix}TauTo3Mu",
             f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -410,7 +416,7 @@ class ConeGraphProducer(InMemoryDataset):
         ]
 
         if self.use_displacement:
-            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
+            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"] 
 
         # with uproot.open(f"{file_name}:Events") as in_file:
         #     events = in_file.arrays(branches_to_load, library="ak")
@@ -457,6 +463,12 @@ class ConeGraphProducer(InMemoryDataset):
             graphs += self.get_graphs(file)
         
         data, slices = self.collate(graphs)
+        for key, value in data.items():
+            if torch.is_tensor(value):
+                if torch.isnan(value).any().values:
+                    nansnum = torch.isnan(value)
+                    data[key] = torch.nan_to_num(value)
+                    nansnum = torch.isnan(value)
         torch.save((data, slices), self.processed_paths[-1])
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
