@@ -75,7 +75,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
         
         model.eval()
 
-            for graphs in dataloader_bkg:
+        for graphs in dataloader_bkg:
                 weights_bkg.append(graphs.w.detach().numpy())
                 tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
                 benchmark_bkg.append(graphs.benchmark_score.detach().numpy())

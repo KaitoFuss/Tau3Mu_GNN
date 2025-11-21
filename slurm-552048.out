@@ -1,0 +1,135 @@
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/no-puppi-optunabest-newdata/3dec61dceb5f4f23a962243a7ced60d6
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:133: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:133: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/dcor/_fast_dcov_avl.py:554: UserWarning: Falling back to uncompiled AVL fast distance covariance terms because of TypeError exception raised: No matching definition for argument type(s) array(float32, 1d, C), array(float32, 1d, C), bool. Rembember: only floating point values can be used in the compiled implementations.
+  warnings.warn(
+/work/adcorel/SVJ_GNN/utils/TrainingUtils.py:106: FutureWarning: Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. You will need to use `mktree` to create to explicitly create a TTree. Please update your code accordingly.
+  file["Output"] = df
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:133: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/dcor/_fast_dcov_avl.py:554: UserWarning: Falling back to uncompiled AVL fast distance covariance terms because of TypeError exception raised: No matching definition for argument type(s) array(float32, 1d, C), array(float32, 1d, C), bool. Rembember: only floating point values can be used in the compiled implementations.
+  warnings.warn(
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/no_puppi_optunabest_newdata_vs28
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_fully
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_fully
+Normalization saved in /work/adcorel/SVJ_GNN/output/no_puppi_optunabest_newdata_vs28/Normalization.pkl
+Saving new best model
+Saving new best model
+Average loss = 0.5881608481301422 and current loss = 0.5804195395998053 is larger than 0.5789413359829393
+Average loss = 0.5869567813719633 and current loss = 0.5833445810974264 is larger than 0.5789413359829393
+Saving new best model
+Saving new best model
+Average loss = 0.5476737448235879 and current loss = 0.5008292713680783 is larger than 0.48874257687719347
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.4210354446280523 and current loss = 0.38856485504618304 is larger than 0.3337669781488589
+Average loss = 0.40804555674166787 and current loss = 0.36641836116814563 is larger than 0.3337669781488589
+Average loss = 0.40035068235687304 and current loss = 0.4117938330292454 is larger than 0.3337669781488589
+Average loss = 0.3925493023003957 and current loss = 0.42281547080330445 is larger than 0.3337669781488589
+Average loss = 0.38187867567221984 and current loss = 0.36397508288619423 is larger than 0.3337669781488589
+Average loss = 0.3800694849163976 and current loss = 0.38886839108011084 is larger than 0.3337669781488589
+Average loss = 0.3805231802521773 and current loss = 0.3942501040295603 is larger than 0.3337669781488589
+Average loss = 0.3809222018117716 and current loss = 0.38718499299022613 is larger than 0.3337669781488589
+Average loss = 0.3828822852203355 and current loss = 0.37118478302152635 is larger than 0.3337669781488589
+Average loss = 0.39055620458232637 and current loss = 0.4105061717687674 is larger than 0.3337669781488589
+Average loss = 0.39722203416227053 and current loss = 0.4552231508456248 is larger than 0.3337669781488589
+Average loss = 0.40234428156252466 and current loss = 0.41764083517068634 is larger than 0.3337669781488589
+Average loss = 0.40259921529994436 and current loss = 0.4143431704034429 is larger than 0.3337669781488589
+Average loss = 0.4032456554797732 and current loss = 0.4292798726015924 is larger than 0.3337669781488589
+Average loss = 0.4090402854021771 and current loss = 0.4219213821102329 is larger than 0.3337669781488589
+Average loss = 0.41299240231328105 and current loss = 0.4283895601911505 is larger than 0.3337669781488589
+Average loss = 0.41740777878528323 and current loss = 0.4384038687495828 is larger than 0.3337669781488589
+Average loss = 0.42766631815636724 and current loss = 0.4897703867010664 is larger than 0.3337669781488589
+Average loss = 0.439116640429239 and current loss = 0.48568800575024373 is larger than 0.3337669781488589
+Average loss = 0.44607982816108793 and current loss = 0.48013804908725677 is larger than 0.3337669781488589
+Average loss = 0.4519154334111669 and current loss = 0.513579203346415 is larger than 0.3337669781488589
+Average loss = 0.45798987172187744 and current loss = 0.47838521827779046 is larger than 0.3337669781488589
+Average loss = 0.46820780332829504 and current loss = 0.5165224864676192 is larger than 0.3337669781488589
+Average loss = 0.47676978998521263 and current loss = 0.5148997391707684 is larger than 0.3337669781488589
+Average loss = 0.4851027616963813 and current loss = 0.5052510992219196 is larger than 0.3337669781488589
+Average loss = 0.4937886460190503 and current loss = 0.5152484034178411 is larger than 0.3337669781488589
+Average loss = 0.5010638350787381 and current loss = 0.5111557593464604 is larger than 0.3337669781488589
+Average loss = 0.501854961797626 and current loss = 0.49768165388994556 is larger than 0.3337669781488589
+Average loss = 0.5063388653424823 and current loss = 0.5305270411988058 is larger than 0.3337669781488589
+Average loss = 0.5082714126102642 and current loss = 0.49946352176507647 is larger than 0.3337669781488589
+Average loss = 0.5070482734397147 and current loss = 0.5013478116409199 is larger than 0.3337669781488589
+Average loss = 0.509850027426117 and current loss = 0.506402758141813 is larger than 0.3337669781488589
+Average loss = 0.5096421590868748 and current loss = 0.5144438030751975 is larger than 0.3337669781488589
+Average loss = 0.5103028657654467 and current loss = 0.5215068059564876 is larger than 0.3337669781488589
+Average loss = 0.5127811479314449 and current loss = 0.5300339208819018 is larger than 0.3337669781488589
+Average loss = 0.5128798780997676 and current loss = 0.5162357051010688 is larger than 0.3337669781488589
+Average loss = 0.5139062273929867 and current loss = 0.5214192522786512 is larger than 0.3337669781488589
+Average loss = 0.517888707133192 and current loss = 0.5375064512919983 is larger than 0.3337669781488589
+Average loss = 0.5165839992417119 and current loss = 0.5174799622840048 is larger than 0.3337669781488589
+Average loss = 0.5193070891741159 and current loss = 0.5266944210891168 is larger than 0.3337669781488589
+Average loss = 0.5220510714205288 and current loss = 0.5287876341050479 is larger than 0.3337669781488589
+Average loss = 0.5231998142482337 and current loss = 0.5178901864188624 is larger than 0.3337669781488589
+Average loss = 0.5235336026227152 and current loss = 0.5177816868200124 is larger than 0.3337669781488589
+Average loss = 0.5247380416631203 and current loss = 0.5335511963605385 is larger than 0.3337669781488589
+Average loss = 0.5238921843236797 and current loss = 0.5215753474874952 is larger than 0.3337669781488589
+Average loss = 0.5238965796643631 and current loss = 0.5162796585079042 is larger than 0.3337669781488589
+Average loss = 0.5226040358107203 and current loss = 0.5084938137422232 is larger than 0.3337669781488589
+Average loss = 0.5231686548358934 and current loss = 0.5431526415437274 is larger than 0.3337669781488589
+Average loss = 0.5265154527527379 and current loss = 0.5509479414524506 is larger than 0.3337669781488589
+Average loss = 0.5237114825268545 and current loss = 0.4986547188302831 is larger than 0.3337669781488589
+Average loss = 0.5244603892621776 and current loss = 0.5362767014582787 is larger than 0.3337669781488589
+==> Early stop because of overfitting
+Model saved for epoch 12
+Model saved to  /work/adcorel/SVJ_GNN/output/no_puppi_optunabest_newdata_vs28/no_puppi_optunabest_newdata_vs28.pt
+==> Training completed in 125447.21 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/no_puppi_optunabest_newdata_vs28/no_puppi_optunabest_newdata_vs28_loss.root
+no_puppi_optunabest_newdata_vs28_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  0.5074819025406396
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/no_puppi_optunabest_newdata_vs28/eval/_ROC_AUC.pkl
+no_puppi_optunabest_newdata_vs28_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/no_puppi_optunabest_newdata_vs28
+no_puppi_optunabest_newdata_vs28_eval_roc.png has been saved.
+==> Evaluation completed in 525.84 seconds
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : no_puppi_optunabest_newdata_vs28
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/no-puppi-optunabest-newdata/3dec61dceb5f4f23a962243a7ced60d6
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [63] : (0.3800694849163976, 0.605121668807682)
+COMET INFO:     Training loss [64]           : (0.5341354019607215, 0.7466506019064447)
+COMET INFO:     Validation disco [64]        : (0.28991606337518755, 0.600116172803577)
+COMET INFO:     Validation loss [64]         : (0.3337669781488589, 0.605121668807682)
+COMET INFO:     loss [6164]                  : (0.42002353072166443, 0.9608443379402161)
+COMET INFO:   Others:
+COMET INFO:     Name : no_puppi_optunabest_newdata_vs28
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_fully
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     learning_rate  : 0.011150597540537554
+COMET INFO:     regularisation : 0.5
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (22.26 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (35.78 KB)
+COMET INFO: 

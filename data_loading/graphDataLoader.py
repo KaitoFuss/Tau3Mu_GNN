@@ -78,6 +78,7 @@ class GraphDataLoader(DataLoader):
                     "please do so before attempting to load it."
                         )
             data = ConeGraphProducer(path, output_dataset_name=name)
+            data.x = torch.nan_to_num(data.x)
             
             if self.device is not None:
                 data.data.to(self.device)
@@ -95,7 +96,6 @@ class GraphDataLoader(DataLoader):
             
             if normalizer is not None:
                 normalizer(data.data)
-
             datasets.append(data)
 
         data = ConcatDataset(datasets)
