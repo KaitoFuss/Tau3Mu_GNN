@@ -11,6 +11,7 @@ from torch_geometric.utils import negative_sampling
 from utils.LundTreeUtils import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
 import utils.AwkwardArrayUtils as akUtl
 import matplotlib.pyplot as plt
+import awkward as ak
 import ROOT
 import csv
 
@@ -306,7 +307,7 @@ class ScoreProducer:
 
     def __init__(
         self,
-        root_file,
+        root,
         cone_size=0.5,
         n_cones=1,
         edge_connection_mode="fully",
@@ -336,7 +337,7 @@ class ScoreProducer:
         output_folder=None,
     ):
 
-        self.root_file = root_file
+        self.root = root
         self.cone_size = cone_size
         self.n_cones = n_cones
         self.edge_connection_mode = edge_connection_mode
@@ -416,11 +417,12 @@ class ScoreProducer:
             pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
             pfcands_mass = event[f"{prefix}PFCands_mass"]
             pfcands_charge = event[f"{prefix}PFCands_charge"]
+            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
-            nt = 0
             key = (runs[i_ev], lumis[i_ev], event_ids[i_ev])
             tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
+            nt = np.argmax(event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask])
             
             # Read data for fitted tau from event
             fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
@@ -468,6 +470,8 @@ class ScoreProducer:
             pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
             pfcands_mass_masked = pfcands_mass[cone_mask]
             pfcands_charge_masked = pfcands_charge[cone_mask]
+            pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
+
 
             if self.use_displacement:
                 pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
@@ -510,7 +514,8 @@ class ScoreProducer:
                     pfcands_pdgId_masked,
                     pfcands_mass_masked,
                     pfcands_d0_masked,   
-                    pfcands_dz_masked   
+                    pfcands_dz_masked,
+                    pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             else:
                 features = torch.tensor(np.array([
@@ -518,7 +523,8 @@ class ScoreProducer:
                     pfcands_eta_masked,
                     pfcands_phi_masked,
                     pfcands_pdgId_masked,
-                    pfcands_mass_masked
+                    pfcands_mass_masked,
+                    pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             
             # TODO do this calc outside loop and then just mask inside 
@@ -670,6 +676,7 @@ class ScoreProducer:
             f"{prefix}PFCands_pdgId",
             f"{prefix}PFCands_mass",  
             f"{prefix}PFCands_charge",
+            f"{prefix}PFCands_puppiWeight",
             f"n{n_prefix}TauTo3Mu",
             # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -739,6 +746,10 @@ class ScoreProducer:
         
         return all_scores, all_tau_masses, score_dict
 
+    @property
+    def raw_file_names(self):
+            return [self.root + "/" + f for f in os.listdir(self.root) if f.endswith(".root")]
+
     def create_score(self, graph):
         # Dictionary to hold scores
 
@@ -765,19 +776,33 @@ class ScoreProducer:
 
     def process(self):
 
-        all_scores, all_tau_masses, score_dict = self.get_all_scores(self.root_file)
+        # Read data into huge `Data` list.
+        all_scores = []
+        all_tau_masses = []
+        score_dict = {}
+
+        for file in self.raw_file_names:
+            print(f"Processing {file}")
+            all_scores_temp, all_tau_masses_temp, score_dict_temp = self.get_all_scores(file)
+            all_scores += ak.to_list(all_scores_temp)
+            all_tau_masses += ak.to_list(all_tau_masses_temp)
+            for key, score in score_dict_temp.items():
+                if key not in score_dict:
+                    score_dict[key] = []
+                score_dict[key].append(score)
 
         os.makedirs(self.output_folder, exist_ok=True)
         # Save raw arrays to compressed npz
+        
         np.savez_compressed(
-            os.path.join(self.output_folder, "raw_scores_and_tau_mass.npz"),
+            os.path.join(self.output_folder, "raw_scores_and_tau_mass_bkg.npz"),
             scores=all_scores,
             tau_mass=all_tau_masses,
         )
 
-        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass.npz')}")
+        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass_bkg.npz')}")
 
-        csv_path = os.path.join(self.output_folder, "scores.csv")
+        csv_path = os.path.join(self.output_folder, "scores_bkg.csv")
 
         # Write the CSV file
         with open(csv_path, "w", newline="") as csvfile:

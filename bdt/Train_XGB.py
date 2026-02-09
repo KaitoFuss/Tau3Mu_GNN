@@ -50,65 +50,84 @@ args = parser.parse_args()
 
 
 model = args.model
-model_path = "/work/kfuss/SVJ_GNN/output/" + model + "/"
-signals = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/" + model + "/signal_skimmed_no_resonances_with_scores.root"]
-backgrounds = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/" + model + "/data_skimmed_no_resonances_with_scores.root"]
+model_path = "/work/adcorel/SVJ_GNN/output/" + model + "/"
+signals = ["/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/" + model + "/ds_large_signal_skimmed_no_resonances_with_scores.root"]
+backgrounds = ["/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/" + model + "/data_skimmed_no_resonances_part1_with_scores.root", 
+               "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/" + model + "/data_skimmed_no_resonances_part2_with_scores.root", 
+               "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/" + model + "/data_skimmed_no_resonances_part3_with_scores.root", 
+               "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/" + model + "/data_skimmed_no_resonances_part4_with_scores.root"]
 
 # give labels human readable names
 modes = defaultdict(OrderedDict)
 labels = modes["GNN"]
 
-labels['Slimmed_TauTo3Mu_fitted_pt'                                         ] = '$\\tau$ $p_{T}$'
-labels['TauPlusMET_Tau_Puppi_mT'                                            ] = '$m_{T}(\\tau, MET)$'
-labels['TauPlusMET_PuppiMET_pt'                                             ] = 'MET $p_{T}$'
-# labels['cand_refit_tau_pt/cand_refit_met_pt'                              ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
-# labels['cand_refit_dRtauMuonMax'                                          ] = 'max($\Delta R(\\tau \mu_{i})$)'
-labels['TauPlusMET_Puppi_pt'                                                ] = 'W $p_{T}$'
-labels['TauPlusMET_PuppiMETminPz'                                           ] = '$max(ME_z^i)$'
-labels['TauPlusMET_PuppiMETmaxPz'                                           ] = '$min(ME_z^i)$'
-labels['Slimmed_TauTo3Mu_dZmu12'                                            ] = '$\Delta z (\mu_1, \mu_2)$'
-labels['Slimmed_TauTo3Mu_dZmu13'                                            ] = '$\Delta z (\mu_1, \mu_3)$'
-labels['Slimmed_TauTo3Mu_dZmu23'                                            ] = '$\Delta z (\mu_2, \mu_3)$'
-labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                   ] = 'SV L/$\sigma$'
-labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'          ] = '$\\chi^2_{\\tau}$'
-labels['Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu'                                ] = 'SV cos($\\theta_{IP}$)'
-labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = '$\Delta\phi(\\tau MET)$'
-labels['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'            ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
-# labels['mu1ID'                                                            ] = '$\mu_1$ ID'
-# labels['mu2ID'                                                            ] = '$\mu_2$ ID'
-# labels['mu3ID'                                                            ] = '$\mu_3$ ID'
-# labels['tauEta'                                                           ] = '$|\eta_{\\tau}|$'
-# labels['relative_iso'                                                     ] = '$\\tau$ iso'
-labels['GNN_Score'                                                          ] = 'GNN Score'
-labels['bdt_GNN'                                                            ] = 'BDT'
-labels['Slimmed_TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
+labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+labels['Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu'                                                                                      ] = 'SV cos($\\theta_{IP}$)'
+labels['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'                                                                                         ] = '$\\mu_3$ $p_{T}$'
+labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'                                                                                   ] = '$\\mu_1$ $isGlobal$'
+labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'                                                                                   ] = '$\\mu_2$ $isGlobal$'
+labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'                                                                                   ] = '$\\mu_3$ $isGlobal$'
+labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'                                                                ] = '$\\chi^2_{\\tau}$'
+labels['GNN_Score'                                                                                                                ] = 'GNN Score'                                                                                  
+# labels['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = 'max(tkRelIsos)'
+labels['bdt_ISO'                                                                                                                  ] = 'BDT'
+labels['Slimmed_TauTo3Mu_fitted_pt'                                                                                               ] = '$\\tau$ $p_{T}$'
+# labels['Muon_mediumId_Slimmed_TauTo3Mu_mu1_idx'                                                                                   ] = '$\\mu_1$ $medId$'
+# labels['Muon_mediumId_Slimmed_TauTo3Mu_mu2_idx'                                                                                   ] = '$\\mu_2$ $medId$'
+# labels['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx'                                                                                   ] = '$\\mu_3$ $medId$'
+# labels['TauPlusMET_Tau_Puppi_mT'                                                                                                  ] = '$m_{T}(\\tau, MET)$'
+# labels['TauPlusMET_PuppiMET_pt'                                                                                                   ] = 'MET $p_{T}$'
+# labels['cand_refit_tau_pt/cand_refit_met_pt'                                                                                    ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
+# labels['cand_refit_dRtauMuonMax'                                                                                                ] = 'max($\Delta R(\\tau \mu_{i})$)'
+# labels['TauPlusMET_Puppi_pt'                                                                                                      ] = 'W $p_{T}$'
+# labels['TauPlusMET_PuppiMETminPz'                                                                                                 ] = '$max(ME_z^i)$'
+# labels['TauPlusMET_PuppiMETmaxPz'                                                                                                 ] = '$min(ME_z^i)$'
+# labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'                                                              ] = '$\Delta\phi(\\tau MET)$'
+# labels['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'                                                                  ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
+# labels['mu1ID'                                                                                                                  ] = '$\mu_1$ ID'
+# labels['mu2ID'                                                                                                                  ] = '$\mu_2$ ID'
+# labels['mu3ID'                                                                                                                  ] = '$\mu_3$ ID'
+# labels['tauEta'                                                                                                                 ] = '$|\eta_{\\tau}|$'
+# labels['relative_iso'                                                                                                           ] = '$\\tau$ iso'
+# labels['Slimmed_TauTo3Mu_fitted_mass'                                                                                             ] = '$\\tau$ mass'
 
 labels = modes["ISO"]
 
-labels['Slimmed_TauTo3Mu_fitted_pt'                                         ] = '$\\tau$ $p_{T}$'
-labels['TauPlusMET_Tau_Puppi_mT'                                            ] = '$m_{T}(\\tau, MET)$'
-labels['TauPlusMET_PuppiMET_pt'                                             ] = 'MET $p_{T}$'
-# labels['cand_refit_tau_pt/cand_refit_met_pt'                              ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
-# labels['cand_refit_dRtauMuonMax'                                          ] = 'max($\Delta R(\\tau \mu_{i})$)'
-labels['TauPlusMET_Puppi_pt'                                                ] = 'W $p_{T}$'
-labels['TauPlusMET_PuppiMETminPz'                                           ] = '$max(ME_z^i)$'
-labels['TauPlusMET_PuppiMETmaxPz'                                           ] = '$min(ME_z^i)$'
-labels['Slimmed_TauTo3Mu_dZmu12'                                            ] = '$\Delta z (\mu_1, \mu_2)$'
-labels['Slimmed_TauTo3Mu_dZmu13'                                            ] = '$\Delta z (\mu_1, \mu_3)$'
-labels['Slimmed_TauTo3Mu_dZmu23'                                            ] = '$\Delta z (\mu_2, \mu_3)$'
-labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                   ] = 'SV L/$\sigma$'
-labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'          ] = '$\chi^2_{\tau}$'
-labels['Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu'                                ] = 'SV cos($\\theta_{IP}$)'
-labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = '$\Delta\phi(\\tau, MET)$'
-labels['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'            ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
-# labels['mu1ID'                                                            ] = '$\mu_1$ ID'
-# labels['mu2ID'                                                            ] = '$\mu_2$ ID'
-# labels['mu3ID'                                                            ] = '$\mu_3$ ID'
-# labels['tauEta'                                                           ] = '$|\eta_{\\tau}|$'
-labels['relative_iso'                                                       ] = '$\\tau$ iso'
-# labels['GNN_Score'                                                        ] = 'GNN Score'
-labels['bdt_ISO'                                                            ] = 'BDT'
-labels['Slimmed_TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
+labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+labels['Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu'                                                                                      ] = 'SV cos($\\theta_{IP}$)'
+labels['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'                                                                                         ] = '$\\mu_3$ $p_{T}$'
+labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'                                                                                   ] = '$\\mu_1$ $isGlobal$'
+labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'                                                                                   ] = '$\\mu_2$ $isGlobal$'
+labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'                                                                                   ] = '$\\mu_3$ $isGlobal$'
+labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'                                                                ] = '$\\chi^2_{\\tau}$'
+# labels['GNN_Score'                                                                                                                ] = 'GNN Score'                                                                                  
+labels['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = 'max(tkRelIsos)'
+labels['bdt_ISO'                                                                                                                  ] = 'BDT'
+labels['Slimmed_TauTo3Mu_fitted_pt'                                                                                               ] = '$\\tau$ $p_{T}$'
+# labels['Muon_mediumId_Slimmed_TauTo3Mu_mu1_idx'                                                                                   ] = '$\\mu_1$ $medId$'
+# labels['Muon_mediumId_Slimmed_TauTo3Mu_mu2_idx'                                                                                   ] = '$\\mu_2$ $medId$'
+# labels['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx'                                                                                   ] = '$\\mu_3$ $medId$'
+# labels['TauPlusMET_Tau_Puppi_mT'                                                                                                  ] = '$m_{T}(\\tau, MET)$'
+# labels['TauPlusMET_PuppiMET_pt'                                                                                                   ] = 'MET $p_{T}$'
+# labels['cand_refit_tau_pt/cand_refit_met_pt'                                                                                    ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
+# labels['cand_refit_dRtauMuonMax'                                                                                                ] = 'max($\Delta R(\\tau \mu_{i})$)'
+# labels['TauPlusMET_Puppi_pt'                                                                                                      ] = 'W $p_{T}$'
+# labels['TauPlusMET_PuppiMETminPz'                                                                                                 ] = '$max(ME_z^i)$'
+# labels['TauPlusMET_PuppiMETmaxPz'                                                                                                 ] = '$min(ME_z^i)$'
+# labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'                                                              ] = '$\Delta\phi(\\tau MET)$'
+# labels['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'                                                                  ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
+# labels['mu1ID'                                                                                                                  ] = '$\mu_1$ ID'
+# labels['mu2ID'                                                                                                                  ] = '$\mu_2$ ID'
+# labels['mu3ID'                                                                                                                  ] = '$\mu_3$ ID'
+# labels['tauEta'                                                                                                                 ] = '$|\eta_{\\tau}|$'
+# labels['relative_iso'                                                                                                           ] = '$\\tau$ iso'
+# labels['Slimmed_TauTo3Mu_fitted_mass'                                                                                             ] = '$\\tau$ mass'
 
 
 ##########################################################################################
@@ -132,30 +151,56 @@ def gini_xgb(preds, dtrain):
     return 'gini', gini_score
 
 ##########################################################################################
-tag = '21may2025_v0'
+tag = '4february2026_v0'
 ##########################################################################################
 
-features = [
-    'Slimmed_TauTo3Mu_fitted_pt',
-    'TauPlusMET_Tau_Puppi_mT',
-    #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
-    #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
-    'TauPlusMET_PuppiMET_pt',
-    #'Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)', # only for >= v4
+features = ['Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
+            
+            # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
+            # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
+            # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
+
+            'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
+            'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
+            'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+
+            'Slimmed_TauTo3Mu_dZmu12', 
+            'Slimmed_TauTo3Mu_dZmu13', 
+            'Slimmed_TauTo3Mu_dZmu23', 
+
+            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
+            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+            ]
+
+# features are the BDT features that we can directly extract from the root files 
+
+# features = [
+#     'Slimmed_TauTo3Mu_fitted_pt',
+#     'TauPlusMET_Tau_Puppi_mT',
+#     'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
+#     'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
+#     'TauPlusMET_PuppiMET_pt',
+#     'Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)', # only for >= v4
 #     'cand_refit_tau_pt/cand_refit_met_pt', # only for >= v2
 #     'cand_refit_dRtauMuonMax',
-    'TauPlusMET_Puppi_pt',
-    'TauPlusMET_PuppiMETminPz',
-    'TauPlusMET_PuppiMETmaxPz',
-    'Slimmed_TauTo3Mu_dZmu12', 
-    'Slimmed_TauTo3Mu_dZmu13', 
-    'Slimmed_TauTo3Mu_dZmu23',
-    'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
-    'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
-    'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
-]
+#     'TauPlusMET_Puppi_pt',
+#     'TauPlusMET_PuppiMETminPz',
+#     'TauPlusMET_PuppiMETmaxPz',
+#     'Slimmed_TauTo3Mu_dZmu12', 
+#     'Slimmed_TauTo3Mu_dZmu13', 
+#     'Slimmed_TauTo3Mu_dZmu23',
+#     'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
+#     'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+#     'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+# ]
+
+# branches contains all the branches from the root file we have to get to work with in the BDT but also in general
 
 branches = features + [
+
+    'Slimmed_TauTo3Mu_vtx_chi2', 
+    'Slimmed_TauTo3Mu_vtx_Ndof',
+
     'Slimmed_TauTo3Mu_charge',
     'Slimmed_TauTo3Mu_fitted_eta',
     'Slimmed_TauTo3Mu_fitted_mass',
@@ -165,6 +210,9 @@ branches = features + [
     'Slimmed_TauTo3Mu_iso_ptChargedFromPV',
     'Slimmed_TauTo3Mu_iso_ptPhotons',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPU',
+    'Muon_tkRelIso[Slimmed_TauTo3Mu_mu1_idx]',
+    'Muon_tkRelIso[Slimmed_TauTo3Mu_mu2_idx]',
+    'Muon_tkRelIso[Slimmed_TauTo3Mu_mu3_idx]',
     # 'mu1_refit_muonid_soft', 'mu1_refit_muonid_loose', 'mu1_refit_muonid_medium', 'mu1_refit_muonid_tight',
     # 'mu2_refit_muonid_soft', 'mu2_refit_muonid_loose', 'mu2_refit_muonid_medium', 'mu2_refit_muonid_tight',
     # 'mu3_refit_muonid_soft', 'mu3_refit_muonid_loose', 'mu3_refit_muonid_medium', 'mu3_refit_muonid_tight',
@@ -188,6 +236,7 @@ all_chunks_sig = []
 
 print("Going to load signal events")
 for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
+    print("Signal fraction != -1:", ak.mean(events["GNN_Score"] != -1))
     score_mask = events["GNN_Score"] != -1
     events = events[score_mask]
     new_fields = {}
@@ -203,42 +252,49 @@ sig = ak.concatenate(all_chunks_sig)
 # print(ak.type(sig))
 sig = ak.to_dataframe(sig)
 print(sig.shape)
+print(sig["GNN_Score"])
 
 all_chunks_bkg = []
 print("Going to load bkg events")
-for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-    bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
-    events = events[ak.any(bkg_mask, axis=1)]
-    score_mask = events["GNN_Score"] != -1
-    events_masked = events[score_mask]
+for i in range(4):
+    for events in uproot.iterate(f"{backgrounds[i]}:Events", expressions=branches, library="ak", step_size="100 MB"):
+        bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
+        events = events[ak.any(bkg_mask, axis=1)]
+        score_mask = events["GNN_Score"] != -1
+        events_masked = events[score_mask]
 
-    new_fields = {}
-    for branch in events_masked.fields:
-        if events_masked[branch].ndim > 1 and ak.any(ak.num(events_masked[branch], axis=1) > 1):
-            new_fields[branch] = ak.firsts(events_masked[branch])
-        else:
-            new_fields[branch] = events_masked[branch]
 
-    events_stripped = ak.zip(new_fields)
-    all_chunks_bkg.append(events_stripped)
+        new_fields = {}
+        for branch in events_masked.fields:
+            if events_masked[branch].ndim > 1 and ak.any(ak.num(events_masked[branch], axis=1) > 1):
+                new_fields[branch] = ak.firsts(events_masked[branch])
+            else:
+                new_fields[branch] = events_masked[branch]
+
+        events_stripped = ak.zip(new_fields)
+        all_chunks_bkg.append(events_stripped)
 bkg = ak.concatenate(all_chunks_bkg)
 # print(ak.type(bkg))
 bkg = ak.to_dataframe(bkg)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()
 print(bkg.shape)
+print(bkg["GNN_Score"])
 
 sig = sig.sample(n=min(100_000, len(sig)), random_state=42).reset_index(drop=True)
-bkg = bkg.sample(n=min(1_000_000, len(bkg)), random_state=42).reset_index(drop=True)
+bkg = bkg.sample(n=min(100_000, len(bkg)), random_state=42).reset_index(drop=True)
 
-print(sig.shape)
-print(bkg.shape)
+
+# print(sig.shape)
+# print(bkg.shape)
+
+
 
 ##########################################################################################
 ## DEFINE TARGETS
 ##########################################################################################
 
-sig['target'] = np.ones (sig.shape[0], dtype=int)
+sig['target'] = np.ones(sig.shape[0], dtype=int)
 bkg['target'] = np.zeros(bkg.shape[0], dtype=int)
 
 ##########################################################################################
@@ -291,7 +347,7 @@ bkg['target'] = np.zeros(bkg.shape[0], dtype=int)
 
 # further weight adjustment
 sig['weight'] = 1.
-bkg['weight'] = 0.1
+bkg['weight'] = 0.93023
 
 def deltaphi(phi1, phi2):
     delta_phi_internal = np.abs(phi1 - phi2)
@@ -300,21 +356,88 @@ def deltaphi(phi1, phi2):
 
     return delta_phi
 
-sig['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(sig['TauPlusMET_Puppi_phi'], sig['Slimmed_TauTo3Mu_fitted_phi'])
-bkg['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(bkg['TauPlusMET_Puppi_phi'], bkg['Slimmed_TauTo3Mu_fitted_phi'])
+# here we add the features we had to compute additionally, using the branches
 
-features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
+sig['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_pt[Slimmed_TauTo3Mu_mu3_idx]']
+bkg['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'] = bkg['Muon_pt[Slimmed_TauTo3Mu_mu3_idx]']
 
-sig['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = sig['Slimmed_TauTo3Mu_fitted_pt'] / sig['TauPlusMET_PuppiMET_pt']
-bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
+features += ['Muon_pt_Slimmed_TauTo3Mu_mu3_idx']
+features.remove('Muon_pt[Slimmed_TauTo3Mu_mu3_idx]')
 
-features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
+# sig['Muon_mediumId_Slimmed_TauTo3Mu_mu1_idx'] = sig['Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]']
+# bkg['Muon_mediumId_Slimmed_TauTo3Mu_mu1_idx'] = bkg['Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]']
 
-abs_iso_sig = sig["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * sig["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
-sig['relative_iso'] = abs_iso_sig / sig["Slimmed_TauTo3Mu_fitted_pt"]
+# features += ['Muon_mediumId_Slimmed_TauTo3Mu_mu1_idx']
+# features.remove('Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]')
 
-abs_iso_bkg = bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., bkg["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
-bkg['relative_iso'] = abs_iso_bkg / bkg["Slimmed_TauTo3Mu_fitted_pt"]
+# sig['Muon_mediumId_Slimmed_TauTo3Mu_mu2_idx'] = sig['Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]']
+# bkg['Muon_mediumId_Slimmed_TauTo3Mu_mu2_idx'] = bkg['Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]']
+
+# features += ['Muon_mediumId_Slimmed_TauTo3Mu_mu2_idx']
+# features.remove('Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]')
+
+# sig['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]']
+# bkg['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx'] = bkg['Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]']
+
+# features += ['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx']
+# features.remove('Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]')
+
+sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]']
+bkg['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'] = bkg['Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]']
+
+features += ['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx']
+features.remove('Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]')
+
+sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]']
+bkg['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'] = bkg['Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]']
+
+features += ['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx']
+features.remove('Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]')
+
+sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]']
+bkg['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'] = bkg['Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]']
+
+features += ['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx']
+features.remove('Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]')
+
+sig['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'] = sig['Slimmed_TauTo3Mu_vtx_chi2']/sig['Slimmed_TauTo3Mu_vtx_Ndof']
+bkg['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'] = bkg['Slimmed_TauTo3Mu_vtx_chi2']/bkg['Slimmed_TauTo3Mu_vtx_Ndof']
+
+features += ['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)']
+
+sig['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = np.max(
+    np.stack([
+        sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu1_idx]'].values,
+        sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu2_idx]'].values,
+        sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu3_idx]'].values
+    ], axis=0),
+    axis=0
+)
+bkg['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = np.max(
+    np.stack([
+        bkg['Muon_tkRelIso[Slimmed_TauTo3Mu_mu1_idx]'].values,
+        bkg['Muon_tkRelIso[Slimmed_TauTo3Mu_mu2_idx]'].values,
+        bkg['Muon_tkRelIso[Slimmed_TauTo3Mu_mu3_idx]'].values
+    ], axis=0),
+    axis=0
+)
+
+
+# sig['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(sig['TauPlusMET_Puppi_phi'], sig['Slimmed_TauTo3Mu_fitted_phi'])
+# bkg['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(bkg['TauPlusMET_Puppi_phi'], bkg['Slimmed_TauTo3Mu_fitted_phi'])
+
+# features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
+
+# sig['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = sig['Slimmed_TauTo3Mu_fitted_pt'] / sig['TauPlusMET_PuppiMET_pt']
+# bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
+
+# features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
+
+# abs_iso_sig = sig["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * sig["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
+# sig['relative_iso'] = abs_iso_sig / sig["Slimmed_TauTo3Mu_fitted_pt"]
+
+# abs_iso_bkg = bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., bkg["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
+# bkg['relative_iso'] = abs_iso_bkg / bkg["Slimmed_TauTo3Mu_fitted_pt"]
 
 ##########################################################################################
 #####   COMPACTIFY AND ADD THE (POG) MUON ID TO THE SAMPLES
@@ -364,7 +487,7 @@ data['id'] = np.arange(len(data))
 
 print("Splitting data")
 
-train, test = train_test_split(data, test_size=0.4, random_state=1986)
+train, test = train_test_split(data, test_size=0.4, random_state=7777)
 both_models = defaultdict(OrderedDict)
 
 ##########################################################################################
@@ -373,10 +496,10 @@ for mode in modes.keys():
     if mode == "GNN":
         bdt_features = features + ['GNN_Score']
     elif mode == "ISO":
-        bdt_features = features + ['relative_iso']
+        bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
     
     kfold = 6
-    skf = StratifiedKFold(n_splits=kfold, random_state=1986, shuffle=True)
+    skf = StratifiedKFold(n_splits=kfold, random_state=7777, shuffle=True)
 
     ##########################################################################################
     sub = pd.DataFrame()
@@ -394,6 +517,7 @@ for mode in modes.keys():
         sample_weight = train.loc[train.id.isin(train_index), 'weight']
         X_train, X_valid = train[train.id.isin(train_index)][bdt_features], train[train.id.isin(test_index)][bdt_features]
         y_train, y_valid = train[train.id.isin(train_index)]['target'], train[train.id.isin(test_index)]['target']
+
         
         # Train the model! We pass in a max of 1,600 rounds (with early stopping after 70)
         # and the custom metric (maximize=True tells xgb that higher metric is better)
@@ -406,7 +530,7 @@ for mode in modes.keys():
             colsample_bytree = 0.7,
             min_child_weight = 1E-6 * np.sum(train[train.id.isin(train_index)].weight),
             gamma            = 10, # 20
-            seed             = 1986,
+            seed             = 7777,
             # scale_pos_weight = 0.5,
             reg_alpha        = 0.6,
             reg_lambda       = 1.2,
@@ -414,7 +538,7 @@ for mode in modes.keys():
             eval_metric           = 'logloss',
             # eval_metric = 'logloss',
         )
-
+        print("y_train min/max/mean:", y_train.min(), y_train.max(), y_train.mean())
         clf.fit(
             X_train, 
             y_train,
@@ -484,7 +608,7 @@ for mode in modes.keys():
     if mode == "GNN":
         bdt_features = features + ['GNN_Score']
     elif mode == "ISO":
-        bdt_features = features + ['relative_iso']
+        bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
 
     for i, iclas in classifiers.items():
         print(f'evaluating the {i}-th classifier')
@@ -516,7 +640,96 @@ for mode in modes.keys():
 ##########################################################################################
 plt.clf()
 
-cuts_to_display = [0.80, 0.82, 0.84, 0.86, 0.89]
+# cuts_to_display = [0.80, 0.82, 0.84, 0.86, 0.89, 0.92, 0.95, 0.98, 0.99, 0.995, 0.998]
+cuts_to_display = [0.5, 0.622, 0.788, 0.874, 0.902, 0.962]
+
+xy = [i*j for i,j in product([10.**i for i in range(-8, 0)], [1,2,4,8])]+[1]
+plt.plot(xy, xy, color='grey', linestyle='--')
+plt.xlim([10**-5, 1.0])
+plt.ylim([0.0, 1.0])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+
+# plt.xscale('log')
+
+fpr_GNN, tpr_GNN, wps_GNN = roc_curve(test.target, test.bdt_GNN, sample_weight=test.weight)
+auc_GNN = roc_auc_score(test.target, test.bdt_GNN, sample_weight=test.weight)
+plt.plot(fpr_GNN, tpr_GNN, label='test sample GNN', color='b')
+
+output = {}
+
+output["GNN_score_bkg"] = bkg.bdt_GNN
+output["tau_mass"] = bkg.Slimmed_TauTo3Mu_fitted_mass
+output["ISO_score_bkg"] = bkg.bdt_ISO
+
+output["fpr_GNN"] = fpr_GNN
+output["tpr_GNN"] = tpr_GNN
+output["threshold_GNN"] = wps_GNN
+output["auc_GNN"] = auc_GNN
+
+wp_x = []
+wp_y = []
+
+for icut in cuts_to_display:
+    idx = (wps_GNN>icut).sum()
+    wp_x.append(fpr_GNN[idx])
+    wp_y.append(tpr_GNN[idx])
+    
+plt.scatter(wp_x, wp_y)
+for i, note in enumerate(cuts_to_display):
+    plt.annotate(note, (wp_x[i], wp_y[i]))
+
+fpr_ISO, tpr_ISO, wps_ISO = roc_curve(test.target, test.bdt_ISO, sample_weight=test.weight)
+auc_ISO = roc_auc_score(test.target, test.bdt_ISO, sample_weight=test.weight)
+plt.plot(fpr_ISO, tpr_ISO, label='test sample ISO', color='r')
+
+output["fpr_ISO"] = fpr_ISO
+output["tpr_ISO"] = tpr_ISO
+output["threshold_ISO"] = wps_ISO
+output["auc_ISO"] = auc_ISO
+
+wp_x = []
+wp_y = []
+
+for icut in cuts_to_display:
+    idx = (wps_ISO>icut).sum()
+    wp_x.append(fpr_ISO[idx])
+    wp_y.append(tpr_ISO[idx])
+    
+plt.scatter(wp_x, wp_y)
+for i, note in enumerate(cuts_to_display):
+    plt.annotate(note, (wp_x[i], wp_y[i]))
+
+# fpr, tpr, wps = roc_curve(train.target, train.bdt, sample_weight=train.weight)
+# plt.plot(fpr, tpr, label='train sample', color='r')
+
+# wp_x = []
+# wp_y = []
+
+# for icut in cuts_to_display:
+#     idx = (wps>icut).sum()
+#     wp_x.append(fpr[idx])
+#     wp_y.append(tpr[idx])
+    
+# plt.scatter(wp_x, wp_y)
+# for i, note in enumerate(cuts_to_display):
+#     plt.annotate(note, (wp_x[i], wp_y[i]))
+
+# print(f"ROC AUC train: {roc_auc_score(train.target, train.bdt, sample_weight=train.weight):.5f}")
+print(f"ROC AUC test GNN:  {roc_auc_score(test.target, test.bdt_GNN, sample_weight=test.weight):.5f}")
+print(f"ROC AUC test ISO:  {roc_auc_score(test.target, test.bdt_ISO, sample_weight=test.weight):.5f}")
+
+plt.legend(loc='best')
+plt.grid()
+plt.title('ROC')
+plt.tight_layout()
+plt.savefig(model_path + '_roc_%s.png' %tag, dpi=400)
+plt.clf()
+
+roc_file = open(model_path + '_roc_%s.pck' % tag, 'wb')
+
+pickle.dump(output, roc_file)
+roc_file.close()
 
 xy = [i*j for i,j in product([10.**i for i in range(-8, 0)], [1,2,4,8])]+[1]
 plt.plot(xy, xy, color='grey', linestyle='--')
@@ -596,12 +809,12 @@ print(f"ROC AUC test ISO:  {roc_auc_score(test.target, test.bdt_ISO, sample_weig
 
 plt.legend(loc='best')
 plt.grid()
-plt.title('ROC')
+plt.title('ROC log')
 plt.tight_layout()
-plt.savefig(model_path + '_roc_%s.png' %tag, dpi=400)
+plt.savefig(model_path + '_roc_log%s.png' %tag, dpi=400)
 plt.clf()
 
-roc_file = open(model_path + '_roc_%s.pck' % tag, 'wb')
+roc_file = open(model_path + '_roc_log%s.pck' % tag, 'wb')
 
 pickle.dump(output, roc_file)
 roc_file.close()
@@ -819,7 +1032,7 @@ for mode in modes.keys():
     if mode == "GNN":
         bdt_features = features + ['GNN_Score']
     elif mode == "ISO":
-        bdt_features = features + ['relative_iso']
+        bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
 
     fscores = OrderedDict(zip(bdt_features, np.zeros(len(bdt_features))))
     classifiers = both_models[mode]
@@ -891,7 +1104,7 @@ for mode in modes.keys():
     if mode == "GNN":
         bdt_features = features + ['GNN_Score']
     elif mode == "ISO":
-        bdt_features = features + ['relative_iso']
+        bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
 
 ##########################################################################################
 #####   CORRELATION MATRIX SIGNAL
@@ -908,6 +1121,7 @@ for mode in modes.keys():
     g = sns.heatmap(corr, cmap=cmap, vmax=1., vmin=-1, center=0, annot=True, fmt='.2f',
                     square=True, linewidths=.8, cbar_kws={"shrink": .8})
 
+
     # rotate axis labels
     g.set_xticklabels(modes[mode].values(), rotation='vertical')
     g.set_yticklabels(modes[mode].values(), rotation='horizontal')
@@ -921,7 +1135,10 @@ for mode in modes.keys():
 ##########################################################################################
 #####   CORRELATION MATRIX BACKGROUND
 ##########################################################################################
-    # Compute the correlation matrix for the signal
+    # Compute the correlation matrix for the background
+    print(bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass'])
+    print(modes[mode].values())
+
     corr = bkg[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass']].corr()
 
     # Set up the matplotlib figure

@@ -1,0 +1,73 @@
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:64: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:65: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:66: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:67: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:99: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:100: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:101: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:102: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [16:56:14] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+Going to load signal events
+(0, 23)
+Series([], Name: GNN_Score, dtype: float32)
+Going to load bkg events
+(93165, 23)
+entry
+0        4.563813e-02
+1        1.204841e-02
+2        6.040728e-12
+3        1.015822e-01
+4        9.991782e-01
+             ...     
+93161    9.788083e-04
+93162    6.020782e-03
+93163    6.259113e-03
+93164    6.657740e-01
+93165    2.508518e-05
+Name: GNN_Score, Length: 93165, dtype: float32
+Splitting data
+starting with training with GNN score
+[Fold 1/6]
+y_train min/max/mean: 0 0 0.0
+Traceback (most recent call last):
+  File "/work/adcorel/SVJ_GNN/bdt/Train_XGB.py", line 541, in <module>
+    clf.fit(
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 774, in inner_f
+    return func(**kwargs)
+           ^^^^^^^^^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/sklearn.py", line 1806, in fit
+    self._Booster = train(
+                    ^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 774, in inner_f
+    return func(**kwargs)
+           ^^^^^^^^^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/training.py", line 199, in train
+    bst.update(dtrain, iteration=i, fobj=obj)
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 2433, in update
+    _check_call(
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 323, in _check_call
+    raise XGBoostError(py_str(_LIB.XGBGetLastError()))
+xgboost.core.XGBoostError: [16:56:14] /workspace/src/objective/regression_obj.cu:119: Check failed: is_valid: base_score must be in (0,1) for the logistic loss.
+Stack trace:
+  [bt] (0) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x2bdf8c) [0x152d71184f8c]
+  [bt] (1) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x1077654) [0x152d71f3e654]
+  [bt] (2) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x1077c75) [0x152d71f3ec75]
+  [bt] (3) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x6d1ab9) [0x152d71598ab9]
+  [bt] (4) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x6f4db7) [0x152d715bbdb7]
+  [bt] (5) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(XGBoosterUpdateOneIter+0x77) [0x152d71091a67]
+  [bt] (6) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/lib-dynload/../../libffi.so.8(+0x6d8a) [0x152da1145d8a]
+  [bt] (7) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/lib-dynload/../../libffi.so.8(+0x61cd) [0x152da11451cd]
+  [bt] (8) /work/adcorel/miniforge3/envs/gnn/lib/python3.12/lib-dynload/../../libffi.so.8(ffi_call+0xcd) [0x152da114591d]
+
+

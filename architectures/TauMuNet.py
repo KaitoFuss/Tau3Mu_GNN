@@ -13,7 +13,7 @@ class TauMuNet(nn.Module):
             conv_params,
             dropout,
             fc_params,
-            input_dims = 7, #8 # as we want to normally use also dzd0
+            input_dims = 8, #7 # as we want to normally use also dzd0
             num_edge_features = 4, 
             use_fusion = True,
             num_classes = 1,

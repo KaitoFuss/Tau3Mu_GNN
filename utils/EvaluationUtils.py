@@ -63,38 +63,39 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     target_labels_bkg = []
     test_scores_bkg = [] 
     tau_mass_bkg = []
+    benchmark_bkg = []
     
+    with torch.no_grad():
+        for dataset in datasets_bkg:
+            dataloader_bkg = GraphDataLoader(
+                [dataset],
+                window_to_load=[window_to_load for _ in range(1)],
+                batch_size=batch_size,
+                normalizer=normalizer,
+                )
+            
+            model.eval()
 
-    for dataset in datasets_bkg:
-        dataloader_bkg = GraphDataLoader(
-            [dataset],
-            window_to_load=[window_to_load for _ in range(1)],
-            batch_size=batch_size,
-            normalizer=normalizer,
-            )
-        
-        model.eval()
-
-        for graphs in dataloader_bkg:
-                weights_bkg.append(graphs.w.detach().numpy())
-                tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
-                benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
-                graphs = graphs.to(device)
-                out = model(graphs)
-                score = out[:,0].cpu()
-                # target_labels_bkg.append(np.array(target.cpu()))
-                target_labels_bkg.append(np.zeros(len(score), dtype=np.uint8))  # all bkg = 0
-                test_scores_bkg.append(score.detach())
-                # benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
-                del graphs, out
-                torch.cuda.empty_cache()
+            for graphs in dataloader_bkg:
+                    weights_bkg.append(graphs.w.detach().numpy())
+                    tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
+                    #benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
+                    graphs = graphs.to(device)
+                    out = model(graphs)
+                    score = out[:,0].cpu()
+                    # target_labels_bkg.append(np.array(target.cpu()))
+                    target_labels_bkg.append(np.zeros(len(score), dtype=np.uint8))  # all bkg = 0
+                    test_scores_bkg.append(score.detach())
+                    # benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
+                    del graphs, out
+                    torch.cuda.empty_cache()
         
     weights_bkg =  np.concatenate(weights_bkg)
     # tau_mass_bkg = np.concatenate(tau_mass_bkg)
     tau_mass_bkg = torch.cat(tau_mass_bkg)
     test_scores_bkg = torch.cat(test_scores_bkg)
     target_labels_bkg = np.concatenate(target_labels_bkg)
-    benchmark_bkg = np.concatenate(benchmark_bkg)
+    # benchmark_bkg = np.concatenate(benchmark_bkg)
     # benchmark_bkg_pt05 = np.concatenate(benchmark_bkg_pt05)
 
     # Run signal through network and save it togheter with the bkg
@@ -104,7 +105,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             target_labels_sig = []
             test_scores_sig = []
             tau_mass_sig = []
-            benchmark_signal = []
+            # benchmark_signal = []
             # benchmark_signal_pt05 = []
 
             dataloader_sig = GraphDataLoader(
@@ -117,7 +118,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             for graphs in dataloader_sig:
                 weights_sig.append(graphs.w.detach().numpy())
                 tau_mass_sig.append(graphs.fitted_tau_mass.detach())
-                benchmark_signal.append(graphs.benchmark_score.detach().numpy())
+                #benchmark_signal.append(graphs.benchmark_score.detach().numpy())
                 graphs = graphs.to(device)
                 out = model(graphs)
                 score = out[:,0].cpu()
@@ -132,7 +133,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             tau_mass_sig = torch.cat(tau_mass_sig)
             test_scores_sig = torch.cat(test_scores_sig)
             target_labels_sig = np.concatenate(target_labels_sig)
-            benchmark_signal = np.concatenate(benchmark_signal)
+            # benchmark_signal = np.concatenate(benchmark_signal)
             # benchmark_signal_pt05 = np.concatenate(benchmark_signal_pt05)
 
             weights = np.concatenate([weights_sig, weights_bkg])
@@ -147,8 +148,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             target_labels = np.concatenate([target_labels_sig, target_labels_bkg])
             del target_labels_sig, target_labels_bkg
             gc.collect()
-            benchmark = np.concatenate([benchmark_signal, benchmark_bkg])
-            del benchmark_signal, benchmark_bkg
+            # benchmark = np.concatenate([benchmark_signal, benchmark_bkg])
+            # del benchmark_signal, benchmark_bkg
             gc.collect()
             # benchmark_pt05 = np.append(benchmark_signal_pt05, benchmark_bkg_pt05)
 
@@ -164,7 +165,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                 'scores': test_scores.numpy(),
                 'tau_mass': tau_mass.numpy(),
                 'disco': disco,
-                'benchmark': benchmark,
+                # 'benchmark': benchmark,
                 # 'benchmark_pt05': benchmark_pt05,
             }
     
@@ -191,7 +192,7 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         weights = evaluation_dict[key]["weights"]
         tau_mass = evaluation_dict[key]["tau_mass"]
         disco = evaluation_dict[key]["disco"]
-        benchmark = evaluation_dict[key]["benchmark"]
+        # benchmark = evaluation_dict[key]["benchmark"]
         # benchmark_pt05 = evaluation_dict[key]["benchmark_pt05"]
 
         if np.all(target == 0) or np.all(target == 1):
@@ -199,10 +200,10 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
 
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
-        fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
+        # fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
         # fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
         auc_ = roc_auc_score(target, score)
-        auc_benchmark = roc_auc_score(target, benchmark)
+        # auc_benchmark = roc_auc_score(target, benchmark)
         # auc_benchmark_pt05 = roc_auc_score(target, benchmark_pt05)
         
         #calculate sic
@@ -220,10 +221,10 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "sic": sic_,
             "disco": disco,
             "fitted_tau_mass": tau_mass,
-            "fpr_benchmark": fpr_benchmark,
-            "tpr_benchmark": tpr_benchmark,
-            "treshold_benchmark": thres_benchmark,
-            "auc_benchmark": auc_benchmark,
+            # "fpr_benchmark": fpr_benchmark,
+            # "tpr_benchmark": tpr_benchmark,
+            # "treshold_benchmark": thres_benchmark,
+            # "auc_benchmark": auc_benchmark,
             # "fpr_benchmark_pt05": fpr_benchmark_pt05,
             # "tpr_benchmark_pt05": tpr_benchmark_pt05,
             # "treshold_benchmark_pt05": thres_benchmark_pt05,
@@ -235,10 +236,10 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
             "tpr": tpr_,
             "threshold": thres_,
             "sic": sic_,
-            "fpr_benchmark": fpr_benchmark,
-            "tpr_benchmark": tpr_benchmark,
-            "treshold_benchmark": thres_benchmark,
-            "auc_benchmark": auc_benchmark,
+            # "fpr_benchmark": fpr_benchmark,
+            # "tpr_benchmark": tpr_benchmark,
+            # "treshold_benchmark": thres_benchmark,
+            # "auc_benchmark": auc_benchmark,
             # "fpr_benchmark_pt05": fpr_benchmark_pt05,
             # "tpr_benchmark_pt05": tpr_benchmark_pt05,
             # "treshold_benchmark_pt05": thres_benchmark_pt05,

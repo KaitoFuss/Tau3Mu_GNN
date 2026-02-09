@@ -27,11 +27,20 @@ if "t3ui" in os.uname()[1]:
 	torch.set_num_threads(8)
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, include_puppi):
     """Train the model and evaluate it.
 
     Args:
@@ -41,7 +50,8 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
         disco_reg(float): regularisation param
         name(str): name of the training
         model_type (str): Type of the model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
-
+        params : architecture parameters
+        include_puppi : whether we include puppi weights or not
     Returns: -
         
     """
@@ -59,15 +69,22 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
 
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
 
-    datasets_W_signal = [
-        # [base_directory_W_signal, f"no_puppi_ds_decay_signal_signal_skimmed_{model_type}"],
-        [base_directory_W_signal, f"ds_decay_signal_signal_skimmed_{model_type}"],
-    ]
+    if include_puppi:
+        datasets_W_signal = [
+            [base_directory_W_signal, f"ds_decay_signal_signal_skimmed_{model_type}"],
+        ]
 
-    datasets_bkg = [
-        # [base_directory_bkg, f"no_puppi_background_data_skimmed_{model_type}"]
-        [base_directory_bkg, f"background_data_skimmed_{model_type}"],
-    ]
+        datasets_bkg = [
+            [base_directory_bkg, f"background_data_skimmed_{model_type}"],
+        ]
+    else:
+        datasets_W_signal = [
+            [base_directory_W_signal, f"no_puppi_ds_decay_signal_signal_skimmed_{model_type}"],
+        ]
+
+        datasets_bkg = [
+            [base_directory_bkg, f"no_puppi_background_data_skimmed_{model_type}"]
+        ]
 
     # datasets_W_signal = [    
     #     [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
@@ -219,15 +236,24 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
     num_node_features, num_edge_features = utrain.get_model_parameters(model_type)
     
     # Create the model
-    model = TauMuNet(
-        conv_params=params["conv_params"],
-        dropout=0.6169119010803057,
-        fc_params=params["fc_params"],
-        # input_dims=7,
-        input_dims=8, 
-        num_edge_features=num_edge_features,
-        use_fusion=params["use_fusion"],
-    )
+    if include_puppi:
+        model = TauMuNet(
+            conv_params=params["conv_params"],
+            dropout=0.2633831214702671,
+            fc_params=params["fc_params"],
+            input_dims=8, 
+            num_edge_features=num_edge_features,
+            use_fusion=True,
+        )
+    else:
+        model = TauMuNet(
+            conv_params=params["conv_params"],
+            dropout=0.2633831214702671,
+            fc_params=params["fc_params"],
+            input_dims=7, 
+            num_edge_features=num_edge_features,
+            use_fusion=True,
+        )
 
     # Define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -265,7 +291,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params)
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
-    # ueval.plot_auc_simple(auc, name)
+    ueval.plot_auc_simple(auc, name)
     ueval.plot_roc(roc, auc, name)
     # ueval.plot_scores(evaluation_dict,name)
     # ueval.plot_sic(roc, name)
@@ -312,7 +338,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     for epoch in range(0,epochs):
         #training
         batch_counter = 0
+        bce_per_batch = 0
+        disco_per_batch = 0
         loss_per_batch = 0
+        warmup = 20  # 30
+        lambda_eff = disco_reg * min(1.0, epoch / warmup)
+
 
 
         for batch, data in enumerate(dataloader_training):
@@ -321,16 +352,22 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             data = data.to(device) # send data to ram of gpu!
             target = data.y # this is my label
             optimizer.zero_grad() # make sure gradients are empty
-            out = model(data) # fill data into model and safe the output
-            out = torch.nan_to_num(out, 0.0)
-            score = out[:,0].cpu()
+            out = model(data)
+
+            bce_loss = loss_criterion(out[:, 0], target)
+
+            score = out[:, 0].cpu()  # keep as torch tensor with grad
             score = score.detach().numpy()
-            bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
+            mass  = torch.nan_to_num(data.fitted_tau_mass).view(-1)
+
             normedweight = torch.ones_like(out[:, 0]) 
-            disco_loss = utrain.distance_corr(out[:,0], data.fitted_tau_mass, normedweight)  # Penalising just learning the tau mass
-            loss_ = bce_loss + disco_reg * disco_loss
+            disco_loss = utrain.distance_corr(out[:,0], mass, normedweight)
+
+            loss_ = bce_loss + lambda_eff * disco_loss
             
             loss_per_batch += loss_.item()
+            bce_per_batch += bce_loss.item()
+            disco_per_batch += disco_loss.item()
 
             loss_.backward()
             optimizer.step()
@@ -341,8 +378,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
         # calculate loss per epoch and log it
         epoch_loss_training = loss_per_batch/batch_counter
+        epoch_bce = bce_per_batch/batch_counter
+        epoch_disco = disco_per_batch/batch_counter
         training_losses.append(epoch_loss_training)
         experiment.log_metric("Training loss", epoch_loss_training, epoch=epoch)
+        experiment.log_metric("bce_train", epoch_bce, epoch=epoch)
+        experiment.log_metric("disco_train", epoch_disco, epoch=epoch)
 
 
         # validation
@@ -358,21 +399,24 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 #evaluation_dict = ueval.Evaluate_model(data[0], data[1], batch_size, normalizer, model, device, window_to_load=[0.7,0.8])
 
                 out = model(data)
-                score = out[:,0].cpu()
-                score = score.detach().numpy()
-                #_, auc_per_batch = ueval.roc_auc(evaluation_dict, "auc_per_batch")
 
-                loss_ = loss_criterion(out[:,0], target)
-                loss_per_batch += loss_.item()
+                bce_loss = loss_criterion(out[:, 0], target)
+
+                score = out[:, 0].cpu()  # keep as torch tensor
+                score = score.detach().numpy()
+                mass  = torch.nan_to_num(data.fitted_tau_mass).view(-1)
+
                 normedweight = torch.ones_like(out[:, 0]) 
-                disco_per_batch += utrain.distance_corr(out[:,0], data.fitted_tau_mass, normedweight)
+                batch_disco = utrain.distance_corr(out[:,0], mass, normedweight)
+                loss_ = loss_criterion(out[:,0], target)
+                disco_per_batch += batch_disco.item()
+                loss_per_batch += disco_reg * batch_disco.item() + loss_.item()
                 batch_counter += 1
 
         #log the auc
         #auc_validation = auc_per_batch/batch_counter
         #experiment.log_metric("AUC", auc_validation, epoch=epoch)
 
-        scheduler.step(loss_per_batch)
         del loss_, score, out
         torch.cuda.empty_cache()
 
@@ -382,9 +426,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         validation_losses.append(epoch_loss_validation)
         experiment.log_metric("Validation loss", epoch_loss_validation, epoch=epoch)
         
+        scheduler.step(epoch_loss_validation)
+
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
         experiment.log_metric("Validation disco", epoch_disco_validation, epoch=epoch)
+
 
         ## check for early stop
         early_stop(epoch_loss_validation,model,epoch,output_path,name)
@@ -392,6 +439,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             break
         ## log the average loss as well
         experiment.log_metric("Average Validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
+
 
 
     # Safe output Model only if early stopping was not done
@@ -477,8 +525,8 @@ if __name__ == "__main__":
         "fc_params": [(64, 0.8)],
     },
     "arch_optuna" : {
-        "conv_params" : [1188, int(1188/2), int(1188/4), int(1188/8)],
-        "fc_params" : [(79, 0.8)] 
+        "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        "fc_params" : [(51, 0.8)] 
     }
 }
 
@@ -525,6 +573,13 @@ if __name__ == "__main__":
         type=float,
         )
     
+    parser.add_argument(
+    "--puppi",
+    default=False,
+    type=str2bool,
+    help="Do we include puppi"
+)
+    
     
 
 
@@ -537,6 +592,7 @@ if __name__ == "__main__":
     model_type = args.model
     disco_reg = args.disco
     arch = args.arch
+    include_puppi = args.puppi
 
     print("==> Running TauMuNet ")
 
@@ -564,5 +620,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch])
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], include_puppi)
 

@@ -1,0 +1,270 @@
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:64: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:65: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:66: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:67: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:99: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:100: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:101: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:102: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:13:39] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:13:47] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:13:53] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:00] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:06] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:13] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:19] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:26] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:33] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:39] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:46] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [23:14:53] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+Going to load signal events
+(100000, 23)
+entry
+0        0.897178
+1        0.970468
+2        0.998456
+3        0.999862
+4        0.873360
+           ...   
+99995    0.980769
+99996    0.883651
+99997    0.999921
+99998    0.556738
+99999    0.986315
+Name: GNN_Score, Length: 100000, dtype: float32
+Going to load bkg events
+(93211, 23)
+entry
+0        0.001474
+1        0.024907
+2        0.058136
+3        0.038075
+4        0.035709
+           ...   
+93206    0.270419
+93207    0.273290
+93208    0.000445
+93209    0.055492
+93210    0.019717
+Name: GNN_Score, Length: 93211, dtype: float32
+Splitting data
+starting with training with GNN score
+[Fold 1/6]
+y_train min/max/mean: 0 1 0.8639345394282558
+[Fold 1/6 Prediciton:]
+round 1
+	cross validation error      0.21309
+	cross validation signal     0.02772
+	cross validation background 0.18537
+global score as of round 1
+	cross validation error      0.21309
+	cross validation signal     0.02772
+	cross validation background 0.18537
+[Fold 2/6]
+y_train min/max/mean: 0 1 0.8632747933884297
+[Fold 2/6 Prediciton:]
+round 2
+	cross validation error      0.21291
+	cross validation signal     0.02795
+	cross validation background 0.18497
+global score as of round 2
+	cross validation error      0.21284
+	cross validation signal     0.02785
+	cross validation background 0.18499
+[Fold 3/6]
+y_train min/max/mean: 0 1 0.8634549945589277
+[Fold 3/6 Prediciton:]
+round 3
+	cross validation error      0.21236
+	cross validation signal     0.02805
+	cross validation background 0.18431
+global score as of round 3
+	cross validation error      0.21268
+	cross validation signal     0.02792
+	cross validation background 0.18476
+[Fold 4/6]
+y_train min/max/mean: 0 1 0.8634591498757935
+[Fold 4/6 Prediciton:]
+round 4
+	cross validation error      0.21210
+	cross validation signal     0.02798
+	cross validation background 0.18412
+global score as of round 4
+	cross validation error      0.21253
+	cross validation signal     0.02793
+	cross validation background 0.18460
+[Fold 5/6]
+y_train min/max/mean: 0 1 0.8638617270348437
+[Fold 5/6 Prediciton:]
+round 5
+	cross validation error      0.21211
+	cross validation signal     0.02791
+	cross validation background 0.18420
+global score as of round 5
+	cross validation error      0.21244
+	cross validation signal     0.02793
+	cross validation background 0.18451
+[Fold 6/6]
+y_train min/max/mean: 0 1 0.8648681282666069
+[Fold 6/6 Prediciton:]
+round 6
+	cross validation error      0.21251
+	cross validation signal     0.02771
+	cross validation background 0.18479
+global score as of round 6
+	cross validation error      0.21244
+	cross validation signal     0.02789
+	cross validation background 0.18455
+starting with training with ISO score
+[Fold 1/6]
+y_train min/max/mean: 0 1 0.8639345394282558
+[Fold 1/6 Prediciton:]
+round 1
+	cross validation error      0.26144
+	cross validation signal     0.03433
+	cross validation background 0.22710
+global score as of round 1
+	cross validation error      0.26144
+	cross validation signal     0.03433
+	cross validation background 0.22710
+[Fold 2/6]
+y_train min/max/mean: 0 1 0.8632747933884297
+[Fold 2/6 Prediciton:]
+round 2
+	cross validation error      0.26156
+	cross validation signal     0.03454
+	cross validation background 0.22701
+global score as of round 2
+	cross validation error      0.26149
+	cross validation signal     0.03444
+	cross validation background 0.22706
+[Fold 3/6]
+y_train min/max/mean: 0 1 0.8634549945589277
+[Fold 3/6 Prediciton:]
+round 3
+	cross validation error      0.26105
+	cross validation signal     0.03451
+	cross validation background 0.22654
+global score as of round 3
+	cross validation error      0.26135
+	cross validation signal     0.03446
+	cross validation background 0.22688
+[Fold 4/6]
+y_train min/max/mean: 0 1 0.8634591498757935
+[Fold 4/6 Prediciton:]
+round 4
+	cross validation error      0.26036
+	cross validation signal     0.03438
+	cross validation background 0.22598
+global score as of round 4
+	cross validation error      0.26110
+	cross validation signal     0.03444
+	cross validation background 0.22666
+[Fold 5/6]
+y_train min/max/mean: 0 1 0.8638617270348437
+[Fold 5/6 Prediciton:]
+round 5
+	cross validation error      0.26048
+	cross validation signal     0.03443
+	cross validation background 0.22605
+global score as of round 5
+	cross validation error      0.26093
+	cross validation signal     0.03444
+	cross validation background 0.22649
+[Fold 6/6]
+y_train min/max/mean: 0 1 0.8648681282666069
+[Fold 6/6 Prediciton:]
+round 6
+	cross validation error      0.26112
+	cross validation signal     0.03405
+	cross validation background 0.22707
+global score as of round 6
+	cross validation error      0.26096
+	cross validation signal     0.03437
+	cross validation background 0.22659
+evaluating the 0-th classifier
+evaluating the 1-th classifier
+evaluating the 2-th classifier
+evaluating the 3-th classifier
+evaluating the 4-th classifier
+evaluating the 5-th classifier
+evaluating the 0-th classifier
+evaluating the 1-th classifier
+evaluating the 2-th classifier
+evaluating the 3-th classifier
+evaluating the 4-th classifier
+evaluating the 5-th classifier
+ROC AUC test GNN:  0.95456
+ROC AUC test ISO:  0.93234
+ROC AUC test GNN:  0.95456
+ROC AUC test ISO:  0.93234
+['Slimmed_TauTo3Mu_dZmu12', 'Slimmed_TauTo3Mu_dZmu13', 'Slimmed_TauTo3Mu_dZmu23', 'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 'Muon_pt_Slimmed_TauTo3Mu_mu3_idx', 'Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx', 'Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx', 'Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx', 'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)', 'GNN_Score', 'bdt_GNN', 'Slimmed_TauTo3Mu_fitted_mass']
+odict_values(['$\\Delta z (\\mu_1, \\mu_2)$', '$\\Delta z (\\mu_1, \\mu_3)$', '$\\Delta z (\\mu_2, \\mu_3)$', 'SV L/$\\sigma$', 'SV cos($\\theta_{IP}$)', '$\\mu_3$ $p_{T}$', '$\\mu_1$ $isGlobal$', '$\\mu_2$ $isGlobal$', '$\\mu_3$ $isGlobal$', '$\\chi^2_{\\tau}$', 'GNN Score', 'BDT', '$\\tau$ $p_{T}$'])
+['Slimmed_TauTo3Mu_dZmu12', 'Slimmed_TauTo3Mu_dZmu13', 'Slimmed_TauTo3Mu_dZmu23', 'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 'Muon_pt_Slimmed_TauTo3Mu_mu3_idx', 'Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx', 'Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx', 'Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx', 'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)', 'max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)', 'bdt_ISO', 'Slimmed_TauTo3Mu_fitted_mass']
+odict_values(['$\\Delta z (\\mu_1, \\mu_2)$', '$\\Delta z (\\mu_1, \\mu_3)$', '$\\Delta z (\\mu_2, \\mu_3)$', 'SV L/$\\sigma$', 'SV cos($\\theta_{IP}$)', '$\\mu_3$ $p_{T}$', '$\\mu_1$ $isGlobal$', '$\\mu_2$ $isGlobal$', '$\\mu_3$ $isGlobal$', '$\\chi^2_{\\tau}$', 'max(tkRelIsos)', 'BDT', '$\\tau$ $p_{T}$'])
+Going to load bkg events
+(100000, 23)
+now mode GNN
+evaluating the 0-th classifier
+evaluating the 1-th classifier
+evaluating the 2-th classifier
+evaluating the 3-th classifier
+evaluating the 4-th classifier
+evaluating the 5-th classifier
+now mode ISO
+evaluating the 0-th classifier
+evaluating the 1-th classifier
+evaluating the 2-th classifier
+evaluating the 3-th classifier
+evaluating the 4-th classifier
+evaluating the 5-th classifier
+BDT_ROC_log.png has been saved.
+data shape is  100000
+GNN_tau_hist.png has been saved.
+data shape is  100000
+ISO_tau_hist.png has been saved.

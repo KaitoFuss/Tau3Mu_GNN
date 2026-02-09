@@ -1,0 +1,1699 @@
+True 12.1 NVIDIA GeForce GTX 1080 Ti
+critical libmamba Shell not initialized
+
+'mamba' is running as a subprocess and can't modify the parent shell.
+Thus you must initialize your shell before using activate and deactivate.
+
+To initialize the current  shell, run:
+    $ eval "$(mamba shell hook --shell )"
+and then activate or deactivate with:
+    $ mamba activate
+To automatically initialize all future () shells, run:
+    $ mamba shell init --shell  --root-prefix=~/.local/share/mamba
+If your shell was already initialized, reinitialize your shell with:
+    $ mamba shell reinit --shell 
+Otherwise, this may be an issue. In the meantime you can run commands. See:
+    $ mamba run --help
+
+Supported shells are {bash, zsh, csh, posix, xonsh, cmd.exe, powershell, fish, nu}.
+[I 2025-12-16 10:49:07,843] A new study created in memory with name: no-name-43b8bbe6-0c81-4806-8eab-d2d3f9e83588
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/666b2172a2f5416db18d673a64c5da4c
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/TrainingUtils.py:160: FutureWarning: Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. You will need to use `mktree` to create to explicitly create a TTree. Please update your code accordingly.
+  file["Output"] = df
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 11:43:04,357] Trial 0 finished with value: 0.8471050282889093 and parameters: {'hidden_dim': 1286, 'layers': 4, 'fcparam': 37, 'dropout': 0.575382079010933, 'lr': 0.011453043888087697}. Best is trial 0 with value: 0.8471050282889093.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs90
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/666b2172a2f5416db18d673a64c5da4c
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5001453813854722, 0.613972255847806)
+COMET INFO:     Training loss [15]           : (41.23261469249785, 50.056330202524535)
+COMET INFO:     Validation disco [15]        : (1.277325987815857, 1.669896125793457)
+COMET INFO:     Validation loss [15]         : (0.4828799035469856, 0.6424334188013215)
+COMET INFO:     loss [1445]                  : (18.15469741821289, 72.04885864257812)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs90
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.011453043888087697
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/f7b72146fe074bc49f86839b624ed656
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 12:50:43,470] Trial 1 finished with value: 0.9347636956871886 and parameters: {'hidden_dim': 1833, 'layers': 5, 'fcparam': 36, 'dropout': 0.514829938775174, 'lr': 0.0015059231446750189}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs91
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/f7b72146fe074bc49f86839b624ed656
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.4578594000231699, 0.5984926725003923)
+COMET INFO:     Training loss [15]           : (40.35341047918809, 54.794859077081256)
+COMET INFO:     Validation disco [15]        : (1.4123436212539673, 1.9296714067459106)
+COMET INFO:     Validation loss [15]         : (0.32838979409910785, 0.5984926725003923)
+COMET INFO:     loss [1445]                  : (19.64805793762207, 70.04119873046875)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs91
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0015059231446750189
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/a79193b687214a94b84d34ea8901894c
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 13:44:13,002] Trial 2 finished with value: 0.8349872612285256 and parameters: {'hidden_dim': 1238, 'layers': 7, 'fcparam': 43, 'dropout': 0.6979909589440251, 'lr': 0.010835674441291415}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs92
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/a79193b687214a94b84d34ea8901894c
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5604729036221633, 0.5955499974456994)
+COMET INFO:     Training loss [15]           : (41.708079238051816, 50.28096505439417)
+COMET INFO:     Validation disco [15]        : (1.243550181388855, 1.69841468334198)
+COMET INFO:     Validation loss [15]         : (0.5399086555919131, 0.5955499974456994)
+COMET INFO:     loss [1445]                  : (15.05410385131836, 72.91609954833984)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs92
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.010835674441291415
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/7db20d24b91e43fcaae1af5a27f16b09
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 14:29:04,963] Trial 3 finished with value: 0.8840366709311365 and parameters: {'hidden_dim': 660, 'layers': 7, 'fcparam': 86, 'dropout': 0.627811894939137, 'lr': 0.019055553300514814}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs93
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/7db20d24b91e43fcaae1af5a27f16b09
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.47107328597820225, 0.5919557842668031)
+COMET INFO:     Training loss [15]           : (40.61111799281706, 53.204866542004105)
+COMET INFO:     Validation disco [15]        : (1.2922749519348145, 1.7898420095443726)
+COMET INFO:     Validation loss [15]         : (0.4294985716779118, 0.6456167997788491)
+COMET INFO:     loss [1445]                  : (15.253682136535645, 76.75575256347656)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs93
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.019055553300514814
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/a4fed1155ef54ca28df72f808725399e
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 15:13:37,506] Trial 4 finished with value: 0.8338090090105166 and parameters: {'hidden_dim': 695, 'layers': 6, 'fcparam': 94, 'dropout': 0.021576196976124874, 'lr': 0.020839075050928215}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs94
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/a4fed1155ef54ca28df72f808725399e
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5626998641448804, 0.8201499798193791)
+COMET INFO:     Training loss [15]           : (42.50536166792223, 50.657539997516764)
+COMET INFO:     Validation disco [15]        : (1.504030466079712, 1.7165776491165161)
+COMET INFO:     Validation loss [15]         : (0.5488603560567645, 0.8201499798193791)
+COMET INFO:     loss [1445]                  : (17.782197952270508, 71.30121612548828)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs94
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.020839075050928215
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/e8d47344289e4f3abe2ddfaeb0f2839f
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 16:07:47,121] Trial 5 finished with value: 0.8485524773021633 and parameters: {'hidden_dim': 1371, 'layers': 4, 'fcparam': 41, 'dropout': 0.5292558817324439, 'lr': 0.002826681868651533}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs95
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/e8d47344289e4f3abe2ddfaeb0f2839f
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.49323503774689537, 0.592634393618657)
+COMET INFO:     Training loss [15]           : (41.158016717817674, 51.21868933324131)
+COMET INFO:     Validation disco [15]        : (1.3555073738098145, 1.758222222328186)
+COMET INFO:     Validation loss [15]         : (0.45440025562556025, 0.592634393618657)
+COMET INFO:     loss [1445]                  : (20.532167434692383, 70.7362060546875)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs95
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.002826681868651533
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/020baa6565104dfd979131e651b362e9
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 17:07:56,885] Trial 6 finished with value: 0.8578077964587033 and parameters: {'hidden_dim': 1620, 'layers': 6, 'fcparam': 74, 'dropout': 0.7284124865818616, 'lr': 0.00715861280153517}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs96
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/020baa6565104dfd979131e651b362e9
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5068519335092974, 0.6028799510671294)
+COMET INFO:     Training loss [15]           : (41.09047945959422, 48.314309826273536)
+COMET INFO:     Validation disco [15]        : (1.4596515893936157, 1.776540756225586)
+COMET INFO:     Validation loss [15]         : (0.47284998839213793, 0.6028799510671294)
+COMET INFO:     loss [1445]                  : (17.24468994140625, 77.19245147705078)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs96
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.00715861280153517
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/b202b8d4743947208a4d625c9fa6d583
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 17:51:46,268] Trial 7 finished with value: 0.8187783316695404 and parameters: {'hidden_dim': 617, 'layers': 6, 'fcparam': 97, 'dropout': 0.15207901360900733, 'lr': 0.01765850403019584}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs97
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/b202b8d4743947208a4d625c9fa6d583
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5225458763988995, 0.5792871891667425)
+COMET INFO:     Training loss [15]           : (41.74017664551859, 48.709824586830656)
+COMET INFO:     Validation disco [15]        : (1.3815425634384155, 1.6604996919631958)
+COMET INFO:     Validation loss [15]         : (0.516558365056024, 0.5812101114440609)
+COMET INFO:     loss [1445]                  : (12.844797134399414, 72.69175720214844)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs97
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.01765850403019584
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/4a629bbae8d54e01b4cd214e933d291d
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 18:33:48,138] Trial 8 finished with value: 0.8863725053175252 and parameters: {'hidden_dim': 400, 'layers': 6, 'fcparam': 78, 'dropout': 0.6258876421066057, 'lr': 0.004124847686383891}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs98
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/4a629bbae8d54e01b4cd214e933d291d
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.49852182998974454, 0.5933539752157215)
+COMET INFO:     Training loss [15]           : (40.56827502582427, 51.23930401272244)
+COMET INFO:     Validation disco [15]        : (1.4552950859069824, 1.8136932849884033)
+COMET INFO:     Validation loss [15]         : (0.4563837859957729, 0.6136649021735558)
+COMET INFO:     loss [1445]                  : (21.895204544067383, 72.52043151855469)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs98
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.004124847686383891
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/e66e9cc01e7e469db3760ed0576a09e3
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 19:19:05,192] Trial 9 finished with value: 0.854943422349467 and parameters: {'hidden_dim': 856, 'layers': 4, 'fcparam': 87, 'dropout': 0.681150655313036, 'lr': 0.08700272956276411}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs99
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/e66e9cc01e7e469db3760ed0576a09e3
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5525808726613586, 0.6422452421049567)
+COMET INFO:     Training loss [15]           : (38.21559599007897, 51.093233233300325)
+COMET INFO:     Validation disco [15]        : (1.24934983253479, 1.9511791467666626)
+COMET INFO:     Validation loss [15]         : (0.500889102907042, 0.7609168035820467)
+COMET INFO:     loss [1445]                  : (17.706350326538086, 74.888671875)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs99
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.08700272956276411
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/16eb2937de7c46ce94ecce48687871f5
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 20:28:13,858] Trial 10 finished with value: 0.8096922747241775 and parameters: {'hidden_dim': 1947, 'layers': 5, 'fcparam': 55, 'dropout': 0.3397814857756162, 'lr': 0.0011564814151318115}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs100
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/16eb2937de7c46ce94ecce48687871f5
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5536949093029554, 0.5858937911456935)
+COMET INFO:     Training loss [15]           : (40.06360537191294, 49.04246575067348)
+COMET INFO:     Validation disco [15]        : (1.443942666053772, 1.6806858777999878)
+COMET INFO:     Validation loss [15]         : (0.548837051074371, 0.5858937911456935)
+COMET INFO:     loss [1445]                  : (18.418031692504883, 71.41446685791016)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs100
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0011564814151318115
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/8acc1ffdc2b748e18799569d0cbc0a0e
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 21:07:46,463] Trial 11 finished with value: 0.8238909091194999 and parameters: {'hidden_dim': 194, 'layers': 5, 'fcparam': 66, 'dropout': 0.41526749066657054, 'lr': 0.0010149274210007318}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs101
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/8acc1ffdc2b748e18799569d0cbc0a0e
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5384764049752091, 0.6093083607060003)
+COMET INFO:     Training loss [15]           : (39.24621903883953, 48.31416002513216)
+COMET INFO:     Validation disco [15]        : (1.3687617778778076, 1.7082116603851318)
+COMET INFO:     Validation loss [15]         : (0.5175865859474809, 0.6093083607060003)
+COMET INFO:     loss [1445]                  : (20.6210994720459, 72.46896362304688)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs101
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0010149274210007318
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/2fe3162a377c48adbf5d614a77c0caae
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 21:47:24,658] Trial 12 finished with value: 0.9032316456097922 and parameters: {'hidden_dim': 174, 'layers': 5, 'fcparam': 30, 'dropout': 0.4432590547110351, 'lr': 0.0032041402403037776}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs102
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/2fe3162a377c48adbf5d614a77c0caae
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.48955954740176333, 0.5890502082087146)
+COMET INFO:     Training loss [15]           : (40.09347989725052, 54.389192020657894)
+COMET INFO:     Validation disco [15]        : (1.3644672632217407, 1.874843716621399)
+COMET INFO:     Validation loss [15]         : (0.40254097575953, 0.5919607329393375)
+COMET INFO:     loss [1445]                  : (24.598594665527344, 75.04942321777344)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs102
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0032041402403037776
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/48b41ddacf2542288c4d37d9d0a8acc1
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 22:55:08,187] Trial 13 finished with value: 0.8626063356825562 and parameters: {'hidden_dim': 1875, 'layers': 5, 'fcparam': 31, 'dropout': 0.37755136216675256, 'lr': 0.002412242173040898}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs103
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/48b41ddacf2542288c4d37d9d0a8acc1
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.4913267476580991, 0.583463077919399)
+COMET INFO:     Training loss [15]           : (41.33096628991243, 50.676512447844416)
+COMET INFO:     Validation disco [15]        : (1.3532216548919678, 1.6749426126480103)
+COMET INFO:     Validation loss [15]         : (0.4681641657734116, 0.5839547769567327)
+COMET INFO:     loss [1445]                  : (19.852598190307617, 73.15560913085938)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs103
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.002412242173040898
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/5d8cbaeb74f0478f89e810b4ea5447c1
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-16 23:42:53,955] Trial 14 finished with value: 0.9083593851605364 and parameters: {'hidden_dim': 971, 'layers': 5, 'fcparam': 52, 'dropout': 0.4727862090943758, 'lr': 0.0019231638338649878}. Best is trial 1 with value: 0.9347636956871886.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs104
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/5d8cbaeb74f0478f89e810b4ea5447c1
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.4727809047066992, 0.5996361493816494)
+COMET INFO:     Training loss [15]           : (40.278899235393645, 52.82186306154245)
+COMET INFO:     Validation disco [15]        : (1.2702505588531494, 1.8145519495010376)
+COMET INFO:     Validation loss [15]         : (0.37807212587205885, 0.5996361493816494)
+COMET INFO:     loss [1445]                  : (18.20413589477539, 70.61471557617188)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs104
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0019231638338649878
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/9ffa4dff42fb437cb1a236849a607b17
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-17 00:30:19,513] Trial 15 finished with value: 0.9363669056045709 and parameters: {'hidden_dim': 1004, 'layers': 5, 'fcparam': 51, 'dropout': 0.2633831214702671, 'lr': 0.0016173632585203047}. Best is trial 15 with value: 0.9363669056045709.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs105
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/9ffa4dff42fb437cb1a236849a607b17
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.40582428186388375, 0.6027858645157605)
+COMET INFO:     Training loss [15]           : (40.42033779782051, 54.48929997223313)
+COMET INFO:     Validation disco [15]        : (1.4172544479370117, 1.927464246749878)
+COMET INFO:     Validation loss [15]         : (0.33413292269325057, 0.6027858645157605)
+COMET INFO:     loss [1445]                  : (16.5190486907959, 72.49309539794922)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs105
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0016173632585203047
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/2bf8a6a5b079427d80585208cd0fa8c1
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-17 01:29:04,692] Trial 16 finished with value: 0.8647498916742031 and parameters: {'hidden_dim': 1601, 'layers': 4, 'fcparam': 51, 'dropout': 0.24622416166340189, 'lr': 0.005640239477012325}. Best is trial 15 with value: 0.9363669056045709.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs106
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/2bf8a6a5b079427d80585208cd0fa8c1
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.4883632445285821, 0.5954523932909024)
+COMET INFO:     Training loss [15]           : (40.950144711313214, 50.38009337745104)
+COMET INFO:     Validation disco [15]        : (1.3653953075408936, 1.777409553527832)
+COMET INFO:     Validation loss [15]         : (0.45821410962796755, 0.5954523932909024)
+COMET INFO:     loss [1445]                  : (17.600322723388672, 77.24799346923828)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs106
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.005640239477012325
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/4b93c3885d614f20a26bfe44d3a54268
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-17 02:30:06,541] Trial 17 finished with value: 0.9130396837539272 and parameters: {'hidden_dim': 1625, 'layers': 5, 'fcparam': 64, 'dropout': 0.26581471447225996, 'lr': 0.0018002710402418398}. Best is trial 15 with value: 0.9363669056045709.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs107
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/4b93c3885d614f20a26bfe44d3a54268
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.453783611851026, 0.594311077232916)
+COMET INFO:     Training loss [15]           : (39.569401244879515, 54.21497924899758)
+COMET INFO:     Validation disco [15]        : (1.4375413656234741, 1.8321183919906616)
+COMET INFO:     Validation loss [15]         : (0.3779172273410829, 0.594311077232916)
+COMET INFO:     loss [1445]                  : (16.802709579467773, 69.6764907836914)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs107
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.0018002710402418398
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/6daac317d2c14f4ebee00dc15ed9854c
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-17 03:18:30,565] Trial 18 finished with value: 0.8108984093565099 and parameters: {'hidden_dim': 1017, 'layers': 6, 'fcparam': 46, 'dropout': 0.06276445548530984, 'lr': 0.043843868607838746}. Best is trial 15 with value: 0.9363669056045709.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs108
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/6daac317d2c14f4ebee00dc15ed9854c
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.5505102061494225, 0.6284543860726941)
+COMET INFO:     Training loss [15]           : (41.43741767304956, 53.19049392335759)
+COMET INFO:     Validation disco [15]        : (1.2268683910369873, 2.3107972145080566)
+COMET INFO:     Validation loss [15]         : (0.5242409512803361, 0.6284543860726941)
+COMET INFO:     loss [1445]                  : (18.365859985351562, 75.29228973388672)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs108
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     epochs         : 15
+COMET INFO:     learning_rate  : 0.043843868607838746
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/optunacodelrplateau/83c4c21b53fc484fbc62134cb8e58683
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+[I 2025-12-17 04:13:29,642] Trial 19 finished with value: 0.9360738932373842 and parameters: {'hidden_dim': 1421, 'layers': 4, 'fcparam': 59, 'dropout': 0.18231125064512543, 'lr': 0.0012819120146115807}. Best is trial 15 with value: 0.9363669056045709.
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs90
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs90/Normalization.pkl
+Saving new best model
+Average loss = 0.613972255847806 and current loss = 0.6424334188013215 is larger than 0.5855110928942905
+Average loss = 0.6053968698137432 and current loss = 0.5882460977456178 is larger than 0.5855110928942905
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5493737224770848 and current loss = 0.5172776889032733 is larger than 0.5108488678560436
+Saving new best model
+Saving new best model
+Average loss = 0.5200022304442221 and current loss = 0.49538612328547205 is larger than 0.4873359097388579
+Saving new best model
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs90/optunacodelrplateau_vs90.pt
+==> Training completed in 2998.51 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs90/optunacodelrplateau_vs90_loss.root
+optunacodelrplateau_vs90_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1863)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs90/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs90_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs90
+optunacodelrplateau_vs90_eval_roc.png has been saved.
+==> Evaluation completed in 202.23 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs91
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs91/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5856227354144604 and current loss = 0.5860128996278046 is larger than 0.5702338065650012
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5585459273168247 and current loss = 0.5312343278818468 is larger than 0.5248346020798673
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.4578594000231699 and current loss = 0.32891285112766616 is larger than 0.32838979409910785
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs91/optunacodelrplateau_vs91.pt
+==> Training completed in 3825.78 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs91/optunacodelrplateau_vs91_loss.root
+optunacodelrplateau_vs91_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.3208)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs91/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs91_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs91
+optunacodelrplateau_vs91_eval_roc.png has been saved.
+==> Evaluation completed in 203.30 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs92
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs92/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5801710368070185 and current loss = 0.5891791272931683 is larger than 0.5626362979164242
+Average loss = 0.5789344687471767 and current loss = 0.5739881965078089 is larger than 0.5626362979164242
+Saving new best model
+Average loss = 0.5745413336036537 and current loss = 0.5770916707674332 is larger than 0.5500253207222587
+Saving new best model
+Average loss = 0.5723069763866521 and current loss = 0.5890647966623802 is larger than 0.5399086555919131
+Average loss = 0.5729889946333336 and current loss = 0.5791271588534674 is larger than 0.5399086555919131
+Average loss = 0.5696910616513845 and current loss = 0.5625706676262084 is larger than 0.5399086555919131
+Average loss = 0.566968416795909 and current loss = 0.5460922760180277 is larger than 0.5399086555919131
+Average loss = 0.5658614766820801 and current loss = 0.5515668967781344 is larger than 0.5399086555919131
+Average loss = 0.5630634729740773 and current loss = 0.5611990902131412 is larger than 0.5399086555919131
+Average loss = 0.5604729036221633 and current loss = 0.5480825029886686 is larger than 0.5399086555919131
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs92/optunacodelrplateau_vs92.pt
+==> Training completed in 2975.87 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs92/optunacodelrplateau_vs92_loss.root
+optunacodelrplateau_vs92_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1750)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs92/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs92_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs92
+optunacodelrplateau_vs92_eval_roc.png has been saved.
+==> Evaluation completed in 200.89 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs93
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs93/Normalization.pkl
+Saving new best model
+Average loss = 0.5919557842668031 and current loss = 0.5923673459125408 is larger than 0.5915442226210652
+Saving new best model
+Saving new best model
+Average loss = 0.5914415598783076 and current loss = 0.6456167997788491 is larger than 0.5631630742252492
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5438285465176041 and current loss = 0.4935589537427232 is larger than 0.43452192846058313
+Average loss = 0.5324456270791884 and current loss = 0.47771502823690865 is larger than 0.43452192846058313
+Average loss = 0.5178009064120711 and current loss = 0.44592013924136725 is larger than 0.43452192846058313
+Average loss = 0.5056186213810577 and current loss = 0.44269350654370077 is larger than 0.43452192846058313
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs93/optunacodelrplateau_vs93.pt
+==> Training completed in 2470.94 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs93/optunacodelrplateau_vs93_loss.root
+optunacodelrplateau_vs93_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.2359)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs93/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs93_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs93
+optunacodelrplateau_vs93_eval_roc.png has been saved.
+==> Evaluation completed in 188.47 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs94
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs94/Normalization.pkl
+Saving new best model
+Saving new best model
+Average loss = 0.6725203968837538 and current loss = 0.6485508547751175 is larger than 0.5488603560567645
+Average loss = 0.6421194261640868 and current loss = 0.550916514005086 is larger than 0.5488603560567645
+Average loss = 0.6276223025673888 and current loss = 0.5696338081805968 is larger than 0.5488603560567645
+Average loss = 0.6186094442569623 and current loss = 0.5735451527048298 is larger than 0.5488603560567645
+Average loss = 0.610244863750958 and current loss = 0.560057380714932 is larger than 0.5488603560567645
+Average loss = 0.6039476307755697 and current loss = 0.5598669999478513 is larger than 0.5488603560567645
+Average loss = 0.5991762575251754 and current loss = 0.5610052715220223 is larger than 0.5488603560567645
+Average loss = 0.5957752371900047 and current loss = 0.5651660541734675 is larger than 0.5488603560567645
+Average loss = 0.5697326304758908 and current loss = 0.5597239126782407 is larger than 0.5488603560567645
+Average loss = 0.5713566178095812 and current loss = 0.5651002293936676 is larger than 0.5488603560567645
+Average loss = 0.5628741055727005 and current loss = 0.5637257324063109 is larger than 0.5488603560567645
+Average loss = 0.5645416924648622 and current loss = 0.567592382926703 is larger than 0.5488603560567645
+Average loss = 0.5626998641448804 and current loss = 0.551215524980779 is larger than 0.5488603560567645
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs94/optunacodelrplateau_vs94.pt
+==> Training completed in 2450.39 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs94/optunacodelrplateau_vs94_loss.root
+optunacodelrplateau_vs94_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1702)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs94/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs94_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs94
+optunacodelrplateau_vs94_eval_roc.png has been saved.
+==> Evaluation completed in 189.41 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs95
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs95/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5665306218200811 and current loss = 0.5645600466866999 is larger than 0.5477007953391997
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5258690152557377 and current loss = 0.4862371668250546 is larger than 0.48085584864794834
+Average loss = 0.5183130037016284 and current loss = 0.4951062662809653 is larger than 0.48085584864794834
+Saving new best model
+Saving new best model
+Average loss = 0.49323503774689537 and current loss = 0.5005458656566802 is larger than 0.45440025562556025
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs95/optunacodelrplateau_vs95.pt
+==> Training completed in 3015.18 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs95/optunacodelrplateau_vs95_loss.root
+optunacodelrplateau_vs95_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1796)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs95/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs95_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs95
+optunacodelrplateau_vs95_eval_roc.png has been saved.
+==> Evaluation completed in 201.70 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs96
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs96/Normalization.pkl
+Saving new best model
+Saving new best model
+Average loss = 0.5906207577602284 and current loss = 0.5874689523742501 is larger than 0.5815133698393055
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5575327113965587 and current loss = 0.5291399663922197 is larger than 0.5281217779786076
+Saving new best model
+Average loss = 0.5476771623316139 and current loss = 0.5151478021159737 is larger than 0.5112176790926412
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5147375569522009 and current loss = 0.49872006107268857 is larger than 0.4852533694860098
+Average loss = 0.512456091501113 and current loss = 0.5218987393032241 is larger than 0.4852533694860098
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs96/optunacodelrplateau_vs96.pt
+==> Training completed in 3380.59 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs96/optunacodelrplateau_vs96_loss.root
+optunacodelrplateau_vs96_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1729)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs96/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs96_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs96
+optunacodelrplateau_vs96_eval_roc.png has been saved.
+==> Evaluation completed in 198.39 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs97
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs97/Normalization.pkl
+Saving new best model
+Average loss = 0.5783257280280834 and current loss = 0.578935105067033 is larger than 0.5777163509891335
+Average loss = 0.5792871891667425 and current loss = 0.5812101114440609 is larger than 0.5777163509891335
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5515438139456331 and current loss = 0.5336780341152342 is larger than 0.5255110551934232
+Average loss = 0.548742824510948 and current loss = 0.5291358984681525 is larger than 0.5255110551934232
+Saving new best model
+Saving new best model
+Average loss = 0.5372802550914134 and current loss = 0.5205150407713812 is larger than 0.5189448858992721
+Average loss = 0.5314159727641797 and current loss = 0.5202922817946968 is larger than 0.5189448858992721
+Saving new best model
+Average loss = 0.5232373421504443 and current loss = 0.51864427786607 is larger than 0.516558365056024
+Average loss = 0.5225458763988995 and current loss = 0.521062545679711 is larger than 0.516558365056024
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs97/optunacodelrplateau_vs97.pt
+==> Training completed in 2403.63 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs97/optunacodelrplateau_vs97_loss.root
+optunacodelrplateau_vs97_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1158)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs97/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs97_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs97
+optunacodelrplateau_vs97_eval_roc.png has been saved.
+==> Evaluation completed in 193.18 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs98
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs98/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.575612707826427 and current loss = 0.5779758689309357 is larger than 0.5470572886001047
+Average loss = 0.5832231466958528 and current loss = 0.6136649021735558 is larger than 0.5470572886001047
+Saving new best model
+Average loss = 0.5679837430854703 and current loss = 0.5302720353657887 is larger than 0.5294984327532397
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5350939553641479 and current loss = 0.5282841257890396 is larger than 0.4844070360095486
+Saving new best model
+Average loss = 0.5139145823997173 and current loss = 0.45685564189096 is larger than 0.4563837859957729
+Average loss = 0.49852182998974454 and current loss = 0.45973737807382914 is larger than 0.4563837859957729
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs98/optunacodelrplateau_vs98.pt
+==> Training completed in 2309.77 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs98/optunacodelrplateau_vs98_loss.root
+optunacodelrplateau_vs98_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.2369)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs98/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs98_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs98
+optunacodelrplateau_vs98_eval_roc.png has been saved.
+==> Evaluation completed in 180.39 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs99
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs99/Normalization.pkl
+Saving new best model
+Average loss = 0.6072746881142476 and current loss = 0.6095758783718157 is larger than 0.6049734978566794
+Saving new best model
+Average loss = 0.6125773517356841 and current loss = 0.6485985295688288 is larger than 0.5871615011454124
+Average loss = 0.6422452421049567 and current loss = 0.7609168035820467 is larger than 0.5871615011454124
+Saving new best model
+Saving new best model
+Average loss = 0.6208053143489757 and current loss = 0.5964325126144345 is larger than 0.5781077529437328
+Saving new best model
+Saving new best model
+Average loss = 0.6043326022905025 and current loss = 0.5654425077031903 is larger than 0.5475249822694893
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5525808726613586 and current loss = 0.5402207214718301 is larger than 0.500889102907042
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs99/optunacodelrplateau_vs99.pt
+==> Training completed in 2487.03 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs99/optunacodelrplateau_vs99_loss.root
+optunacodelrplateau_vs99_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1831)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs99/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs99_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs99
+optunacodelrplateau_vs99_eval_roc.png has been saved.
+==> Evaluation completed in 196.83 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs100
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs100/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5784159064323887 and current loss = 0.5812157078369243 is larger than 0.5680064410281033
+Average loss = 0.5774046849931848 and current loss = 0.573359799236369 is larger than 0.5680064410281033
+Saving new best model
+Saving new best model
+Average loss = 0.5692477676235217 and current loss = 0.5571455834685145 is larger than 0.548837051074371
+Average loss = 0.5676236970440073 and current loss = 0.5546311324078923 is larger than 0.548837051074371
+Average loss = 0.5658902957570776 and current loss = 0.5502896841747101 is larger than 0.548837051074371
+Average loss = 0.5629262053297364 and current loss = 0.5562528868722817 is larger than 0.548837051074371
+Average loss = 0.5600166851914102 and current loss = 0.5494524843355723 is larger than 0.548837051074371
+Average loss = 0.5589232453623334 and current loss = 0.5570720427373342 is larger than 0.548837051074371
+Average loss = 0.5560440078904376 and current loss = 0.5524233331179669 is larger than 0.548837051074371
+Average loss = 0.5536949093029554 and current loss = 0.5498688133615466 is larger than 0.548837051074371
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs100/optunacodelrplateau_vs100.pt
+==> Training completed in 3896.02 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs100/optunacodelrplateau_vs100_loss.root
+optunacodelrplateau_vs100_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1294)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs100/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs100_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs100
+optunacodelrplateau_vs100_eval_roc.png has been saved.
+==> Evaluation completed in 219.93 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs101
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs101/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.555016783592359 and current loss = 0.5382790716051312 is larger than 0.5323893914227674
+Saving new best model
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs101/optunacodelrplateau_vs101.pt
+==> Training completed in 2163.70 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs101/optunacodelrplateau_vs101_loss.root
+optunacodelrplateau_vs101_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1422)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs101/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs101_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs101
+optunacodelrplateau_vs101_eval_roc.png has been saved.
+==> Evaluation completed in 176.72 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs102
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs102/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.578153153343161 and current loss = 0.5919607329393375 is larger than 0.5639725345459896
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5569580568538083 and current loss = 0.5245481665069992 is larger than 0.5216139323250419
+Saving new best model
+Average loss = 0.5456986576876373 and current loss = 0.5271741026032739 is larger than 0.5062401707975384
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs102/optunacodelrplateau_vs102.pt
+==> Training completed in 2164.97 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs102/optunacodelrplateau_vs102_loss.root
+optunacodelrplateau_vs102_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.2841)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs102/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs102_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs102
+optunacodelrplateau_vs102_eval_roc.png has been saved.
+==> Evaluation completed in 180.38 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs103
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs103/Normalization.pkl
+Saving new best model
+Average loss = 0.583463077919399 and current loss = 0.5839547769567327 is larger than 0.5829713788820652
+Saving new best model
+Saving new best model
+Average loss = 0.5602013970611001 and current loss = 0.5473356209772788 is larger than 0.5333885607501325
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5394200778883196 and current loss = 0.5184544663171511 is larger than 0.49718748067124224
+Average loss = 0.5355116237287958 and current loss = 0.5003355362930814 is larger than 0.49718748067124224
+Saving new best model
+Saving new best model
+Average loss = 0.5051716137886543 and current loss = 0.47240859158569465 is larger than 0.46862033870760467
+Average loss = 0.49924389317848583 and current loss = 0.47411135464844734 is larger than 0.46862033870760467
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs103/optunacodelrplateau_vs103.pt
+==> Training completed in 3823.29 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs103/optunacodelrplateau_vs103_loss.root
+optunacodelrplateau_vs103_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.1900)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs103/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs103_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs103
+optunacodelrplateau_vs103_eval_roc.png has been saved.
+==> Evaluation completed in 208.23 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs104
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs104/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs104/optunacodelrplateau_vs104.pt
+==> Training completed in 2638.03 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs104/optunacodelrplateau_vs104_loss.root
+optunacodelrplateau_vs104_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.2720)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs104/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs104_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs104
+optunacodelrplateau_vs104_eval_roc.png has been saved.
+==> Evaluation completed in 193.52 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs105
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs105/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs105/optunacodelrplateau_vs105.pt
+==> Training completed in 2626.27 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs105/optunacodelrplateau_vs105_loss.root
+optunacodelrplateau_vs105_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.3509)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs105/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs105_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs105
+optunacodelrplateau_vs105_eval_roc.png has been saved.
+==> Evaluation completed in 188.12 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs106
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs106/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5327881039373041 and current loss = 0.5275903758660672 is larger than 0.4900873911232066
+Saving new best model
+Average loss = 0.5161895471650201 and current loss = 0.48188650688609563 is larger than 0.48036842261927043
+Average loss = 0.509968183088947 and current loss = 0.4916890275329661 is larger than 0.48036842261927043
+Saving new best model
+Saving new best model
+Saving new best model
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs106/optunacodelrplateau_vs106.pt
+==> Training completed in 3295.83 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs106/optunacodelrplateau_vs106_loss.root
+optunacodelrplateau_vs106_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.2132)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs106/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs106_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs106
+optunacodelrplateau_vs106_eval_roc.png has been saved.
+==> Evaluation completed in 198.07 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs107
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs107/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5582209285143968 and current loss = 0.551545510358969 is larger than 0.542472448703405
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.4863579060952034 and current loss = 0.4054762136787486 is larger than 0.3779172273410829
+Average loss = 0.4702919181072291 and current loss = 0.3853045044594644 is larger than 0.3779172273410829
+Average loss = 0.453783611851026 and current loss = 0.3801487331702655 is larger than 0.3779172273410829
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs107/optunacodelrplateau_vs107.pt
+==> Training completed in 3431.43 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs107/optunacodelrplateau_vs107_loss.root
+optunacodelrplateau_vs107_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.3159)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs107/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs107_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs107
+optunacodelrplateau_vs107_eval_roc.png has been saved.
+==> Evaluation completed in 199.41 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs108
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs108/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.5915731967239023 and current loss = 0.5809101420232016 is larger than 0.5660678525600513
+Average loss = 0.5921222556405653 and current loss = 0.5948675502238799 is larger than 0.5660678525600513
+Saving new best model
+Average loss = 0.5785013062108827 and current loss = 0.551035964563334 is larger than 0.5242409512803361
+Average loss = 0.575332782145432 and current loss = 0.5499845896218274 is larger than 0.5242409512803361
+Average loss = 0.572460433407038 and current loss = 0.5466092947614911 is larger than 0.5242409512803361
+Average loss = 0.5643459372113995 and current loss = 0.5473094241163091 is larger than 0.5242409512803361
+Average loss = 0.5587075964638697 and current loss = 0.5372989414387582 is larger than 0.5242409512803361
+Average loss = 0.5536273435780512 and current loss = 0.5379487251913225 is larger than 0.5242409512803361
+Average loss = 0.5505102061494225 and current loss = 0.5348964782737645 is larger than 0.5242409512803361
+Average loss = 0.551541978381032 and current loss = 0.5912278643392971 is larger than 0.5242409512803361
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs108/optunacodelrplateau_vs108.pt
+==> Training completed in 2675.06 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs108/optunacodelrplateau_vs108_loss.root
+optunacodelrplateau_vs108_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.2095)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs108/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs108_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs108
+optunacodelrplateau_vs108_eval_roc.png has been saved.
+==> Evaluation completed in 196.77 seconds
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs109
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs109/Normalization.pkl
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Saving new best model
+Average loss = 0.4092749718847741 and current loss = 0.34444534834358154 is larger than 0.319587353268433
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs109/optunacodelrplateau_vs109.pt
+==> Training completed in 3075.18 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs109/optunacodelrplateau_vs109_loss.root
+optunacodelrplateau_vs109_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(0.3444)
+Evaluation data saved in /work/adcorel/SVJ_GNN/output/optunacodelrplateau_vs109/eval/_ROC_AUC.pkl
+optunacodelrplateau_vs109_eval_auc.png has been saved.
+==> Created directory /work/adcorel/SVJ_GNN/output/comparison/optunacodelrplateau_vs109
+optunacodelrplateau_vs109_eval_roc.png has been saved.
+==> Evaluation completed in 192.87 seconds
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : optunacodelrplateau_vs109
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/optunacodelrplateau/83c4c21b53fc484fbc62134cb8e58683
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [15] : (0.4092749718847741, 0.5970216526682808)
+COMET INFO:     Training loss [15]           : (39.566385679155864, 54.46503960281641)
+COMET INFO:     Validation disco [15]        : (1.3205058574676514, 1.9534504413604736)
+COMET INFO:     Validation loss [15]         : (0.319587353268433, 0.5970216526682808)
+COMET INFO:     loss [1445]                  : (22.911222457885742, 70.06175231933594)
+COMET INFO:   Others:
+COMET INFO:     Name : optunacodelrplateau_vs109
+COMET INFO:   Parameters:
+COMET INFO:     Model                    : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture             : arch_optuna
+COMET INFO:     bootstrap                : True
+COMET INFO:     ccp_alpha                : 0.0
+COMET INFO:     criterion                : squared_error
+COMET INFO:     epochs                   : 15
+COMET INFO:     learning_rate            : 0.0012819120146115807
+COMET INFO:     max_depth                : 64
+COMET INFO:     max_features             : 1.0
+COMET INFO:     max_leaf_nodes           : None
+COMET INFO:     max_samples              : None
+COMET INFO:     min_impurity_decrease    : 0.0
+COMET INFO:     min_samples_leaf         : 1
+COMET INFO:     min_samples_split        : 2
+COMET INFO:     min_weight_fraction_leaf : 0.0
+COMET INFO:     monotonic_cst            : None
+COMET INFO:     n_estimators             : 64
+COMET INFO:     n_jobs                   : None
+COMET INFO:     oob_score                : False
+COMET INFO:     random_state             : None
+COMET INFO:     regularisation           : 30.0
+COMET INFO:     remark                   : 
+COMET INFO:     verbose                  : 0
+COMET INFO:     warm_start               : False
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (99.70 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (39.12 KB)
+COMET INFO: 

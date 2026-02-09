@@ -1,0 +1,47 @@
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:64: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:65: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:66: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:67: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:99: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:100: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:101: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:102: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+Going to load signal events
+(100000, 23)
+entry
+0        0.993343
+1        0.719310
+2        0.999863
+3        0.936596
+4        0.889023
+           ...   
+99995    0.999431
+99996    0.996580
+99997    0.980032
+99998    0.999999
+99999    0.734720
+Name: GNN_Score, Length: 100000, dtype: float32
+Going to load bkg events
+(0, 23)
+Series([], Name: GNN_Score, dtype: float32)
+Splitting data
+starting with training with GNN score
+[Fold 1/6]
+y_train min/max/mean: 1 1 1.0
+Traceback (most recent call last):
+  File "/work/adcorel/SVJ_GNN/bdt/Train_XGB.py", line 541, in <module>
+    clf.fit(
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 774, in inner_f
+    return func(**kwargs)
+           ^^^^^^^^^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/xgboost/sklearn.py", line 1761, in fit
+    raise ValueError(
+ValueError: Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]

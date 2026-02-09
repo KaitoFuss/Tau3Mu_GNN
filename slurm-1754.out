@@ -1,0 +1,73 @@
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:64: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:65: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:66: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:67: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:99: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu12'                                                                                                  ] = '$\Delta z (\mu_1, \mu_2)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:100: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu13'                                                                                                  ] = '$\Delta z (\mu_1, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:101: SyntaxWarning: invalid escape sequence '\D'
+  labels['Slimmed_TauTo3Mu_dZmu23'                                                                                                  ] = '$\Delta z (\mu_2, \mu_3)$'
+/work/adcorel/SVJ_GNN/bdt/Train_XGB.py:102: SyntaxWarning: invalid escape sequence '\s'
+  labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                                                                         ] = 'SV L/$\sigma$'
+/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/callback.py:386: UserWarning: [01:56:12] WARNING: /workspace/src/learner.cc:790: 
+Parameters: { "silent" } are not used.
+
+  self.starting_round = model.num_boosted_rounds()
+Going to load signal events
+(0, 23)
+Series([], Name: GNN_Score, dtype: float32)
+Going to load bkg events
+(93023, 23)
+entry
+0        0.000101
+1        0.000332
+2        0.094964
+3        0.950556
+4        0.001602
+           ...   
+93018    0.000858
+93019    0.008234
+93020    0.255612
+93021    0.545870
+93022    0.964254
+Name: GNN_Score, Length: 93023, dtype: float32
+Splitting data
+starting with training with GNN score
+[Fold 1/6]
+y_train min/max/mean: 0 0 0.0
+Traceback (most recent call last):
+  File "/work/adcorel/SVJ_GNN/bdt/Train_XGB.py", line 541, in <module>
+    clf.fit(
+  File "/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 774, in inner_f
+    return func(**kwargs)
+           ^^^^^^^^^^^^^^
+  File "/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/sklearn.py", line 1806, in fit
+    self._Booster = train(
+                    ^^^^^^
+  File "/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 774, in inner_f
+    return func(**kwargs)
+           ^^^^^^^^^^^^^^
+  File "/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/training.py", line 199, in train
+    bst.update(dtrain, iteration=i, fobj=obj)
+  File "/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 2433, in update
+    _check_call(
+  File "/t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/core.py", line 323, in _check_call
+    raise XGBoostError(py_str(_LIB.XGBGetLastError()))
+xgboost.core.XGBoostError: [01:56:12] /workspace/src/objective/regression_obj.cu:119: Check failed: is_valid: base_score must be in (0,1) for the logistic loss.
+Stack trace:
+  [bt] (0) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x2bdf8c) [0x15412cf60f8c]
+  [bt] (1) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x1077654) [0x15412dd1a654]
+  [bt] (2) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x1077c75) [0x15412dd1ac75]
+  [bt] (3) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x6d1ab9) [0x15412d374ab9]
+  [bt] (4) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(+0x6f4db7) [0x15412d397db7]
+  [bt] (5) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/site-packages/xgboost/lib/libxgboost.so(XGBoosterUpdateOneIter+0x77) [0x15412ce6da67]
+  [bt] (6) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/lib-dynload/../../libffi.so.8(+0x6d8a) [0x15415d20ed8a]
+  [bt] (7) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/lib-dynload/../../libffi.so.8(+0x61cd) [0x15415d20e1cd]
+  [bt] (8) /t3home/adcorel/.local/share/mamba/envs/gnn/lib/python3.12/lib-dynload/../../libffi.so.8(ffi_call+0xcd) [0x15415d20e91d]
+
+

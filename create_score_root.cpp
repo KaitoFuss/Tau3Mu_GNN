@@ -8,8 +8,9 @@
 #include <iostream>
 
 static std::unordered_map<std::string, float> scoreMap;
-std::string root_file = "/work/kfuss/SVJ_GNN/data/background/data_skimmed_no_resonances.root";
-std::string output_folder = "/work/kfuss/SVJ_GNN/output/fully_new_vs8/";
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ds_large_signal_skimmed_no_resonances.root";
+std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/data_skimmed_no_resonances_part4.root";
+std::string output_folder = "/work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs51/";
 
 void LoadScoresCSV(const std::string& filename) {
     std::ifstream file(filename);
@@ -17,6 +18,8 @@ void LoadScoresCSV(const std::string& filename) {
         std::cerr << "Failed to open CSV file: " << filename << std::endl;
         return;
     }
+    
+
     std::string line;
     std::getline(file, line); // skip header, if present
     while (std::getline(file, line)) {
@@ -24,12 +27,18 @@ void LoadScoresCSV(const std::string& filename) {
         std::string item;
         unsigned int run, lumi;
         unsigned long long event;
-        float score;
+        double score;
 
         std::getline(ss, item, ','); run = static_cast<unsigned int>(std::stoul(item));
         std::getline(ss, item, ','); lumi = static_cast<unsigned int>(std::stoul(item));
         std::getline(ss, item, ','); event = std::stoull(item);
-        std::getline(ss, item, ','); score = std::stof(item);
+        std::getline(ss, item, ','); try {
+        score = std::stod(item);
+    } catch (std::exception &e) {
+        std::cerr << "Error parsing score in line: " << line << std::endl;
+        std::cerr << "Score field was: '" << item << "'" << std::endl;
+        throw;
+    }
 
 
         std::string key = std::to_string(run) + ":" + std::to_string(lumi) + ":" + std::to_string(event);
@@ -44,12 +53,12 @@ float read_score(unsigned int run, unsigned int lumi, unsigned long long event) 
     return -1.0f;
 }
 
-int main_() {
+int main() {
     ROOT::EnableImplicitMT();
 
     std::cout << "Going to load csv file" << std::endl;
 
-    LoadScoresCSV(output_folder + "scores_bkg.csv");
+    LoadScoresCSV(output_folder + "scores_bkg_clean.csv");
 
     std::cout << "Going to load root file" << std::endl;
 

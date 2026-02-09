@@ -36,7 +36,7 @@ def plot_roc(data, key, root_dir, thresholds_bench, title):
     thresh_model = data[key]["threshold"]
 
     ax = plt.gca()
-    plt.plot(fpr, tpr, linewidth=0.9, label=f"AUC: {data[key]['auc']:.3f}, " + key.replace("W_decay_signal_skimmed_", ""))
+    plt.plot(fpr, tpr, linewidth=0.9, label=f"AUC: {data[key]['auc']:.3f}, " + key.replace("D_s_decay_signal_skimmed_", ""))
     plt.plot(fpr_bench, tpr_bench, linewidth = 0.9, label=f"AUC: {data[key]['auc_benchmark']:.3f}, Benchmark")
     for threshold in thresholds_bench:
         thresh_idx = min(range(len(thresh_benchmark)), key=lambda i: abs(thresh_benchmark[i] - threshold))
@@ -53,9 +53,9 @@ def plot_roc(data, key, root_dir, thresholds_bench, title):
     plt.xscale('log')
     plt.xlim(1e-5,1)
     plt.title(title)
-    outout_plot_name = "ROC_log.png"
-    print(f"{outout_plot_name} has been saved.")
-    plt.savefig(os.path.join(root_dir,outout_plot_name), dpi=400)
+    output_plot_name = "ROC_log.png"
+    print(f"{output_plot_name} has been saved.")
+    plt.savefig(os.path.join(root_dir,output_plot_name), dpi=400)
     plt.close()
 
 def plot_roc_bdt(data, root_dir, thresholds_bench, title):
@@ -101,11 +101,12 @@ def tau_score_hist(root, pickl_name, mode, title):
     data = np.load(root + pickl_name, allow_pickle=True)
     scores = data[f"{mode}_score_bkg"]
     f_tau_mass = data["tau_mass"]
+    print("data shape is ", len(f_tau_mass))
 
-    # score_cuts = [0,0.2,0.3,0.5,0.75]
-    # bins=np.linspace(1.5,2.5,200)
+    # score_cuts = [0.01,0.2,0.3,0.5,0.75]
+    # bins = np.linspace(1.00, 3.00, 40)
     score_cuts = [0.95, 0.97, 0.98, 0.99]
-    bins = np.linspace(1.72, 1.85, 14)
+    bins = np.linspace(1.60, 2.00, 40)
     for cut in score_cuts:
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
@@ -114,8 +115,11 @@ def tau_score_hist(root, pickl_name, mode, title):
         plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts:\n {mode}, {title}")  
     else:
         plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts:\n {mode}")
+    xarray = np.linspace(1.60, 2.00, 400)
+    plt.plot(xarray, 100*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)))
     plt.xlabel(r"$m_{\tau,\mathrm{fit}}$ [GeV]")
     plt.ylabel("Counts")
+    plt.xlim(1.60, 2.00)
     plt.grid()
     plt.legend()
     # plt.yscale('log')
@@ -135,8 +139,8 @@ if __name__ == "__main__":
     root_path = args.root_path
     title = args.title
 
-    data = np.load(root_path + '_roc_21may2025_v0.pck', allow_pickle=True)
-    plot_roc_bdt(data, root_path, [0.5, 0.75, 0.9, 0.95, 0.97, 0.98, 0.985, 0.99], title)
+    data = np.load(root_path + '_roc_4february2026_v0.pck', allow_pickle=True)
+    plot_roc_bdt(data, root_path, [0.5, 0.622, 0.788, 0.874, 0.902, 0.962], title)
     tau_score_hist(root_path, "tau_score_corr.pkl", "GNN", title)
     tau_score_hist(root_path, "tau_score_corr.pkl", "ISO", title)
     # import numpy as np

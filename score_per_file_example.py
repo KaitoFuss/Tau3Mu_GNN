@@ -32,6 +32,11 @@ arch_configs = {
         "fc_params": [(64, 0.8)],
         "use_fusion" : True,
     },
+    "arch_optuna" : {
+        "conv_params" : [1004, int(1004/2**1), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        "fc_params" : [(51, 0.8)],
+        "use_fusion": True, 
+    },
 }
 
 
@@ -39,14 +44,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--file', type=str, required=True, help='File to read the data from')
+    parser.add_argument('--root', type=str, required=True, help='Folder to read the data from')
     parser.add_argument('--output_folder', type=str, required=True, help="Output to store the files with the scores")
     parser.add_argument('--model_name', type=str, required=True, help="Name of GNN model")
     parser.add_argument('--arch', type=str, required=True, help="Architecture of GNN model")
 
     args = parser.parse_args()
 
-    input_file = args.file
+    input_file = args.root
     output_folder = args.output_folder
     model_name = args.model_name
     arch = args.arch
@@ -56,7 +61,7 @@ if __name__ == "__main__":
     params = arch_configs[arch]
     model =  TauMuNet(
         conv_params=params["conv_params"],
-        dropout=0.6,
+        dropout=0.2633831214702671,
         fc_params=params["fc_params"],
         use_fusion=params["use_fusion"],
     )
@@ -68,28 +73,12 @@ if __name__ == "__main__":
     print("Starting the ScoreProducer")
 
 
-    if arch == "arch6":
-        ScoreProducer(root_file=input_file,
+    if arch == "arch_optuna":
+        ScoreProducer(root=input_file,
                     edge_connection_mode="knn",
                     delta_r_threshold=None,
                     k_knn=10,
-                    max_events_to_process=80000,
-                    save_edge_attributes=True,
-                    verbose=True,
-                    slimmed=True,
-                    shuffle_bool=True,
-                    use_displacement=True,
-                    model=model,
-                    device=device,
-                    normalizer=normalizer,
-                    output_folder=output_folder
-                    )
-    elif arch == "arch5":
-        ScoreProducer(root_file=input_file,
-                    edge_connection_mode="fully",
-                    delta_r_threshold=None,
-                    k_knn=None,
-                    max_events_to_process=80000,
+                    max_events_to_process=25000,
                     save_edge_attributes=True,
                     verbose=True,
                     slimmed=True,

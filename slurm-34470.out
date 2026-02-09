@@ -1,0 +1,92 @@
+COMET INFO: Experiment is live on comet.com https://www.comet.com/adrian-corel/tester-plateau/1866fc3efb21470fa1e371b6bda1e658
+
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/SVJ_GNN/utils/TrainingUtils.py:160: FutureWarning: Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. You will need to use `mktree` to create to explicitly create a TTree. Please update your code accordingly.
+  file["Output"] = df
+/work/adcorel/SVJ_GNN/utils/ConeGraphProducer.py:140: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/torch_geometric/data/in_memory_dataset.py:300: UserWarning: It is not recommended to directly access the internal storage format `data` of an 'InMemoryDataset'. The given 'InMemoryDataset' only references a subset of examples of the full dataset, but 'data' will contain information of the full dataset. The data of the dataset is already cached, so any modifications to `data` will not be reflected when accessing its elements. Clearing the cache now by removing all elements in `dataset._data_list`. If you are absolutely certain what you are doing, access the internal storage via `InMemoryDataset._data` instead to suppress this warning. Alternatively, you can access stacked individual attributes of every graph via `dataset.{attr_name}`.
+  warnings.warn(msg)
+==> Running TauMuNet 
+==> Created directory /work/adcorel/SVJ_GNN/output/tester_plateau_vs13
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ ds_decay_signal_signal_skimmed_dzd0_cone_size_0.5_knn_10
+/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/ background_data_skimmed_dzd0_cone_size_0.5_knn_10
+Normalization saved in /work/adcorel/SVJ_GNN/output/tester_plateau_vs13/Normalization.pkl
+cuda
+torch.cuda.is_available(): True
+Saving new best model
+Average loss = 0.800243690609932 and current loss = 0.9695173104604086 is larger than 0.6309700707594553
+Average loss = 0.7531308167510562 and current loss = 0.6589050690333048 is larger than 0.6309700707594553
+Average loss = 0.7387456819415092 and current loss = 0.6955902775128683 is larger than 0.6309700707594553
+Average loss = 0.7320495307445526 and current loss = 0.7052649259567261 is larger than 0.6309700707594553
+==> Saving Model
+Model saved to  /work/adcorel/SVJ_GNN/output/tester_plateau_vs13/tester_plateau_vs13.pt
+==> Training completed in 362.00 seconds
+==> Saving losses...
+Output saved to /work/adcorel/SVJ_GNN/output/tester_plateau_vs13/tester_plateau_vs13_loss.root
+tester_plateau_vs13_loss.png has been saved.
+Traininig finished
+==> Evaluate Model...
+DisCo =  tensor(nan)
+Traceback (most recent call last):
+  File "/work/adcorel/SVJ_GNN/TestplateauTrainTauMuNet.py", line 607, in <module>
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], include_puppi)
+  File "/work/adcorel/SVJ_GNN/TestplateauTrainTauMuNet.py", line 295, in main
+    roc, auc = ueval.roc_auc(evaluation_dict, name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/adcorel/SVJ_GNN/utils/EvaluationUtils.py", line 202, in roc_auc
+    fpr_, tpr_, thres_ = roc_curve(target, score)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 1163, in roc_curve
+    fps, tps, thresholds = _binary_clf_curve(
+                           ^^^^^^^^^^^^^^^^^^
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 869, in _binary_clf_curve
+    assert_all_finite(y_score)
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/sklearn/utils/validation.py", line 210, in assert_all_finite
+    _assert_all_finite(
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+  File "/work/adcorel/miniforge3/envs/gnn/lib/python3.12/site-packages/sklearn/utils/validation.py", line 169, in _assert_all_finite_element_wise
+    raise ValueError(msg_err)
+ValueError: Input contains NaN.
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : tester_plateau_vs13
+COMET INFO:     url                   : https://www.comet.com/adrian-corel/tester-plateau/1866fc3efb21470fa1e371b6bda1e658
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     Average Validation loss [500] : (0.6309700707594553, 0.800243690609932)
+COMET INFO:     Training loss [500]           : (11.270135998725891, 12.259201924006144)
+COMET INFO:     Validation disco [500]        : (0.3537848889827728, 0.44258376955986023)
+COMET INFO:     Validation loss [500]         : (0.6309700707594553, 0.9695173104604086)
+COMET INFO:     loss [150]                    : (1.4166443347930908, 2.3358969688415527)
+COMET INFO:   Others:
+COMET INFO:     Name : tester_plateau_vs13
+COMET INFO:   Parameters:
+COMET INFO:     Model          : dzd0_cone_size_0.5_knn_10
+COMET INFO:     architecture   : arch_optuna
+COMET INFO:     learning_rate  : 0.007277252441658855
+COMET INFO:     regularisation : 30.0
+COMET INFO:     remark         : 
+COMET INFO:   Uploads:
+COMET INFO:     conda-environment-definition : 1
+COMET INFO:     conda-info                   : 1
+COMET INFO:     conda-specification          : 1
+COMET INFO:     environment details          : 1
+COMET INFO:     filename                     : 1
+COMET INFO:     git metadata                 : 1
+COMET INFO:     git-patch (uncompressed)     : 1 (101.85 KB)
+COMET INFO:     installed packages           : 1
+COMET INFO:     model graph                  : 1
+COMET INFO:     source_code                  : 1 (38.02 KB)
+COMET INFO: 

@@ -59,11 +59,11 @@ def training(epochs, batch_size, learning_rate, disco_reg, name, model_type, par
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
 
     datasets_W_signal = [
-        [base_directory_W_signal, f"no_puppi_ds_decay_signal_signal_skimmed_{model_type}"],
+        [base_directory_W_signal, f"ds_decay_signal_signal_skimmed_{model_type}"],
     ]
 
     datasets_bkg = [
-        [base_directory_bkg, f"no_puppi_background_data_skimmed_{model_type}"],
+        [base_directory_bkg, f"background_data_skimmed_{model_type}"],
     ]
 
     # datasets_W_signal = [    
@@ -221,7 +221,7 @@ def training(epochs, batch_size, learning_rate, disco_reg, name, model_type, par
         conv_params=params["conv_params"],
         dropout=0.6,
         fc_params=params["fc_params"],
-        input_dims=7, #8
+        input_dims=8, #7
         num_edge_features=num_edge_features,
         use_fusion=True,
     )
@@ -263,10 +263,14 @@ def training(epochs, batch_size, learning_rate, disco_reg, name, model_type, par
     roc, auc = ueval.roc_auc(evaluation_dict, name)
     #print("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB : ", auc)
     ueval.plot_auc_simple(auc, name)
-    ueval.plot_roc(roc, name)
+    ueval.plot_roc(roc, auc, name)
     # ueval.plot_scores(evaluation_dict,name)
     # ueval.plot_sic(roc, name)
-    ueval.plot_dnn(evaluation_dict, name) # plots GNN scores of bkg and signal
+    try:
+        ueval.plot_dnn(evaluation_dict, name)
+    except Exception as e:
+        print(f"[plot_dnn] skipped due to: {e}")
+    # ueval.plot_dnn(evaluation_dict, name) # plots GNN scores of bkg and signal
     # ueval.plot_sic_small(roc,name)
     # ueval.plot_dnn(evaluation_dict,name)
     # ueval.plot_dnn_2(evaluation_dict, name)
@@ -274,6 +278,34 @@ def training(epochs, batch_size, learning_rate, disco_reg, name, model_type, par
     print(f"==> Evaluation completed in {time.time()-start_eva:.2f} seconds")
 
     return auc[list(evaluation_dict.keys())[0]]
+
+def distance_correlation_torch(x, y):
+    # Ensure tensors
+    if not isinstance(x, torch.Tensor):
+        x = torch.tensor(x, dtype=torch.float32)
+    if not isinstance(y, torch.Tensor):
+        y = torch.tensor(y, dtype=torch.float32)
+
+    # Move to same device
+    device = x.device
+    y = y.to(device)
+
+    x = x.view(-1, 1)
+    y = y.view(-1, 1)
+
+    # Compute centred distance matrices
+    a = torch.cdist(x, x, p=2)
+    b = torch.cdist(y, y, p=2)
+
+    A = a - a.mean(dim=0) - a.mean(dim=1, keepdim=True) + a.mean()
+    B = b - b.mean(dim=0) - b.mean(dim=1, keepdim=True) + b.mean()
+
+    dcov2_xy = (A * B).mean()
+    dcov2_xx = (A * A).mean()
+    dcov2_yy = (B * B).mean()
+
+    # Add epsilon to avoid division by zero
+    return torch.sqrt(dcov2_xy) / (torch.sqrt(dcov2_xx) * torch.sqrt(dcov2_yy) + 1e-12)
 
 def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, experiment, scheduler):
     """Train and validate model.
@@ -297,7 +329,6 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     training_losses = []
     validation_losses = []
     validation_discos = []
-
 
     # initalize early stopping class
     early_stop = utrain.early_stop()
@@ -323,7 +354,9 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             score = out[:,0].cpu()
             score = score.detach().numpy()
             bce_loss =  loss_criterion(out[:,0], target) # takes the first argument of the output(could also take the other)
-            disco_loss = dcor.distance_correlation(score, data.fitted_tau_mass)  # Penalising just learning the tau mass
+            normedweight = torch.ones_like(out[:, 0]) 
+            disco_loss = distance_correlation_torch(score, data.fitted_tau_mass) # Penalising just learning the tau mass
+            # disco_loss = utrain.distance_corr(out[:,0], data.fitted_tau_mass, normedweight)  # Penalising just learning the tau mass
             loss_ = bce_loss + disco_reg * disco_loss
             
             loss_per_batch += loss_.item()
@@ -357,19 +390,22 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
                 loss_ = loss_criterion(out[:,0], target)
                 loss_per_batch += loss_.item()
-                disco_per_batch += dcor.distance_correlation(score, data.fitted_tau_mass)
+                normedweight = torch.ones_like(out[:, 0]) 
+                disco_per_batch += distance_correlation_torch(score, data.fitted_tau_mass)
+                # disco_per_batch += utrain.distance_corr(out[:,0], data.fitted_tau_mass, normedweight)
                 batch_counter += 1
 
         #log the auc
         #auc_validation = auc_per_batch/batch_counter
         #experiment.log_metric("AUC", auc_validation, epoch=epoch)
 
-        scheduler.step(loss_per_batch)
         
         # calculate loss per epoch and log it
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_losses.append(epoch_loss_validation)
         experiment.log_metric("Validation loss", epoch_loss_validation, epoch=epoch)
+
+        scheduler.step(epoch_loss_validation)
         
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
@@ -582,9 +618,9 @@ def objective(trial):
             layers=layers,
             fcparam=fcparam,
             epochs=15,
-            batch_size=3000,
+            batch_size=128,
             learning_rate=learning_rate,
-            disco_reg=0.5,
+            disco_reg=100.0,
             name="optunacodelrplateau",
             model_type="dzd0_cone_size_0.5_knn_10"
             )
