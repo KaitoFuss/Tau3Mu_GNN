@@ -74,6 +74,8 @@ class ConeGraphProducer(InMemoryDataset):
         label:float=0.,
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
+        tau_channel="W",
+        graph_level_features=[],
         slimmed=False,
         shuffle_bool=False,
         use_displacement=False  
@@ -99,6 +101,8 @@ class ConeGraphProducer(InMemoryDataset):
         self.label = label
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
+        self.tau_channel = tau_channel
+        self.graph_level_features = graph_level_features
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
@@ -111,6 +115,8 @@ class ConeGraphProducer(InMemoryDataset):
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
         assert self.edge_connection_mode in self.edge_connection_methods, f"Unsupported edge_connection_mode: {self.edge_connection_mode}"
+
+        assert self.tau_channel in ["W", "HF"], "Unsupported tau_channel. Please choose either 'W' or 'HF'"
 
         if self.edge_connection_mode == "fully":
             if self.delta_r_threshold is not None:
@@ -468,6 +474,8 @@ class ConeGraphProducer(InMemoryDataset):
             # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
+
+        branches_to_load += self.graph_level_features
 
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"] 
