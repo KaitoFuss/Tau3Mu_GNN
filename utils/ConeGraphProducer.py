@@ -45,6 +45,8 @@ class ConeGraphProducer(InMemoryDataset):
         label (float): Label to add to the graph for supervised learning
         verbose (bool): Whether to print progress bars
         tau_collection_name (str): Name of the fitted tau in the root file (default: "TauTo3Mu_fitted")
+        tau_channel (str): Name of tau production channel ('W' or 'HF')
+        graph_level_branches (lsit): List of branch names that will be loaded and added as graph level features, previously BDT input features
         slimmed (bool): Whether data was pre skimmed and disregarded Meson resonances and bad PV matches
         shuffle_bool (bool): Whether events should be shuffeled before processing
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
@@ -75,7 +77,7 @@ class ConeGraphProducer(InMemoryDataset):
         verbose=False,
         tau_collection_name="TauTo3Mu_fitted",
         tau_channel="W",
-        graph_level_features=[],
+        graph_level_branches=[],
         slimmed=False,
         shuffle_bool=False,
         use_displacement=False  
@@ -102,7 +104,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.tau_collection_name = tau_collection_name
         self.tau_channel = tau_channel
-        self.graph_level_features = graph_level_features
+        self.graph_level_branches = graph_level_branches
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
@@ -195,7 +197,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
             pfcands_mass = event[f"{prefix}PFCands_mass"]
             pfcands_charge = event[f"{prefix}PFCands_charge"]
-            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
+            # pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -207,6 +209,28 @@ class ConeGraphProducer(InMemoryDataset):
                 fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
                 fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
                 
+                # get graph level features for this fitted tau
+                graph_level_features = []
+                # graph_level_features = ak.Array([event[self.graph_level_branches]])[tau_mask][nt] # this just creates an array of records
+
+                for branch_name in self.graph_level_branches:
+                    graph_level_feature = event[branch_name][tau_mask][nt]
+                    graph_level_features.append(graph_level_feature)
+
+                if self.tau_channel == "W":
+                    TauPlusMET_Puppi_phi = event["TauPlusMET_Puppi_phi"][tau_mask][nt]
+                    delta_phi_TauPlusMET_Puppi_fitted_tau = self.deltaphi(TauPlusMET_Puppi_phi, fitted_tau_phi)
+                    graph_level_features.append(delta_phi_TauPlusMET_Puppi_fitted_tau)
+
+                    TauPlusMET_PuppiMET_pt = event["TauPlusMET_PuppiMET_pt"][tau_mask][nt]
+                    rel_fitted_tau_pt = fitted_tau_pt / TauPlusMET_PuppiMET_pt
+                    graph_level_features.append(rel_fitted_tau_pt)
+                
+                elif self.tau_channel == "HF":
+                    pass #TODO
+
+
+
                 # Read data for mu1 from event
                 # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
                 mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
@@ -247,7 +271,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
                 pfcands_mass_masked = pfcands_mass[cone_mask]
                 pfcands_charge_masked = pfcands_charge[cone_mask]
-                pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
+                # pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
                 if self.use_displacement:
                     pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
@@ -289,7 +313,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_phi_masked,
                         pfcands_pdgId_masked,
                         pfcands_mass_masked,
-                        pfcands_puppiWeight_masked,
+                        # pfcands_puppiWeight_masked,
                         pfcands_d0_masked,   
                         pfcands_dz_masked   
                     ]).T, dtype=torch.float)
@@ -300,7 +324,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_phi_masked,
                         pfcands_pdgId_masked,
                         pfcands_mass_masked, 
-                        pfcands_puppiWeight_masked
+                        # pfcands_puppiWeight_masked
                     ]).T, dtype=torch.float)
                 
                 # TODO do this calc outside loop and then just mask inside 
@@ -386,6 +410,13 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.w = 1.
                 elif self.weights == "npvs_rescale":
                     graph.w = npvs_weights[event["PV_npvs"]]
+
+                graph.tau_channel = self.tau_channel
+
+                if len(self.graph_level_branches) > 0:
+                    graph.graph_level_features = torch.tensor(graph_level_features, dtype=torch.float)
+                else:
+                    graph.graph_level_features = torch.tensor([])
                 
                 # Add the event number if requested
                 if self.save_event_number:
@@ -408,7 +439,7 @@ class ConeGraphProducer(InMemoryDataset):
                     # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
                     # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
                     # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
-                        
+
                 graphs.append(graph)
 
         return graphs
@@ -448,7 +479,7 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}PFCands_pdgId",
             f"{prefix}PFCands_mass",  
             f"{prefix}PFCands_charge",
-            f"{prefix}PFCands_Weight",
+            # f"{prefix}PFCands_Weight",
             f"n{n_prefix}TauTo3Mu",
             # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -475,7 +506,16 @@ class ConeGraphProducer(InMemoryDataset):
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
-        branches_to_load += self.graph_level_features
+        # self.graph_level_branches = [f"{prefix}{b}" for b in self.graph_level_features]
+        branches_to_load += self.graph_level_branches
+
+        if self.tau_channel == "W":
+            branches_to_load += [
+                "TauPlusMET_Puppi_phi", 
+            ]
+            
+        elif self.tau_channel == "HF":
+            pass #TODO
 
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"] 
@@ -592,10 +632,13 @@ class ConeGraphProducer(InMemoryDataset):
     
     def calc_delta_R_sq(self, eta, phi, ref_eta, ref_phi):
         delta_eta = eta - ref_eta
-        delta_phi_internal = np.abs(phi - ref_phi)
-        delta_phi_external = 2*np.pi - np.abs(phi - ref_phi)
-        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+        delta_phi = self.delta_phi(phi, ref_phi)
         delta_R_sq = delta_eta**2 + delta_phi**2
         return delta_R_sq
 
         
+    def deltaphi(self, phi1, phi2):
+        delta_phi_internal = np.abs(phi1 - phi2)
+        delta_phi_external = 2*np.pi - np.abs(phi1 - phi2)
+        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+        return delta_phi

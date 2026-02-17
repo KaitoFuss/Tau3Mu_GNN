@@ -4,7 +4,7 @@ import argparse
 
 
 # default values
-# max_events_to_process = 100
+max_events_to_process = 1000 # None
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -27,6 +27,8 @@ def create_graph(
     slimmed: bool = False,
     shuffle: bool = False,
     weights = None,
+    tau_channel: str = "W",
+    graph_level_branches: list = [],
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -55,6 +57,8 @@ def create_graph(
         mask=mask,
         label=label,
         verbose=verbose,
+        tau_channel=tau_channel,
+        graph_level_branches=graph_level_branches,
         slimmed=slimmed,
         shuffle_bool=shuffle,
         use_displacement=use_displacement,
@@ -67,18 +71,22 @@ if __name__ == "__main__":
     parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
     parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
     parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
-    parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
+    parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
+    # parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
     args = parser.parse_args()
 
     model_type = args.graph_type
     k = args.k
     delta_r = args.delta_r
-    max_events_to_process = args.nevents
+    tau_channel = args.tau_channel
+    # max_events_to_process = args.nevents
 
     if model_type == "knn" and k is None:
         raise ValueError("For 'knn' model_type, --k must be specified.")
     if model_type == "r_threshold" and delta_r is None:
         raise ValueError("For 'r_threshold' model_type, --delta_r must be specified.")
+    if tau_channel not in ["W", "HF"]:
+        raise ValueError("Unsupported tau_channel. Please choose either 'W' or 'HF'.")
 
     # root_W_signal = "data/signal_W" 
     # output_ident_signal = "W_decay_signal"
@@ -104,9 +112,123 @@ if __name__ == "__main__":
     #     delta_r_threshold=delta_r
     # )
 
+    if tau_channel == "W":
+        # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal/"
+        base_direc_W_signal = "data/signal"
+        root_W_signals_skimmed = [
+            [base_direc_W_signal, "skimmed"],
+        ]
+        W_graph_level_branches = [
+            'Slimmed_TauTo3Mu_fitted_pt',
+            'TauPlusMET_Tau_Puppi_mT',
+            #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
+            #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
+            'TauPlusMET_PuppiMET_pt',
+            #'Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)', # only for >= v4
+        #     'cand_refit_tau_pt/cand_refit_met_pt', # only for >= v2
+        #     'cand_refit_dRtauMuonMax',
+            'TauPlusMET_Puppi_pt',
+            'TauPlusMET_PuppiMETminPz',
+            'TauPlusMET_PuppiMETmaxPz',
+            'Slimmed_TauTo3Mu_dZmu12', 
+            'Slimmed_TauTo3Mu_dZmu13', 
+            'Slimmed_TauTo3Mu_dZmu23',
+            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
+            'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+        ]
+
+        for base_direc, signal_identifier in root_W_signals_skimmed:
+            output_ident_signal = "W_decay_signal_" + signal_identifier.replace("/", "")
+            root_W_signal = base_direc
+            create_graph(
+                root_W_signal, 
+                output_ident_signal, 
+                label=1., 
+                mask=False, 
+                edge_connection_mode=model_type,
+                max_events_to_process=max_events_to_process,
+                k_knn=k, 
+                delta_r_threshold=delta_r,
+                slimmed = True,
+                shuffle = True,
+                tau_channel=tau_channel,
+                graph_level_branches=W_graph_level_branches,
+                # weights="npvs_rescale"
+            )
+        
+        base_direc_bkg = "data/background"
     
-    base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal/"
-    base_direc_ds_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/"
+        root_bkgs_skimmed = [
+            [base_direc_bkg, "skimmed"]
+        ]
+        for base_direc, bkg_identifier in root_bkgs_skimmed:
+            output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+            root_bkg = base_direc
+            create_graph(
+                root_bkg, 
+                output_ident_bkg, 
+                label=0., 
+                mask=True, 
+                edge_connection_mode=model_type,
+                max_events_to_process=max_events_to_process,
+                k_knn=k, 
+                delta_r_threshold=delta_r,
+                slimmed = True,
+                shuffle = True,
+                tau_channel=tau_channel,
+                graph_level_branches=W_graph_level_branches,
+            )
+    
+    elif tau_channel == "HF":
+        base_direc_ds_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/"
+        root_ds_signals_skimmed = [
+            [base_direc_ds_signal, "skimmed"],
+        ]
+        HF_graph_level_branches = [] # TODO
+
+        for base_direc, signal_identifier in root_ds_signals_skimmed:
+            output_ident_signal = "Ds_decay_signal_" + signal_identifier.replace("/", "")
+            root_ds_signal = base_direc
+            create_graph(
+                root_ds_signal, 
+                output_ident_signal, 
+                label=1., 
+                mask=False, 
+                edge_connection_mode=model_type,
+                max_events_to_process=max_events_to_process,
+                k_knn=k, 
+                delta_r_threshold=delta_r,
+                slimmed=True,
+                shuffle=True,
+                tau_channel=tau_channel,
+                graph_level_branches=HF_graph_level_branches,
+            )
+
+        base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data/"
+        base_direc_bkg_ds = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/"
+        root_bkgs_skimmed = [
+            [base_direc_bkg_ds, "data_skimmed"]
+        ]
+
+        for base_direc, bkg_identifier in root_bkgs_skimmed:
+            output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+            root_bkg = base_direc
+            create_graph(
+                root_bkg, 
+                output_ident_bkg, 
+                label=0., 
+                mask=True, 
+                edge_connection_mode=model_type,
+                max_events_to_process=max_events_to_process,
+                k_knn=k, 
+                delta_r_threshold=delta_r,
+                slimmed=True,
+                shuffle=True,
+                tau_channel=tau_channel,
+                graph_level_branches=HF_graph_level_branches,
+            )
+
     # root_W_signals = [
     #    [base_direc_W_signal, "winter24"],
     #    [base_direc_W_signal, "summer24"],
@@ -125,32 +247,7 @@ if __name__ == "__main__":
     #     slimmed=False,
     # )
 
-    root_W_signals_skimmed = [
-        [base_direc_W_signal, "signal_skimmed"],
-    ]
 
-    root_ds_signals_skimmed = [
-        [base_direc_ds_signal, "signal_skimmed"],
-    ]
-    for base_direc, signal_identifier in root_ds_signals_skimmed:
-        print(base_direc)
-        print(signal_identifier)
-        output_ident_signal = "ds_decay_signal_" + signal_identifier.replace("/", "")
-        root_ds_signal = base_direc
-        create_graph(
-            root_ds_signal, 
-            output_ident_signal, 
-            max_events_to_process=max_events_to_process,
-            label=1., 
-            mask=False, 
-            edge_connection_mode=model_type,
-            k_knn=k, 
-            delta_r_threshold=delta_r,
-            slimmed = True,
-        )
-
-    base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data/"
-    base_direc_bkg_ds = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/"
     # root_bkgs = [
     #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024D-PromptReco-v1_MINIAOD/", "250430_100827/0000"],
     #     [base_direc_bkg, "ParkingDoubleMuonLowMass0/_ParkingDoubleMuonLowMass0_Run2024F-PromptReco-v1_MINIAOD/", "250430_100852/0000"],
@@ -253,21 +350,3 @@ if __name__ == "__main__":
     #     k_knn=k, 
     #     delta_r_threshold=delta_r
     # )
-
-    root_bkgs_skimmed = [
-        [base_direc_bkg_ds, "data_skimmed"]
-    ]
-    for base_direc, bkg_identifier in root_bkgs_skimmed:
-        output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
-        root_bkg = base_direc
-        create_graph(
-        root_bkg, 
-        output_ident_bkg, 
-        max_events_to_process=int(max_events_to_process/4),
-        label=0., 
-        mask=True, 
-        edge_connection_mode=model_type,
-        k_knn=k, 
-        delta_r_threshold=delta_r,
-        slimmed = True,
-    )
