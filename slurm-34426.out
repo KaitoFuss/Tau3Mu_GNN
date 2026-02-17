@@ -1,6 +1,0 @@
-usage: TestplateauTrainTauMuNet.py [-h]
-                                   [--arch {arch1,arch2,arch3,arch4,arch5,arch6,arch7,arch8,arch_optuna}]
-                                   [--epochs EPOCHS] [--batch BATCH]
-                                   [--name NAME] [--model MODEL] [--lr LR]
-                                   [--disco DISCO] [--puppi PUPPI]
-TestplateauTrainTauMuNet.py: error: unrecognized arguments: --include_puppi True

@@ -1,8 +1,0 @@
-/work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs46/Normalization.pkl
-Starting the ScoreProducer
-Processing /pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/data_skimmed_no_resonances_part1.root
-Processing /pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/data_skimmed_no_resonances_part2.root
-Processing /pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/data_skimmed_no_resonances_part3.root
-Processing /pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/data_skimmed_no_resonances_part4.root
-Raw scores and tau masses saved to: /work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs46/raw_scores_and_tau_mass_bkg.npz
-Saved scores to /work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs46/scores_bkg.csv

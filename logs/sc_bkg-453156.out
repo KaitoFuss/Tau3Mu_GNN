@@ -1,5 +1,0 @@
-/work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs50/Normalization.pkl
-Starting the ScoreProducer
-Processing /pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ds_large_signal_skimmed_no_resonances.root
-Raw scores and tau masses saved to: /work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs50/raw_scores_and_tau_mass_sig.npz
-Saved scores to /work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs50/scores_sig.csv
