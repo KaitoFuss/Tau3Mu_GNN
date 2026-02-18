@@ -5,17 +5,25 @@ import os
 import matplotlib.pyplot as plt
 
 
-def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: str, col_name="PV_npvs", bins=np.linspace(0, 100, 101)):
+def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path: str, col_name="PV_npvs", bins=np.linspace(0, 100, 101), tau_channel="W"):
     # Ensure the output directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Read signal data
-    f_signal = uproot.open(signal_filepath)
+    # f_signal = uproot.open(signal_filepath)
+    f_signal = uproot.concatenate(
+        [f"{fp}:Events" for fp in signal_filepaths],
+        library="ak"
+    )
     df_signal = f_signal["Events"].arrays([col_name])
     npvs_signal = ak.to_numpy(ak.concatenate([df_signal[col_name]]))
 
     # Read background data
-    f_bkg = uproot.open(bkg_filepath)
+    # f_bkg = uproot.open(bkg_filepath)
+    f_bkg = uproot.concatenate(
+        [f"{fp}:Events" for fp in bkg_filepaths],
+        library="ak"
+    )
     df_bkg = f_bkg["Events"].arrays([col_name])
     npvs_bkg = ak.to_numpy(ak.concatenate([df_bkg[col_name]]))
 
@@ -67,22 +75,22 @@ def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: st
     # ax2.set_ylabel("Weight (bkg/sig)")
     # ax2.legend(loc="upper right")
 
-    plt.title("Comparison of Number of PVs")
+    plt.title(f"Comparison of Number of PVs {tau_channel} channel")
     output_name = output_path + "npvs"
     plt.savefig(output_name, dpi=300)
     plt.close()
 
     # Save weight array and bin edges
-    # np.savez(output_path + "npvs_weights.npz",
-    #          weight_per_bin=rescaled_weights,
-    #          bins=uniform_bins)
+    np.savez(output_path + f"npvs_weights_{tau_channel}.npz",
+             weight_per_bin=rescaled_weights,
+             bins=uniform_bins)
 
     plt.figure()
     plt.hist(rescaled_weights, bins=np.linspace(0, 25, 26), color='blue', alpha=0.7)
     plt.xlabel("Weight (bkg/sig)")
     plt.ylabel("Counts")
     plt.grid(True)
-    plt.title("Weights distribution")
+    plt.title("Weights distribution {tau_channel} channel")
     output_name = output_path + "weights"
     # plt.savefig(output_name, dpi=300)
     plt.close()
@@ -90,7 +98,19 @@ def create_weight_array(signal_filepath: str, bkg_filepath: str, output_path: st
     
 
 if __name__ == "__main__":
-    signal_filepath = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/signal_skimmed_no_resonances.root"
-    bkg_filepath = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/background/data_skimmed_no_resonances.root"
-    output_path = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn/signal_W/"
-    create_weight_array(signal_filepath, bkg_filepath, output_path)
+    signal_filepaths = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/signal_skimmed_no_resonances.root"]
+    bkg_filepaths = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/data_skimmed_no_resonances.root"]
+    output_path = "data/signal_W"
+    tau_channel = "W"
+    create_weight_array(signal_filepaths, bkg_filepaths, output_path, tau_channel)
+
+    signal_filepaths = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/ds_large_signal_skimmed_no_resonances.root"]
+    bkg_filepaths = [
+        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part1.root",
+        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part2.root",
+        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part3.root",
+        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part4.root",
+    ]
+    output_path = "data/signal_HF"
+    tau_channel = "HF"
+    create_weight_array(signal_filepaths, bkg_filepaths, output_path, tau_channel)
