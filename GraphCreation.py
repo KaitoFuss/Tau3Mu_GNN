@@ -13,7 +13,6 @@ save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
 cone_size = 0.5
-save_benchmark_score = True
 
 def create_graph(
     root: str,
@@ -29,6 +28,7 @@ def create_graph(
     weights = None,
     tau_channel: str = "W",
     graph_level_branches: list = [],
+    save_benchmark_score: bool = False,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     if tau_channel == "W":
         # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal/"
-        base_direc_W_signal = "data/signal"
+        base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
             [base_direc_W_signal, "skimmed"],
         ]
@@ -154,16 +154,17 @@ if __name__ == "__main__":
                 shuffle = True,
                 tau_channel=tau_channel,
                 graph_level_branches=W_graph_level_branches,
-                # weights="npvs_rescale"
+                weights="npvs_rescale",
+                save_benchmark_score=True
             )
         
-        base_direc_bkg = "data/background"
+        base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
             [base_direc_bkg, "skimmed"]
         ]
         for base_direc, bkg_identifier in root_bkgs_skimmed:
-            output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+            output_ident_bkg = "W_decay_background_" + bkg_identifier.replace("/", "")
             root_bkg = base_direc
             create_graph(
                 root_bkg, 
@@ -178,17 +179,37 @@ if __name__ == "__main__":
                 shuffle = True,
                 tau_channel=tau_channel,
                 graph_level_branches=W_graph_level_branches,
+                save_benchmark_score=True
             )
     
     elif tau_channel == "HF":
-        base_direc_ds_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/"
+        base_direc_ds_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
         root_ds_signals_skimmed = [
             [base_direc_ds_signal, "skimmed"],
         ]
-        HF_graph_level_branches = [] # TODO
+        HF_graph_level_branches = [
+            'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
+            
+            # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
+            # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
+            # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
+
+            'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
+            'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
+            'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+
+            'Slimmed_TauTo3Mu_dZmu12', 
+            'Slimmed_TauTo3Mu_dZmu13', 
+            'Slimmed_TauTo3Mu_dZmu23', 
+
+            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
+            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+
+            'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+        ]
 
         for base_direc, signal_identifier in root_ds_signals_skimmed:
-            output_ident_signal = "Ds_decay_signal_" + signal_identifier.replace("/", "")
+            output_ident_signal = "HF_decay_signal_" + signal_identifier.replace("/", "")
             root_ds_signal = base_direc
             create_graph(
                 root_ds_signal, 
@@ -203,16 +224,18 @@ if __name__ == "__main__":
                 shuffle=True,
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
+                # weights="npvs_rescale",
+                save_benchmark_score=False
             )
 
-        base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data/"
-        base_direc_bkg_ds = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/"
+        # base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data/"
+        base_direc_bkg_ds = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
         root_bkgs_skimmed = [
             [base_direc_bkg_ds, "data_skimmed"]
         ]
 
         for base_direc, bkg_identifier in root_bkgs_skimmed:
-            output_ident_bkg = "background_" + bkg_identifier.replace("/", "")
+            output_ident_bkg = "HF_decay_background_" + bkg_identifier.replace("/", "")
             root_bkg = base_direc
             create_graph(
                 root_bkg, 
@@ -227,6 +250,7 @@ if __name__ == "__main__":
                 shuffle=True,
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
+                save_benchmark_score=False
             )
 
     # root_W_signals = [

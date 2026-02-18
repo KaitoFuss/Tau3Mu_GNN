@@ -197,7 +197,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
             pfcands_mass = event[f"{prefix}PFCands_mass"]
             pfcands_charge = event[f"{prefix}PFCands_charge"]
-            # pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
+            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -223,7 +223,7 @@ class ConeGraphProducer(InMemoryDataset):
                     graph_level_features.append(delta_phi_TauPlusMET_Puppi_fitted_tau)
                 
                 elif self.tau_channel == "HF":
-                    pass #TODO
+                    pass # no calculated graph level features
 
 
 
@@ -267,7 +267,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
                 pfcands_mass_masked = pfcands_mass[cone_mask]
                 pfcands_charge_masked = pfcands_charge[cone_mask]
-                # pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
+                pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
                 if self.use_displacement:
                     pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
@@ -309,7 +309,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_phi_masked,
                         pfcands_pdgId_masked,
                         pfcands_mass_masked,
-                        # pfcands_puppiWeight_masked,
+                        pfcands_puppiWeight_masked,
                         pfcands_d0_masked,   
                         pfcands_dz_masked   
                     ]).T, dtype=torch.float)
@@ -320,7 +320,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_phi_masked,
                         pfcands_pdgId_masked,
                         pfcands_mass_masked, 
-                        # pfcands_puppiWeight_masked
+                        pfcands_puppiWeight_masked
                     ]).T, dtype=torch.float)
                 
                 # TODO do this calc outside loop and then just mask inside 
@@ -463,7 +463,7 @@ class ConeGraphProducer(InMemoryDataset):
         if self.weights == "npvs_rescale":
             xsec = 1.
             gen_events_before_selection = None
-            npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
+            npvs_weights = np.load(self.root + f"/npvs_weights_{self.tau_channel}.npz")["weight_per_bin"]
 
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
@@ -475,7 +475,7 @@ class ConeGraphProducer(InMemoryDataset):
             f"{prefix}PFCands_pdgId",
             f"{prefix}PFCands_mass",  
             f"{prefix}PFCands_charge",
-            # f"{prefix}PFCands_Weight",
+            f"{prefix}PFCands_puppiWeight",
             f"n{n_prefix}TauTo3Mu",
             # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -511,7 +511,7 @@ class ConeGraphProducer(InMemoryDataset):
             ]
             
         elif self.tau_channel == "HF":
-            pass #TODO
+            pass # no additional features needed
 
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"] 
@@ -628,7 +628,7 @@ class ConeGraphProducer(InMemoryDataset):
     
     def calc_delta_R_sq(self, eta, phi, ref_eta, ref_phi):
         delta_eta = eta - ref_eta
-        delta_phi = self.delta_phi(phi, ref_phi)
+        delta_phi = self.deltaphi(phi, ref_phi)
         delta_R_sq = delta_eta**2 + delta_phi**2
         return delta_R_sq
 
