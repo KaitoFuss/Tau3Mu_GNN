@@ -224,7 +224,7 @@ if __name__ == "__main__":
                 shuffle=True,
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
-                # weights="npvs_rescale",
+                weights="npvs_rescale",
                 save_benchmark_score=False
             )
 

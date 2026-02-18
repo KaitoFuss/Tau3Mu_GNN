@@ -5,27 +5,35 @@ import os
 import matplotlib.pyplot as plt
 
 
-def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path: str, col_name="PV_npvs", bins=np.linspace(0, 100, 101), tau_channel="W"):
+def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path: str, tau_channel, col_name="PV_npvs", bins=np.linspace(0, 100, 101)):
     # Ensure the output directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Read signal data
     # f_signal = uproot.open(signal_filepath)
+    # f_signal = uproot.concatenate(
+    #     [f"{fp}:Events" for fp in signal_filepaths],
+    #     library="ak"
+    # )
+    # df_signal = f_signal["Events"].arrays([col_name])
     f_signal = uproot.concatenate(
         [f"{fp}:Events" for fp in signal_filepaths],
-        library="ak"
+        library="ak",
+        filter_name=[col_name]   # optional, only read this column
     )
-    df_signal = f_signal["Events"].arrays([col_name])
-    npvs_signal = ak.to_numpy(ak.concatenate([df_signal[col_name]]))
+    npvs_signal = ak.to_numpy(f_signal[col_name])
+    # npvs_signal = ak.to_numpy(ak.concatenate([df_signal[col_name]]))
 
     # Read background data
     # f_bkg = uproot.open(bkg_filepath)
     f_bkg = uproot.concatenate(
         [f"{fp}:Events" for fp in bkg_filepaths],
-        library="ak"
+        library="ak",
+        filter_name=[col_name] 
     )
-    df_bkg = f_bkg["Events"].arrays([col_name])
-    npvs_bkg = ak.to_numpy(ak.concatenate([df_bkg[col_name]]))
+    # df_bkg = f_bkg["Events"].arrays([col_name])
+    # npvs_bkg = ak.to_numpy(ak.concatenate([df_bkg[col_name]]))
+    npvs_bkg = ak.to_numpy(f_bkg[col_name])
 
     # Compute histograms
     var_bins = [0,10,15,18,20]  + list(np.linspace(21,60,40,dtype=int)) + [65,100]
@@ -76,12 +84,12 @@ def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path
     # ax2.legend(loc="upper right")
 
     plt.title(f"Comparison of Number of PVs {tau_channel} channel")
-    output_name = output_path + "npvs"
+    output_name = output_path + "_npvs"
     plt.savefig(output_name, dpi=300)
     plt.close()
 
     # Save weight array and bin edges
-    np.savez(output_path + f"npvs_weights_{tau_channel}.npz",
+    np.savez(output_path + f"_npvs_weights.npz",
              weight_per_bin=rescaled_weights,
              bins=uniform_bins)
 
@@ -90,9 +98,9 @@ def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path
     plt.xlabel("Weight (bkg/sig)")
     plt.ylabel("Counts")
     plt.grid(True)
-    plt.title("Weights distribution {tau_channel} channel")
-    output_name = output_path + "weights"
-    # plt.savefig(output_name, dpi=300)
+    plt.title(f"Weights distribution {tau_channel} channel")
+    output_name = output_path + "_weights"
+    plt.savefig(output_name, dpi=300)
     plt.close()
 
     
