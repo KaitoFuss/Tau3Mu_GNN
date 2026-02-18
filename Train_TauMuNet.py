@@ -223,7 +223,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     
     dataloader_validation = GraphDataLoader(
         datasets,
-        window_to_load=[[0.6, 0.9] for _ in range(len(datasets))],
+        window_to_load=[[0.6, 0.7] for _ in range(len(datasets))],
         dataset_fraction=df,
         batch_size=batch_size,
         normalizer=normalizer,
@@ -362,7 +362,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
             normedweight = torch.ones_like(out[:, 0]) 
             mask = (target == 0) # we penalise disco just on bkg graphs. Disco on signal is inherently large but we dont want to penalise this
-            if mask.sum() >= 1:
+            if mask.sum() > 1:
                 disco_loss = utrain.distance_corr(out[:,0][mask], mass[mask], normedweight[mask])
             else:
                 disco_loss = 0.0 * out[:,0].sum()  # keep graph alive
@@ -413,7 +413,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 normedweight = torch.ones_like(out[:, 0]) 
                 mask = (target == 0)
                 batch_disco = 0
-                if mask.sum() >= 1:
+                if mask.sum() > 1:
                     batch_disco = utrain.distance_corr(out[:,0][mask], mass[mask], normedweight[mask])
                 else:
                     batch_disco = 0.0 * out[:,0].sum()  # keep graph alive

@@ -221,10 +221,6 @@ class ConeGraphProducer(InMemoryDataset):
                     TauPlusMET_Puppi_phi = event["TauPlusMET_Puppi_phi"][tau_mask][nt]
                     delta_phi_TauPlusMET_Puppi_fitted_tau = self.deltaphi(TauPlusMET_Puppi_phi, fitted_tau_phi)
                     graph_level_features.append(delta_phi_TauPlusMET_Puppi_fitted_tau)
-
-                    TauPlusMET_PuppiMET_pt = event["TauPlusMET_PuppiMET_pt"][tau_mask][nt]
-                    rel_fitted_tau_pt = fitted_tau_pt / TauPlusMET_PuppiMET_pt
-                    graph_level_features.append(rel_fitted_tau_pt)
                 
                 elif self.tau_channel == "HF":
                     pass #TODO

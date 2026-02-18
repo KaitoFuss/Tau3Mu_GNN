@@ -4,7 +4,7 @@ import argparse
 
 
 # default values
-max_events_to_process = 1000 # None
+max_events_to_process = 100000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
