@@ -77,18 +77,18 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             model.eval()
 
             for graphs in dataloader_bkg:
-                    weights_bkg.append(graphs.w.detach().numpy())
-                    tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
-                    #benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
-                    graphs = graphs.to(device)
-                    out = model(graphs)
-                    score = out[:,0].cpu()
-                    # target_labels_bkg.append(np.array(target.cpu()))
-                    target_labels_bkg.append(np.zeros(len(score), dtype=np.uint8))  # all bkg = 0
-                    test_scores_bkg.append(score.detach())
-                    # benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
-                    del graphs, out
-                    torch.cuda.empty_cache()
+                weights_bkg.append(graphs.w.detach().numpy())
+                tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
+                #benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
+                graphs = graphs.to(device)
+                out = model(graphs)
+                score = out[:,0].cpu()
+                # target_labels_bkg.append(np.array(target.cpu()))
+                target_labels_bkg.append(np.zeros(len(score), dtype=np.uint8))  # all bkg = 0
+                test_scores_bkg.append(score.detach())
+                # benchmark_bkg_pt05.append(np.array(graphs.benchmark_score_pt05))
+                del graphs, out
+                torch.cuda.empty_cache()
         
     weights_bkg =  np.concatenate(weights_bkg)
     # tau_mass_bkg = np.concatenate(tau_mass_bkg)

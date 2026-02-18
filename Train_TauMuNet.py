@@ -342,7 +342,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         disco_per_batch = 0
         loss_per_batch = 0
         warmup = 20  # 30
-        lambda_eff = disco_reg * min(1.0, epoch / warmup)
+        lambda_eff = disco_reg * min(1.0, epoch / warmup) # we keep lambda for the first warmup epoch so we do in the beginnng large steps into the right directions
 
 
 
@@ -354,14 +354,18 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             optimizer.zero_grad() # make sure gradients are empty
             out = model(data)
 
-            bce_loss = loss_criterion(out[:, 0], target)
+            bce_loss = loss_criterion(out[:, 0], target) # calc mean bce_loss over the batch
 
             score = out[:, 0].cpu()  # keep as torch tensor with grad
             score = score.detach().numpy()
-            mass  = torch.nan_to_num(data.fitted_tau_mass).view(-1)
+            mass  = torch.nan_to_num(data.fitted_tau_mass).view(-1) # I dont know why we are doing these shinanigans. data.fitted_tau_mass should be enough I think..?
 
             normedweight = torch.ones_like(out[:, 0]) 
-            disco_loss = utrain.distance_corr(out[:,0], mass, normedweight)
+            mask = (target == 0) # we penalise disco just on bkg graphs. Disco on signal is inherently large but we dont want to penalise this
+            if mask.sum() >= 1:
+                disco_loss = utrain.distance_corr(out[:,0][mask], mass[mask], normedweight[mask])
+            else:
+                disco_loss = 0.0 * out[:,0].sum()  # keep graph alive
 
             loss_ = bce_loss + lambda_eff * disco_loss
             
@@ -407,7 +411,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 mass  = torch.nan_to_num(data.fitted_tau_mass).view(-1)
 
                 normedweight = torch.ones_like(out[:, 0]) 
-                batch_disco = utrain.distance_corr(out[:,0], mass, normedweight)
+                mask = (target == 0)
+                batch_disco = 0
+                if mask.sum() >= 1:
+                    batch_disco = utrain.distance_corr(out[:,0][mask], mass[mask], normedweight[mask])
+                else:
+                    batch_disco = 0.0 * out[:,0].sum()  # keep graph alive
                 loss_ = loss_criterion(out[:,0], target)
                 disco_per_batch += batch_disco.item()
                 loss_per_batch += disco_reg * batch_disco.item() + loss_.item()
@@ -425,13 +434,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_losses.append(epoch_loss_validation)
         experiment.log_metric("Validation loss", epoch_loss_validation, epoch=epoch)
-        
-        scheduler.step(epoch_loss_validation)
 
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
         experiment.log_metric("Validation disco", epoch_disco_validation, epoch=epoch)
 
+        scheduler.step(epoch_loss_validation)
 
         ## check for early stop
         early_stop(epoch_loss_validation,model,epoch,output_path,name)
@@ -578,7 +586,7 @@ if __name__ == "__main__":
     default=False,
     type=str2bool,
     help="Do we include puppi"
-)
+        )
     
     
 
