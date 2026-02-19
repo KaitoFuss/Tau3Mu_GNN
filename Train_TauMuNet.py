@@ -40,7 +40,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, include_puppi):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel):
     """Train the model and evaluate it.
 
     Args:
@@ -52,6 +52,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         model_type (str): Type of the model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
         params : architecture parameters
         include_puppi : whether we include puppi weights or not
+        tau_channel(str): tau channel (W or HF)
     Returns: -
         
     """
@@ -64,27 +65,31 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     output_path = utrain.output_directory(name)
 
     # Directory for the graphs
-    base_directory_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/"
-    base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/"
+    if tau_channel == "W":
+        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/"
+        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/"
+
+        datasets_signal = [
+            [base_directory_signal, f"W_decay_signal_skimmed_{model_type}"],
+        ]
+
+        datasets_bkg = [
+            [base_directory_bkg, f"W_decay_background_skimmed_{model_type}"],
+        ]
+
+    elif tau_channel == "HF":
+        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
+        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
+
+        datasets_signal = [
+            [base_directory_signal, f"HF_decay_signal_skimmed_{model_type}"],
+        ]
+
+        datasets_bkg = [
+            [base_directory_bkg, f"HF_decay_background_skimmed_{model_type}"],
+        ]
 
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
-
-    if include_puppi:
-        datasets_W_signal = [
-            [base_directory_W_signal, f"ds_decay_signal_signal_skimmed_{model_type}"],
-        ]
-
-        datasets_bkg = [
-            [base_directory_bkg, f"background_data_skimmed_{model_type}"],
-        ]
-    else:
-        datasets_W_signal = [
-            [base_directory_W_signal, f"no_puppi_ds_decay_signal_signal_skimmed_{model_type}"],
-        ]
-
-        datasets_bkg = [
-            [base_directory_bkg, f"no_puppi_background_data_skimmed_{model_type}"]
-        ]
 
     # datasets_W_signal = [    
     #     [base_directory_W_signal + "winter24", f"W_decay_signal_winter24_{model_type}"],
@@ -192,13 +197,33 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     #     [base_directory_W_signal, f"W_decay_signal_{model_type}"]
     # ]
 
-    datasets = datasets_W_signal + datasets_bkg
+    datasets = datasets_signal + datasets_bkg
     # create on the fly normalizer and save the mean and std 
-    means, stds = utrain.Normalize(datasets)
-    normalizer = OnTheFlyNormalizer(["x"], means, stds)
+    means_x, stds_x, means_edge, stds_edge, means_graph, stds_graph = utrain.Normalize(datasets)
+
+    # normalizer = OnTheFlyNormalizer(["x"], means, stds)
+
+    means_dict = {
+        "x": means_x,
+        "edge_attr": means_edge,
+        "graph_level_features": means_graph,
+    }
+
+    stds_dict = {
+        "x": stds_x,
+        "edge_attr": stds_edge,
+        "graph_level_features": stds_graph,
+    }
+
+    normalizer = OnTheFlyNormalizer(["x", "edge_attr", "graph_level_features"], means_dict, stds_dict)
+
     normalize_dict = {
-        'means': means,
-        'stds': stds,
+        'means_x': means_x,
+        'stds_x': stds_x,
+        'means_edge': means_edge,
+        'stds_edge': stds_edge,
+        'means_graph': means_graph,
+        'stds_graph': stds_graph,
     }
     
     with open(os.path.join(output_path, "Normalization.pkl"), 'wb') as f:
@@ -236,24 +261,14 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     num_node_features, num_edge_features = utrain.get_model_parameters(model_type)
     
     # Create the model
-    if include_puppi:
-        model = TauMuNet(
-            conv_params=params["conv_params"],
-            dropout=0.2633831214702671,
-            fc_params=params["fc_params"],
-            input_dims=8, 
-            num_edge_features=num_edge_features,
-            use_fusion=True,
-        )
-    else:
-        model = TauMuNet(
-            conv_params=params["conv_params"],
-            dropout=0.2633831214702671,
-            fc_params=params["fc_params"],
-            input_dims=7, 
-            num_edge_features=num_edge_features,
-            use_fusion=True,
-        )
+    model = TauMuNet(
+        conv_params=params["conv_params"],
+        dropout=0.2633831214702671,
+        fc_params=params["fc_params"],
+        input_dims=8, 
+        num_edge_features=num_edge_features,
+        use_fusion=True,
+    )
 
     # Define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -287,7 +302,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(datasets_W_signal, datasets_bkg, batch_size, normalizer, model, device, window_to_load=[0.7,1])
+    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name)
@@ -582,10 +597,10 @@ if __name__ == "__main__":
         )
     
     parser.add_argument(
-    "--puppi",
-    default=False,
-    type=str2bool,
-    help="Do we include puppi"
+    "--tau_channel",
+    default="W",
+    type=str,
+    help="tau production channel"
         )
     
     
@@ -600,7 +615,7 @@ if __name__ == "__main__":
     model_type = args.model
     disco_reg = args.disco
     arch = args.arch
-    include_puppi = args.puppi
+    tau_channel = args.tau_channel
 
     print("==> Running TauMuNet ")
 
@@ -621,6 +636,7 @@ if __name__ == "__main__":
         "regularisation": disco_reg,
         "epochs": epochs,
         "Model" : model_type,
+        ":tau_channel" : tau_channel,
         "remark": "",
     }
 
@@ -628,5 +644,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], include_puppi)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], tau_channel)
 

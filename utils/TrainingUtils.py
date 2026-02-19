@@ -27,24 +27,39 @@ def Normalize(datasets):
 
 
 
-    means, stds = 0., 0.
+    means_x, stds_x = 0., 0.
+    means_edge, stds_edge = 0., 0.
+    means_graph, stds_graph = 0., 0.
     weights = []
 
     for key in graph_dict:
         for graph in graph_dict[key]:
-            means += torch.nan_to_num(graph.x.sum(dim=0)*graph.w)
+            means_x += torch.nan_to_num(graph.x.sum(dim=0)*graph.w)
+            means_edge += torch.nan_to_num(graph.edge_attr.sum(dim=0)*graph.w)
+            means_graph += torch.nan_to_num(graph.graph_level_features.sum(dim=0)*graph.w)
             weights.append(graph.w)
-    means /= sum(weights)
+    means_x /= sum(weights)
+    means_edge /= sum(weights)
+    means_graph /= sum(weights)
 
     for key in graph_dict:
         for graph in graph_dict[key]:
             graph.x = torch.nan_to_num(graph.x)   
-            stds += ((graph.x - means)**2).sum(dim=0)*graph.w
+            graph.edge_attr = torch.nan_to_num(graph.edge_attr)   
+            graph.graph_level_features = torch.nan_to_num(graph.graph_level_features)   
+            
+            stds_x += ((graph.x - means_x)**2).sum(dim=0)*graph.w
+            stds_edge += ((graph.edge_attr - means_edge)**2).sum(dim=0)*graph.w
+            stds_graph += ((graph.graph_level_features - means_graph)**2).sum(dim=0)*graph.w
 
-    stds /= sum(weights)
-    stds = torch.sqrt(stds)
+    stds_x /= sum(weights)
+    stds_x = torch.sqrt(stds_x)
+    stds_edge /= sum(weights)
+    stds_edge = torch.sqrt(stds_edge)
+    stds_graph /= sum(weights)
+    stds_graph = torch.sqrt(stds_graph)
 
-    return means, stds
+    return means_x, stds_x, means_edge, stds_edge, means_graph, stds_graph
 
 def distance_corr(
         var_1:torch.tensor,
