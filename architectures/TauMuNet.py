@@ -13,9 +13,11 @@ class TauMuNet(nn.Module):
             conv_params,
             dropout,
             fc_params,
-            input_dims = 8, #7 # as we want to normally use also dzd0
+            num_node_features = 8, #8 # as we want to normally use also dzd0
             num_edge_features = 4, 
+            num_graph_level_features=13,
             use_fusion = True,
+            gnn_mode = "final_layer", # can be "BDT", "final_layer", "embed"
             num_classes = 1,
             ):
         super(TauMuNet, self).__init__()
@@ -24,11 +26,21 @@ class TauMuNet(nn.Module):
         self.fc_params = fc_params
         self.use_fusion = use_fusion
         self.num_classes = num_classes
-        self.input_dims = input_dims
+        self.num_node_features = num_node_features
+        self.num_edge_features = num_edge_features
+        self.num_graph_level_features = num_graph_level_features
         self.dropout = dropout
+        self.gnn_mode = gnn_mode
+
+        self.input_dims = num_node_features
+
+        if gnn_mode == "embed":
+            self.input_dims += num_graph_level_features
 
         #batch normalization features
-        self.bn_fts = nn.BatchNorm1d(self.input_dims)
+        self.bn_fts = nn.BatchNorm1d(self.num_node_features)
+        self.bn_e_fts = nn.BatchNorm1d(self.num_edge_features)
+        self.bn_g_fts = nn.BatchNorm1d(self.num_graph_level_features)
 
         self.edge_convs = nn.ModuleList()
 
@@ -68,6 +80,8 @@ class TauMuNet(nn.Module):
         for idx, (channels, drop_rate) in enumerate(fc_params):
             if idx == 0:
                 in_chn = out_chn if self.use_fusion else conv_params[-1]  
+                if self.gnn_mode == "final_layer":
+                    in_chn += num_graph_level_features
             else:
                 in_chn = fc_params[idx - 1][0]
             
@@ -89,9 +103,13 @@ class TauMuNet(nn.Module):
 
     def forward(self, data):
     
-        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        x, edge_index, edge_attr, graph_feat = data.x, data.edge_index, data.edge_attr, data.graph_level_features
+        
         #batch normalization features
         x = self.bn_fts(x)
+        edge_attr = self.bn_e_fts(edge_attr)
+        graph_feat = self.bn_g_fts(graph_feat)
+
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
             x = conv(x, edge_index, edge_attr)
@@ -103,6 +121,9 @@ class TauMuNet(nn.Module):
 
         #Global average pooling
         x = global_mean_pool(x, batch = data.batch) 
+
+        if self.gnn_mode == "final_layer":
+            x = torch.cat([x, graph_feat], dim = -1)
         x = self.fc(x)
         x = torch.sigmoid(x)
         return x

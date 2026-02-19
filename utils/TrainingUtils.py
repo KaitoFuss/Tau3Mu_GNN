@@ -115,22 +115,28 @@ def distance_corr(
     
     return dCorr
 
-def get_model_parameters(model_type):
+def get_model_parameters(model_type, tau_channel):
     """Get model(graph) parameters.
 
     Args:
         model_type: Name of model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
+        tau_channel: tau production channel
 
     Returns: num_node_features(int)
         
     """
-    num_node_features = 5
+    num_node_features = 6
     num_edge_features = 4
+    
+    if tau_channel == "W":
+        num_graph_level_features = 13
+    elif tau_channel == "HF":
+        num_graph_level_features = 10
 
     if "dzd0" in model_type:
         num_node_features += 2
     
-    return num_node_features, num_edge_features
+    return num_node_features, num_edge_features, num_graph_level_features
 
 def output_directory(name):
     """Create output directory with the name of the training and

@@ -40,7 +40,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel):
+def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type, params, tau_channel, gnn_mode):
     """Train the model and evaluate it.
 
     Args:
@@ -48,11 +48,13 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         batch_size(int): size of each batch
         learning_rate(float):
         disco_reg(float): regularisation param
+        fusion(bool): fusion toggle
         name(str): name of the training
         model_type (str): Type of the model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
         params : architecture parameters
         include_puppi : whether we include puppi weights or not
         tau_channel(str): tau channel (W or HF)
+        gnn_mode(str): mode of GNN. Can be BDT, embed, final_layer
     Returns: -
         
     """
@@ -258,16 +260,18 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     
     ###--------- Create the Model -----------------------------------------------------------
     # Input parameters for the Model
-    num_node_features, num_edge_features = utrain.get_model_parameters(model_type)
+    num_node_features, num_edge_features, num_graph_level_features = utrain.get_model_parameters(model_type)
     
     # Create the model
     model = TauMuNet(
         conv_params=params["conv_params"],
         dropout=0.2633831214702671,
         fc_params=params["fc_params"],
-        input_dims=8, 
+        num_node_features=num_node_features, 
         num_edge_features=num_edge_features,
-        use_fusion=True,
+        num_graph_level_features=num_graph_level_features,
+        use_fusion=fusion,
+        gnn_mode=gnn_mode,
     )
 
     # Define the optimizer
@@ -429,12 +433,16 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 mask = (target == 0)
                 batch_disco = 0
                 if mask.sum() > 1:
-                    batch_disco = utrain.distance_corr(out[:,0][mask], mass[mask], normedweight[mask])
+                    disco_loss = utrain.distance_corr(out[:,0][mask], mass[mask], normedweight[mask])
                 else:
-                    batch_disco = 0.0 * out[:,0].sum()  # keep graph alive
-                loss_ = loss_criterion(out[:,0], target)
-                disco_per_batch += batch_disco.item()
-                loss_per_batch += disco_reg * batch_disco.item() + loss_.item()
+                    disco_loss = 0.0 * out[:,0].sum()  # keep graph alive
+                
+                loss_ = bce_loss + lambda_eff * disco_loss
+
+                loss_per_batch += loss_.item()
+                bce_per_batch += bce_loss.item()
+                disco_per_batch += disco_loss.item()
+
                 batch_counter += 1
 
         #log the auc
@@ -446,14 +454,15 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
         
         # calculate loss per epoch and log it
-        epoch_loss_validation = loss_per_batch/batch_counter
-        validation_losses.append(epoch_loss_validation)
-        experiment.log_metric("Validation loss", epoch_loss_validation, epoch=epoch)
+        epoch_bce_loss_validation = bce_per_batch/batch_counter
+        validation_losses.append(epoch_bce_loss_validation)
+        experiment.log_metric("Validation loss", epoch_bce_loss_validation, epoch=epoch)
 
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
         experiment.log_metric("Validation disco", epoch_disco_validation, epoch=epoch)
 
+        epoch_loss_validation = loss_per_batch/batch_counter
         scheduler.step(epoch_loss_validation)
 
         ## check for early stop
@@ -597,14 +606,26 @@ if __name__ == "__main__":
         )
     
     parser.add_argument(
+        "--fusion",
+        default=True,
+        help="bool for using fusion in GNN",
+        type=bool,
+        )
+    
+    parser.add_argument(
     "--tau_channel",
     default="W",
     type=str,
     help="tau production channel"
         )
     
+    parser.add_argument(
+        "--gnn_mode",
+        default="final_layer",
+        type=str,
+        help="GNN architecture specification. Either GNN into BDT, graph features at embedding level or graph features at final layer"
+        )
     
-
 
     args = parser.parse_args()
 
@@ -614,8 +635,14 @@ if __name__ == "__main__":
     name = args.name
     model_type = args.model
     disco_reg = args.disco
+    fusion = args.fusion
     arch = args.arch
     tau_channel = args.tau_channel
+    gnn_mode = args.gnn_mode
+
+    assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
+    assert gnn_mode in ["BDT", "embed", "final_layer"]
+
 
     print("==> Running TauMuNet ")
 
@@ -636,7 +663,8 @@ if __name__ == "__main__":
         "regularisation": disco_reg,
         "epochs": epochs,
         "Model" : model_type,
-        ":tau_channel" : tau_channel,
+        "tau_channel" : tau_channel,
+        "gnn_mode": gnn_mode,
         "remark": "",
     }
 
@@ -644,5 +672,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], tau_channel)
+    main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type, arch_configs[arch], tau_channel, gnn_mode)
 
