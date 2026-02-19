@@ -203,7 +203,7 @@ def save_loss(training_losses, validation_losses, name):
  
 
 
-def generate_name_with_versionnumber(base_name, directory):
+def generate_name_with_versionnumber(base_name, directory, gnn_mode, tau_channel):
     """Generate the name with a version number so that I dont' overwrite stuff.
 
     Args:
@@ -215,11 +215,11 @@ def generate_name_with_versionnumber(base_name, directory):
     """
         
     version = 1
-    unique_name = f"{base_name}_vs{version}"
+    unique_name = f"{base_name}_{tau_channel}_{gnn_mode}_vs{version}"
 
     while os.path.exists(os.path.join(directory, "output", unique_name)):
         version += 1
-        unique_name = f"{base_name}_vs{version}"
+        unique_name = f"{base_name}_{tau_channel}_{gnn_mode}_vs{version}"
 
     return unique_name
 

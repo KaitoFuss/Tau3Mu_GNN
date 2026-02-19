@@ -310,9 +310,9 @@ def roc_auc(evaluation_dict, name, tau_channel, suffix="eval"):
        
 
     output_path = output_directory(name)
-    with open(output_path + "/" + suffix + "_ROC_AUC.pkl", 'wb') as f:
+    with open(output_path + "/" + name + suffix + "_ROC_AUC.pkl", 'wb') as f:
         pickle.dump(output, f)
-    print(f"Evaluation data saved in {os.path.join(output_path, suffix, '_ROC_AUC.pkl')}")
+    print(f"Evaluation data saved in {os.path.join(output_path, name + suffix, '_ROC_AUC.pkl')}")
 
     return roc, auc
 
@@ -428,6 +428,7 @@ def plot_roc(roc, auc, name, suffix = "_eval"):
     plt.legend()
 
     output_path = output_directory(name) 
+    plt.title(f"{suffix} {name} ROC")
     outout_plot_name = name + suffix + "_roc.png"
     print(f"{outout_plot_name} has been saved.")
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)
@@ -465,7 +466,7 @@ def plot_auc_simple(auc, name, suffix = "_eval"):
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{score:.3f}", ha='center', va='bottom')
 
     plt.xticks(rotation=45)  # rotate x labels if model names are long
-
+    plt.title(f"{suffix} {name} AUC")
 
     output_path = output_directory(name)
     outout_plot_name = name + suffix + "_auc.png"
@@ -726,9 +727,9 @@ def plot_dnn(evaluation_dict, name, suffix = "_eval"):
 
     plt.grid()
     plt.yscale('log')
-
+    plt.title(f"{suffix} {name} score distribution")
     output_path = output_directory(name)
-    outout_plot_name = name + suffix +"_DNN_Score.png"
+    outout_plot_name = name + suffix + "_DNN_Score.png"
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)
     plt.close()
 

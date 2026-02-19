@@ -653,7 +653,7 @@ if __name__ == "__main__":
         )
     
     # overwriting names (adding versionnumber) such that no old files get overwritten
-    name = utrain.generate_name_with_versionnumber(name, os.getcwd())
+    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), gnn_mode, tau_channel)
     utrain.output_directory(name)
     
     #log hyperparameters in the experiment
