@@ -110,6 +110,10 @@ class TauMuNet(nn.Module):
         edge_attr = self.bn_e_fts(edge_attr)
         graph_feat = self.bn_g_fts(graph_feat)
 
+        if self.gnn_mode == "embed":
+            graph_feat = graph_feat[data.batch]
+            x = torch.cat([x, graph_feat], dim=-1)
+
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
             x = conv(x, edge_index, edge_attr)
@@ -123,6 +127,7 @@ class TauMuNet(nn.Module):
         x = global_mean_pool(x, batch = data.batch) 
 
         if self.gnn_mode == "final_layer":
+            graph_feat = graph_feat[data.batch]
             x = torch.cat([x, graph_feat], dim = -1)
         x = self.fc(x)
         x = torch.sigmoid(x)
