@@ -306,10 +306,10 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, window_to_load=[0.7,1])
+    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
-    roc, auc = ueval.roc_auc(evaluation_dict, name)
+    roc, auc = ueval.roc_auc(evaluation_dict, name, tau_channel)
     ueval.plot_auc_simple(auc, name)
     ueval.plot_roc(roc, auc, name)
     # ueval.plot_scores(evaluation_dict,name)
@@ -647,9 +647,9 @@ if __name__ == "__main__":
     print("==> Running TauMuNet ")
 
     experiment = Experiment(
-        api_key="a3sehXJAnsUsMBaXxcMWdJg6m",
+        api_key="89gjTpDNiLT6Pnu5RjMpO4PID",
         project_name=name,
-        workspace="adrian-corel"
+        workspace="kaitofuss"
         )
     
     # overwriting names (adding versionnumber) such that no old files get overwritten

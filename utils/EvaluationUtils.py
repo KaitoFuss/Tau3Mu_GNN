@@ -13,7 +13,7 @@ import gc
 
 from utils.TrainingUtils import output_directory
 
-def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, window_to_load= [0.7,1]):
+def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, window_to_load= [0.7,1]):
     """Evaluate the model on each signal dataset independently
 
     Args:
@@ -24,6 +24,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
         normalizer
         model
         device
+        tau_channel
         permutation: permutation from the dataloader
         window_to_load: for the evaluation: standard = [0.7,1]
 
@@ -79,7 +80,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             for graphs in dataloader_bkg:
                 weights_bkg.append(graphs.w.detach().numpy())
                 tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
-                #benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
+                if tau_channel == "W":
+                    benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
                 graphs = graphs.to(device)
                 out = model(graphs)
                 score = out[:,0].cpu()
@@ -90,12 +92,13 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                 del graphs, out
                 torch.cuda.empty_cache()
         
-    weights_bkg =  np.concatenate(weights_bkg)
+    weights_bkg = np.concatenate(weights_bkg)
     # tau_mass_bkg = np.concatenate(tau_mass_bkg)
     tau_mass_bkg = torch.cat(tau_mass_bkg)
     test_scores_bkg = torch.cat(test_scores_bkg)
     target_labels_bkg = np.concatenate(target_labels_bkg)
-    # benchmark_bkg = np.concatenate(benchmark_bkg)
+    if tau_channel == "W":
+        benchmark_bkg = np.concatenate(benchmark_bkg)
     # benchmark_bkg_pt05 = np.concatenate(benchmark_bkg_pt05)
 
     # Run signal through network and save it togheter with the bkg
@@ -105,7 +108,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             target_labels_sig = []
             test_scores_sig = []
             tau_mass_sig = []
-            # benchmark_signal = []
+            benchmark_signal = []
             # benchmark_signal_pt05 = []
 
             dataloader_sig = GraphDataLoader(
@@ -118,7 +121,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             for graphs in dataloader_sig:
                 weights_sig.append(graphs.w.detach().numpy())
                 tau_mass_sig.append(graphs.fitted_tau_mass.detach())
-                #benchmark_signal.append(graphs.benchmark_score.detach().numpy())
+                if tau_channel == "W":
+                    benchmark_signal.append(graphs.benchmark_score.detach().numpy())
                 graphs = graphs.to(device)
                 out = model(graphs)
                 score = out[:,0].cpu()
@@ -133,7 +137,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             tau_mass_sig = torch.cat(tau_mass_sig)
             test_scores_sig = torch.cat(test_scores_sig)
             target_labels_sig = np.concatenate(target_labels_sig)
-            # benchmark_signal = np.concatenate(benchmark_signal)
+            if tau_channel == "W":
+                benchmark_signal = np.concatenate(benchmark_signal)
             # benchmark_signal_pt05 = np.concatenate(benchmark_signal_pt05)
 
             weights = np.concatenate([weights_sig, weights_bkg])
@@ -148,8 +153,9 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             target_labels = np.concatenate([target_labels_sig, target_labels_bkg])
             del target_labels_sig, target_labels_bkg
             gc.collect()
-            # benchmark = np.concatenate([benchmark_signal, benchmark_bkg])
-            # del benchmark_signal, benchmark_bkg
+            if tau_channel == "W":
+                benchmark = np.concatenate([benchmark_signal, benchmark_bkg])
+                del benchmark_signal, benchmark_bkg
             gc.collect()
             # benchmark_pt05 = np.append(benchmark_signal_pt05, benchmark_bkg_pt05)
 
@@ -159,20 +165,32 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
 
             print("DisCo = ", disco)
 
-            evaluation_dict[dataset[1]] = {
-                'weights': weights,
-                'target_labels': target_labels,
-                'scores': test_scores.numpy(),
-                'tau_mass': tau_mass.numpy(),
-                'disco': disco,
-                # 'benchmark': benchmark,
-                # 'benchmark_pt05': benchmark_pt05,
-            }
+            if tau_channel == "W":
+                evaluation_dict[dataset[1]] = {
+                    'weights': weights,
+                    'target_labels': target_labels,
+                    'scores': test_scores.numpy(),
+                    'tau_mass': tau_mass.numpy(),
+                    'disco': disco,
+                    'benchmark': benchmark,
+                    # 'benchmark_pt05': benchmark_pt05,
+                }
+                
+            elif tau_channel == "HF":
+                evaluation_dict[dataset[1]] = {
+                    'weights': weights,
+                    'target_labels': target_labels,
+                    'scores': test_scores.numpy(),
+                    'tau_mass': tau_mass.numpy(),
+                    'disco': disco,
+                    # 'benchmark': benchmark,
+                    # 'benchmark_pt05': benchmark_pt05,
+                }
     
     
     return evaluation_dict
 
-def roc_auc(evaluation_dict, name, suffix="eval"):
+def roc_auc(evaluation_dict, name, tau_channel, suffix="eval"):
     """ Calculate ROC and AUC
 
     Args:
@@ -192,7 +210,8 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
         weights = evaluation_dict[key]["weights"]
         tau_mass = evaluation_dict[key]["tau_mass"]
         disco = evaluation_dict[key]["disco"]
-        # benchmark = evaluation_dict[key]["benchmark"]
+        if tau_channel == "W":
+            benchmark = evaluation_dict[key]["benchmark"]
         # benchmark_pt05 = evaluation_dict[key]["benchmark_pt05"]
 
         if np.all(target == 0) or np.all(target == 1):
@@ -200,50 +219,91 @@ def roc_auc(evaluation_dict, name, suffix="eval"):
 
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
-        # fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
+        if tau_channel == "W":
+            fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
         # fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
         auc_ = roc_auc_score(target, score)
-        # auc_benchmark = roc_auc_score(target, benchmark)
+        if tau_channel == "W":
+            auc_benchmark = roc_auc_score(target, benchmark)
         # auc_benchmark_pt05 = roc_auc_score(target, benchmark_pt05)
         
         #calculate sic
         sic_ = np.zeros_like(tpr_, dtype=float)
         np.divide(tpr_, np.sqrt(fpr_), out=sic_, where=fpr_ != 0)
 
-        output[key]= {
-            "fpr": fpr_,
-            "tpr": tpr_,
-            "threshold": thres_, 
-            "auc": auc_,
-            "target_labels": target,
-            "scores": score,
-            "weight": weights,
-            "sic": sic_,
-            "disco": disco,
-            "fitted_tau_mass": tau_mass,
-            # "fpr_benchmark": fpr_benchmark,
-            # "tpr_benchmark": tpr_benchmark,
-            # "treshold_benchmark": thres_benchmark,
-            # "auc_benchmark": auc_benchmark,
-            # "fpr_benchmark_pt05": fpr_benchmark_pt05,
-            # "tpr_benchmark_pt05": tpr_benchmark_pt05,
-            # "treshold_benchmark_pt05": thres_benchmark_pt05,
-            # "auc_benchmark_pt05": auc_benchmark_pt05,
+        
+        if tau_channel == "W":
+            output[key]= {
+                "fpr": fpr_,
+                "tpr": tpr_,
+                "threshold": thres_, 
+                "auc": auc_,
+                "target_labels": target,
+                "scores": score,
+                "weight": weights,
+                "sic": sic_,
+                "disco": disco,
+                "fitted_tau_mass": tau_mass,
+                "fpr_benchmark": fpr_benchmark,
+                "tpr_benchmark": tpr_benchmark,
+                "treshold_benchmark": thres_benchmark,
+                "auc_benchmark": auc_benchmark,
+                # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+                # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+                # "treshold_benchmark_pt05": thres_benchmark_pt05,
+                # "auc_benchmark_pt05": auc_benchmark_pt05,
             }
         
-        roc[key] = {   
-            "fpr": fpr_,
-            "tpr": tpr_,
-            "threshold": thres_,
-            "sic": sic_,
-            # "fpr_benchmark": fpr_benchmark,
-            # "tpr_benchmark": tpr_benchmark,
-            # "treshold_benchmark": thres_benchmark,
-            # "auc_benchmark": auc_benchmark,
-            # "fpr_benchmark_pt05": fpr_benchmark_pt05,
-            # "tpr_benchmark_pt05": tpr_benchmark_pt05,
-            # "treshold_benchmark_pt05": thres_benchmark_pt05,
-            # "auc_benchmark_pt05": auc_benchmark_pt05,
+            roc[key] = {   
+                "fpr": fpr_,
+                "tpr": tpr_,
+                "threshold": thres_,
+                "sic": sic_,
+                "fpr_benchmark": fpr_benchmark,
+                "tpr_benchmark": tpr_benchmark,
+                "treshold_benchmark": thres_benchmark,
+                "auc_benchmark": auc_benchmark,
+                # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+                # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+                # "treshold_benchmark_pt05": thres_benchmark_pt05,
+                # "auc_benchmark_pt05": auc_benchmark_pt05,
+            }
+            
+        elif tau_channel == "HF":
+            output[key]= {
+                "fpr": fpr_,
+                "tpr": tpr_,
+                "threshold": thres_, 
+                "auc": auc_,
+                "target_labels": target,
+                "scores": score,
+                "weight": weights,
+                "sic": sic_,
+                "disco": disco,
+                "fitted_tau_mass": tau_mass,
+                # "fpr_benchmark": fpr_benchmark,
+                # "tpr_benchmark": tpr_benchmark,
+                # "treshold_benchmark": thres_benchmark,
+                # "auc_benchmark": auc_benchmark,
+                # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+                # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+                # "treshold_benchmark_pt05": thres_benchmark_pt05,
+                # "auc_benchmark_pt05": auc_benchmark_pt05,
+            }
+        
+            roc[key] = {   
+                "fpr": fpr_,
+                "tpr": tpr_,
+                "threshold": thres_,
+                "sic": sic_,
+                # "fpr_benchmark": fpr_benchmark,
+                # "tpr_benchmark": tpr_benchmark,
+                # "treshold_benchmark": thres_benchmark,
+                # "auc_benchmark": auc_benchmark,
+                # "fpr_benchmark_pt05": fpr_benchmark_pt05,
+                # "tpr_benchmark_pt05": tpr_benchmark_pt05,
+                # "treshold_benchmark_pt05": thres_benchmark_pt05,
+                # "auc_benchmark_pt05": auc_benchmark_pt05,
             }
         
         auc[key] = auc_
