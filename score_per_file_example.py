@@ -5,7 +5,7 @@ import pickle
 from utils.PlotUtils import plot_histogram_root
 import os
 import numpy as np
-from utils.ModelEval import CPU_Unpickler, load_pkl
+from eval_utils.ModelEval import CPU_Unpickler, load_pkl
 from architectures.TauMuNet import TauMuNet
 
 import argparse
