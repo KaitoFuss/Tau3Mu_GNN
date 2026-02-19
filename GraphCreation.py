@@ -1,6 +1,7 @@
 from utils.ConeGraphProducer import ConeGraphProducer
 import logging
 import argparse
+import os
 
 
 # default values
@@ -113,8 +114,8 @@ if __name__ == "__main__":
     # )
 
     if tau_channel == "W":
-        # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal/"
-        base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
+        base_direc_W_signal = "data/signal_W"
+        # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
             [base_direc_W_signal, "skimmed"],
         ]
@@ -158,10 +159,11 @@ if __name__ == "__main__":
                 save_benchmark_score=True
             )
         
-        base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
+        base_direc_W_bkg = "data/background_W"
+        # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
-            [base_direc_bkg, "skimmed"]
+            [base_direc_W_bkg, "skimmed"]
         ]
         for base_direc, bkg_identifier in root_bkgs_skimmed:
             output_ident_bkg = "W_decay_background_" + bkg_identifier.replace("/", "")
@@ -183,9 +185,11 @@ if __name__ == "__main__":
             )
     
     elif tau_channel == "HF":
-        base_direc_ds_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
-        root_ds_signals_skimmed = [
-            [base_direc_ds_signal, "skimmed"],
+        # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
+        base_direc_HF_signal = "data/signal_HF"
+
+        root_HF_signals_skimmed = [
+            [base_direc_HF_signal, "skimmed"],
         ]
         HF_graph_level_branches = [
             'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
@@ -208,11 +212,11 @@ if __name__ == "__main__":
             'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
         ]
 
-        for base_direc, signal_identifier in root_ds_signals_skimmed:
+        for base_direc, signal_identifier in root_HF_signals_skimmed:
             output_ident_signal = "HF_decay_signal_" + signal_identifier.replace("/", "")
-            root_ds_signal = base_direc
+            root_HF_signal = base_direc
             create_graph(
-                root_ds_signal, 
+                root_HF_signal, 
                 output_ident_signal, 
                 label=1., 
                 mask=False, 
@@ -228,10 +232,10 @@ if __name__ == "__main__":
                 save_benchmark_score=False
             )
 
-        # base_direc_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data/"
-        base_direc_bkg_ds = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
+        # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
+        base_direc_HF_bkg = "data/background_HF"
         root_bkgs_skimmed = [
-            [base_direc_bkg_ds, "data_skimmed"]
+            [base_direc_HF_bkg, "data_skimmed"]
         ]
 
         for base_direc, bkg_identifier in root_bkgs_skimmed:
