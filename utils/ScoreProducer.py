@@ -764,9 +764,17 @@ class ScoreProducer:
             tau_mass = graph.fitted_tau_mass
 
             if self.normalizer is not None:
-                means = torch.tensor(self.normalizer["means"], dtype=torch.float, device=graph.x.device)
-                stds = torch.tensor(self.normalizer["stds"], dtype=torch.float, device=graph.x.device)
-                graph.x = (graph.x - means) / stds
+                means_x = torch.tensor(self.normalizer["means_x"], dtype=torch.float, device=graph.x.device)
+                stds_x = torch.tensor(self.normalizer["stds_x"], dtype=torch.float, device=graph.x.device)
+                graph.x = (graph.x - means_x) / stds_x
+
+                means_edge = torch.tensor(self.normalizer["means_edge"], dtype=torch.float, device=graph.edge_attr.device)
+                stds_edge = torch.tensor(self.normalizer["stds_edge"], dtype=torch.float, device=graph.edge_attr.device)
+                graph.edge_attr = (graph.edge_attr - means_edge) / stds_edge
+                
+                means_graph = torch.tensor(self.normalizer["means_graph"], dtype=torch.float, device=graph.graph_level_features.device)
+                stds_graph = torch.tensor(self.normalizer["stds_graph"], dtype=torch.float, device=graph.graph_level_features.device)
+                graph.graph_level_features = (graph.graph_level_features - means_graph) / stds_graph
                 
             graph = graph.to(device)
             out = model(graph)
