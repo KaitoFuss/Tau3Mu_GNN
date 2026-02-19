@@ -247,7 +247,7 @@ if __name__ == "__main__":
                 label=0., 
                 mask=True, 
                 edge_connection_mode=model_type,
-                max_events_to_process=max_events_to_process,
+                max_events_to_process=max_events_to_process//4,
                 k_knn=k, 
                 delta_r_threshold=delta_r,
                 slimmed=True,
