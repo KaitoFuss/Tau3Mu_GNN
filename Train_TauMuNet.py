@@ -15,9 +15,9 @@ import numpy as np
 import utils.EvaluationUtils as ueval
 import utils.TrainingUtils as utrain
 
-import linecache
+# import linecache
 from utils.ConeGraphProducer import ConeGraphProducer
-import tracemalloc
+# import tracemalloc
 
 
 # import mdmm
@@ -72,23 +72,23 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
         base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/"
 
         datasets_signal = [
-            [base_directory_signal, f"W_decay_signal_skimmed_{model_type}"],
+            [base_directory_signal, f"W_decay_signal_{model_type}"],
         ]
 
         datasets_bkg = [
-            [base_directory_bkg, f"W_decay_background_skimmed_{model_type}"],
+            [base_directory_bkg, f"W_decay_background_{model_type}"],
         ]
 
     elif tau_channel == "HF":
-        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
-        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
+        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/"
+        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/"
 
         datasets_signal = [
-            [base_directory_signal, f"HF_decay_signal_skimmed_{model_type}"],
+            [base_directory_signal, f"HF_decay_signal_{model_type}"],
         ]
 
         datasets_bkg = [
-            [base_directory_bkg, f"HF_decay_background_skimmed_{model_type}"],
+            [base_directory_bkg, f"HF_decay_background_{model_type}"],
         ]
 
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
@@ -260,7 +260,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
     
     ###--------- Create the Model -----------------------------------------------------------
     # Input parameters for the Model
-    num_node_features, num_edge_features, num_graph_level_features = utrain.get_model_parameters(model_type)
+    num_node_features, num_edge_features, num_graph_level_features = utrain.get_model_parameters(model_type, tau_channel)
     
     # Create the model
     model = TauMuNet(
@@ -609,7 +609,7 @@ if __name__ == "__main__":
         "--fusion",
         default=True,
         help="bool for using fusion in GNN",
-        type=bool,
+        type=str2bool,
         )
     
     parser.add_argument(

@@ -235,7 +235,7 @@ if __name__ == "__main__":
         # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
         base_direc_HF_bkg = "data/background_HF"
         root_bkgs_skimmed = [
-            [base_direc_HF_bkg, "data_skimmed"]
+            [base_direc_HF_bkg, "skimmed"]
         ]
 
         for base_direc, bkg_identifier in root_bkgs_skimmed:

@@ -427,10 +427,10 @@ def plot_roc(roc, auc, name, suffix = "_eval"):
     plt.grid()
     plt.legend()
 
-    output_path = output_directory("comparison/" + name) 
+    output_path = output_directory(name) 
     outout_plot_name = name + suffix + "_roc.png"
     print(f"{outout_plot_name} has been saved.")
-    plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)
+    plt.savefig(os.path.join(name,outout_plot_name), dpi=400)
     plt.close()
 
 

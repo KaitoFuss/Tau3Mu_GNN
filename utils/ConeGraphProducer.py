@@ -410,7 +410,9 @@ class ConeGraphProducer(InMemoryDataset):
                 graph.tau_channel = self.tau_channel
 
                 if len(self.graph_level_branches) > 0:
-                    graph.graph_level_features = torch.tensor(graph_level_features, dtype=torch.float)
+                    graph_level_features = torch.tensor(graph_level_features, dtype=torch.float)
+                    graph_level_features = graph_level_features.unsqueeze(0)
+                    graph.graph_level_features = graph_level_features
                 else:
                     graph.graph_level_features = torch.tensor([])
                 

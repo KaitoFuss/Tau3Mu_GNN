@@ -127,7 +127,6 @@ class TauMuNet(nn.Module):
         x = global_mean_pool(x, batch = data.batch) 
 
         if self.gnn_mode == "final_layer":
-            graph_feat = graph_feat[data.batch]
             x = torch.cat([x, graph_feat], dim = -1)
         x = self.fc(x)
         x = torch.sigmoid(x)
