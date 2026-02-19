@@ -428,7 +428,7 @@ def plot_roc(roc, auc, name, suffix = "_eval"):
     plt.legend()
 
     output_path = output_directory(name) 
-    plt.title(f"{suffix} {name} ROC")
+    plt.title(f"{name} ROC")
     outout_plot_name = name + suffix + "_roc.png"
     print(f"{outout_plot_name} has been saved.")
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)
@@ -456,7 +456,7 @@ def plot_auc_simple(auc, name, suffix = "_eval"):
     plt.figure(figsize=(12, 12))
     bars = plt.bar(models, scores, color='skyblue')
     plt.ylabel("AUC Score")
-    plt.title("AUC Scores of Different Models")
+    # plt.title("AUC Scores of Different Models")
     plt.ylim(0, 1)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
@@ -466,7 +466,7 @@ def plot_auc_simple(auc, name, suffix = "_eval"):
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{score:.3f}", ha='center', va='bottom')
 
     plt.xticks(rotation=45)  # rotate x labels if model names are long
-    plt.title(f"{suffix} {name} AUC")
+    plt.title(f"{name} AUC")
 
     output_path = output_directory(name)
     outout_plot_name = name + suffix + "_auc.png"
@@ -727,7 +727,7 @@ def plot_dnn(evaluation_dict, name, suffix = "_eval"):
 
     plt.grid()
     plt.yscale('log')
-    plt.title(f"{suffix} {name} score distribution")
+    plt.title(f"{name} score distribution")
     output_path = output_directory(name)
     outout_plot_name = name + suffix + "_DNN_Score.png"
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi=400)
