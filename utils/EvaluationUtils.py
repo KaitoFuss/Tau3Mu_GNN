@@ -190,7 +190,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     
     return evaluation_dict
 
-def roc_auc(evaluation_dict, name, tau_channel, suffix="eval"):
+def roc_auc(evaluation_dict, name, tau_channel, gnn_mode, suffix="eval"):
     """ Calculate ROC and AUC
 
     Args:
@@ -219,12 +219,12 @@ def roc_auc(evaluation_dict, name, tau_channel, suffix="eval"):
 
         # Already weighted by random weighted sampler!
         fpr_, tpr_, thres_ = roc_curve(target, score)
+        auc_ = roc_auc_score(target, score)
+
         if tau_channel == "W":
             fpr_benchmark, tpr_benchmark, thres_benchmark = roc_curve(target, benchmark)
-        # fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
-        auc_ = roc_auc_score(target, score)
-        if tau_channel == "W":
             auc_benchmark = roc_auc_score(target, benchmark)
+        # fpr_benchmark_pt05, tpr_benchmark_pt05, thres_benchmark_pt05 = roc_curve(target, benchmark_pt05)
         # auc_benchmark_pt05 = roc_auc_score(target, benchmark_pt05)
         
         #calculate sic
@@ -248,6 +248,8 @@ def roc_auc(evaluation_dict, name, tau_channel, suffix="eval"):
                 "tpr_benchmark": tpr_benchmark,
                 "treshold_benchmark": thres_benchmark,
                 "auc_benchmark": auc_benchmark,
+                "tau_channel": tau_channel,
+                "gnn_mode": gnn_mode,
                 # "fpr_benchmark_pt05": fpr_benchmark_pt05,
                 # "tpr_benchmark_pt05": tpr_benchmark_pt05,
                 # "treshold_benchmark_pt05": thres_benchmark_pt05,
@@ -281,6 +283,8 @@ def roc_auc(evaluation_dict, name, tau_channel, suffix="eval"):
                 "sic": sic_,
                 "disco": disco,
                 "fitted_tau_mass": tau_mass,
+                "tau_channel": tau_channel,
+                "gnn_mode": gnn_mode,
                 # "fpr_benchmark": fpr_benchmark,
                 # "tpr_benchmark": tpr_benchmark,
                 # "treshold_benchmark": thres_benchmark,
@@ -409,7 +413,7 @@ def plot_roc(roc, auc, name, suffix = "_eval"):
         # rinv_value = f"0.{parts[2].split('p')[1]}"
         # m_z = parts[1]
         # plt.plot(roc[key]["fpr"], roc[key]["tpr"], color=colors[m_z], linewidth = 0.9, linestyle=line_styles[rinv_value], label=label)
-        plt.semilogx(roc[key]["fpr"], roc[key]["tpr"], color = colors[it], linewidth = 0.9, label=key)
+        plt.semilogx(roc[key]["fpr"], roc[key]["tpr"], color = colors[it], linewidth = 0.9, label=f"AUC: {auc[key]:.4f}")
         it +=1
 
     # Create dummy plots for separate legends

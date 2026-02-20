@@ -292,7 +292,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
 
     ###--------- Train the network -----------------------------------------------------------
 
-    training_losses, validation_losses = train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler = scheduler)
+    training_losses, validation_losses = train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode)
     print(f"==> Training completed in {time.time()-start:.2f} seconds")
 
     print("==> Saving losses...")
@@ -309,7 +309,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
     evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
-    roc, auc = ueval.roc_auc(evaluation_dict, name, tau_channel)
+    roc, auc = ueval.roc_auc(evaluation_dict, name, tau_channel, gnn_mode)
     ueval.plot_auc_simple(auc, name)
     ueval.plot_roc(roc, auc, name)
     # ueval.plot_scores(evaluation_dict,name)
@@ -323,7 +323,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
 
     return auc
 
-def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler):
+def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode):
     """Train and validate model.
 
     Args:
@@ -497,6 +497,8 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
             "last_validation_disco": validation_discos[best_idx],
             "last_val_loss": early_stop.best_loss,
             "lambda": disco_reg,
+            "tau_channel": tau_channel,
+            "gnn_mode": gnn_mode,
         }
 
     print("Model saved to ", output_path + "/" + name + ".pt")
@@ -627,6 +629,13 @@ if __name__ == "__main__":
         type=str,
         help="GNN architecture specification. Either GNN into BDT, graph features at embedding level or graph features at final layer"
         )
+
+    parser.add_argument(
+        "--remark",
+        default="",
+        type=str,
+        help="additional info for particular training"
+        )
     
 
     args = parser.parse_args()
@@ -641,6 +650,7 @@ if __name__ == "__main__":
     arch = args.arch
     tau_channel = args.tau_channel
     gnn_mode = args.gnn_mode
+    remark = args.remark
 
     assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
     assert gnn_mode in ["BDT", "embed_once", "embed_always", "final_layer"]
@@ -667,7 +677,7 @@ if __name__ == "__main__":
         "Model" : model_type,
         "tau_channel" : tau_channel,
         "gnn_mode": gnn_mode,
-        "remark": "",
+        "remark": remark,
     }
 
     experiment.log_parameters(hyper_params)
