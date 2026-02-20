@@ -8,9 +8,18 @@
 #include <iostream>
 
 static std::unordered_map<std::string, float> scoreMap;
-// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/signal_ds/ds_large_signal_skimmed_no_resonances.root";
-std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/adcorel/riccdata/data_ds/data_skimmed_no_resonances_part4.root";
-std::string output_folder = "/work/adcorel/SVJ_GNN/output/puppi_optunabest_newdata_with_CHAT_vs51/";
+
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/signal_skimmed_no_resonances.root";
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/data_skimmed_no_resonances.root";
+
+std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/ds_large_signal_skimmed_no_resonances.root";
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part1.root"; // files 1-4!!!
+
+std::string output_folder = "/work/kfuss/SVJ_GNN/output/early_stop_fix_HF_BDT_vs1/";
+
+std::string csv_filename = "scores_signal.csv";
+// std::string csv_filename = "scores_background.csv";
+
 
 void LoadScoresCSV(const std::string& filename) {
     std::ifstream file(filename);
@@ -53,12 +62,12 @@ float read_score(unsigned int run, unsigned int lumi, unsigned long long event) 
     return -1.0f;
 }
 
-int main() {
+void create_score_root() {
     ROOT::EnableImplicitMT();
 
     std::cout << "Going to load csv file" << std::endl;
 
-    LoadScoresCSV(output_folder + "scores_bkg_clean.csv");
+    LoadScoresCSV(output_folder + csv_filename);
 
     std::cout << "Going to load root file" << std::endl;
 
@@ -93,5 +102,5 @@ int main() {
 
     std::cout << "GNN scores added to: " << output_file << std::endl;
 
-    return 0;
+    return;
 }

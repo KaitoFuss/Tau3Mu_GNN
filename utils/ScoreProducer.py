@@ -865,28 +865,35 @@ class ScoreProducer:
         all_tau_masses = []
         score_dict = {}
 
+        if "signal" in self.root:
+            mode = "signal"
+        elif "background" in self.root:
+            mode = "background"
+
         for file in self.raw_file_names:
             print(f"Processing {file}")
             all_scores_temp, all_tau_masses_temp, score_dict_temp = self.get_all_scores(file)
             all_scores += ak.to_list(all_scores_temp)
             all_tau_masses += ak.to_list(all_tau_masses_temp)
+
+            # this for loop can be replaced by merge of the dicts iff we have no key overlaps
             for key, score in score_dict_temp.items():
-                if key not in score_dict:
-                    score_dict[key] = []
-                score_dict[key].append(score)
+                if key in score_dict:
+                    raise ValueError(f"{key} has already been processed in another root file")
+                score_dict[key] = score
 
         os.makedirs(self.output_folder, exist_ok=True)
         # Save raw arrays to compressed npz
         
         np.savez_compressed(
-            os.path.join(self.output_folder, "raw_scores_and_tau_mass.npz"),
+            os.path.join(self.output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
             scores=all_scores,
             tau_mass=all_tau_masses,
         )
 
-        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass.npz')}")
+        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, f'raw_scores_and_tau_mass_{mode}.npz')}")
 
-        csv_path = os.path.join(self.output_folder, "scores.csv")
+        csv_path = os.path.join(self.output_folder, f"scores_{mode}.csv")
 
         # Write the CSV file
         with open(csv_path, "w", newline="") as csvfile:
