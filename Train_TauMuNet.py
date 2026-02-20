@@ -536,43 +536,43 @@ if __name__ == "__main__":
 
 
     arch_configs = {
-    "arch1": {
-        "conv_params": [256, 128, 64, 32],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch2": {
-        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch3": {
-        "conv_params": [512, 256, 128, 64, 32],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch4": {
-        "conv_params": [512, 256, 128, 64, 32, 16, 8],
-        "fc_params": [(32, 0.8)],
-    },
-    "arch5": {
-        "conv_params": [256, 128, 64, 32],
-        "fc_params": [(64, 0.8)],
-    },
-    "arch6": {
-        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-        "fc_params": [(64, 0.8)],
-    },
-    "arch7": {
-        "conv_params": [512, 256, 128, 64, 32],
-        "fc_params": [(64, 0.8)],
-    },
-    "arch8": {
-        "conv_params": [512, 256, 128, 64, 32, 16, 8],
-        "fc_params": [(64, 0.8)],
-    },
-    "arch_optuna" : {
-        "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
-        "fc_params" : [(51, 0.8)] 
+        "arch1": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+        },
+        "arch2": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(32, 0.8)],
+        },
+        "arch3": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+        },
+        "arch4": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(32, 0.8)],
+        },
+        "arch5": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+        },
+        "arch6": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(64, 0.8)],
+        },
+        "arch7": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+        },
+        "arch8": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(64, 0.8)],
+        },
+        "arch_optuna" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(51, 0.8)] 
+        }
     }
-}
 
     
     parser.add_argument(

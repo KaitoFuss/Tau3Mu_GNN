@@ -327,6 +327,7 @@ class ScoreProducer:
         mask=False,
         label:float=0.,
         verbose=False,
+        tau_channel="W",
         tau_collection_name="TauTo3Mu_fitted",
         slimmed=False,
         shuffle_bool=False,
@@ -355,6 +356,7 @@ class ScoreProducer:
         self.mask = mask
         self.label = label
         self.verbose = verbose
+        self.tau_channel = tau_channel
         self.tau_collection_name = tau_collection_name
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
@@ -375,6 +377,48 @@ class ScoreProducer:
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
         # Assert that no incompatible flags are used
+
+        if self.tau_channel == "W":
+            self.graph_level_branches = [
+                'Slimmed_TauTo3Mu_fitted_pt',
+                'TauPlusMET_Tau_Puppi_mT',
+                #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
+                #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
+                'TauPlusMET_PuppiMET_pt',
+                #'Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)', # only for >= v4
+            #     'cand_refit_tau_pt/cand_refit_met_pt', # only for >= v2
+            #     'cand_refit_dRtauMuonMax',
+                'TauPlusMET_Puppi_pt',
+                'TauPlusMET_PuppiMETminPz',
+                'TauPlusMET_PuppiMETmaxPz',
+                'Slimmed_TauTo3Mu_dZmu12', 
+                'Slimmed_TauTo3Mu_dZmu13', 
+                'Slimmed_TauTo3Mu_dZmu23',
+                'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
+                'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+                'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+            ]
+        elif self.tau_channel == "HF":
+            self.graph_level_branches = [
+                'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
+            
+                # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
+                # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
+                # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
+
+                'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
+                'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
+                'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+
+                'Slimmed_TauTo3Mu_dZmu12', 
+                'Slimmed_TauTo3Mu_dZmu13', 
+                'Slimmed_TauTo3Mu_dZmu23', 
+
+                'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
+                'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+
+                'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+            ]
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
@@ -430,6 +474,21 @@ class ScoreProducer:
             fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
             fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
             
+            graph_level_features = []
+
+            for branch_name in self.graph_level_branches:
+                graph_level_feature = event[branch_name][tau_mask][nt]
+                graph_level_features.append(graph_level_feature)
+
+            if self.tau_channel == "W":
+                TauPlusMET_Puppi_phi = event["TauPlusMET_Puppi_phi"][tau_mask][nt]
+                delta_phi_TauPlusMET_Puppi_fitted_tau = self.deltaphi(TauPlusMET_Puppi_phi, fitted_tau_phi)
+                graph_level_features.append(delta_phi_TauPlusMET_Puppi_fitted_tau)
+            
+            elif self.tau_channel == "HF":
+                pass # no calculated graph level features
+
+
             # Read data for mu1 from event
             # mu1_idx = event[f"{prefix}TauTo3Mu_mu1_idx"][tau_mask][nt] 
             mu1_eta = event[f"{prefix}TauTo3Mu_mu1_eta"][tau_mask][nt] 
@@ -471,7 +530,6 @@ class ScoreProducer:
             pfcands_mass_masked = pfcands_mass[cone_mask]
             pfcands_charge_masked = pfcands_charge[cone_mask]
             pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
-
 
             if self.use_displacement:
                 pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
@@ -611,6 +669,15 @@ class ScoreProducer:
             elif self.weights == "npvs_rescale":
                 graph.w = npvs_weights[event["PV_npvs"]]
             
+            graph.tau_channel = self.tau_channel
+
+            if len(self.graph_level_branches) > 0:
+                graph_level_features = torch.tensor(graph_level_features, dtype=torch.float)
+                graph_level_features = graph_level_features.unsqueeze(0)
+                graph.graph_level_features = graph_level_features
+            else:
+                graph.graph_level_features = torch.tensor([])
+
             # Add the event number if requested
             if self.save_event_number:
                 graph.event_number = torch.tensor([i_ev], dtype=torch.long)
@@ -701,11 +768,20 @@ class ScoreProducer:
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
             # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
-            f"{prefix}TauTo3Mu_fitted_pt",
             "run",
             "luminosityBlock",
             "event",   
         ]
+
+        branches_to_load += self.graph_level_branches
+
+        if self.tau_channel == "W":
+            branches_to_load += [
+                "TauPlusMET_Puppi_phi", 
+            ]
+            
+        elif self.tau_channel == "HF":
+            pass # no additional features needed
 
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
@@ -803,14 +879,14 @@ class ScoreProducer:
         # Save raw arrays to compressed npz
         
         np.savez_compressed(
-            os.path.join(self.output_folder, "raw_scores_and_tau_mass_bkg.npz"),
+            os.path.join(self.output_folder, "raw_scores_and_tau_mass.npz"),
             scores=all_scores,
             tau_mass=all_tau_masses,
         )
 
-        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass_bkg.npz')}")
+        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, 'raw_scores_and_tau_mass.npz')}")
 
-        csv_path = os.path.join(self.output_folder, "scores_bkg.csv")
+        csv_path = os.path.join(self.output_folder, "scores.csv")
 
         # Write the CSV file
         with open(csv_path, "w", newline="") as csvfile:
@@ -890,4 +966,9 @@ class ScoreProducer:
         delta_R_sq = delta_eta**2 + delta_phi**2
         return delta_R_sq
 
+    def deltaphi(self, phi1, phi2):
+        delta_phi_internal = np.abs(phi1 - phi2)
+        delta_phi_external = 2*np.pi - np.abs(phi1 - phi2)
+        delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
+        return delta_phi
         

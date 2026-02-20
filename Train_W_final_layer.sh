@@ -16,7 +16,7 @@ mkdir -p /scratch/$USER/${SLURM_JOB_ID}
 export TMPDIR=/scratch/$USER/${SLURM_JOB_ID}
 
 # python program script.py should use CUDA_VISIBLE_DEVICES variable (*NOT* hardcoded GPU's numbers)
-/work/kfuss/miniforge3/envs/Tau3Mu/bin/python Train_TauMuNet.py --epochs 1000 --batch 2048 --name early_stop_fix --model skimmed_dzd0_cone_size_0.5_knn_10 --lr 0.001 --disco 0.625 --arch arch6 --fusion yes --tau_channel W --gnn_mode final_layer --remark ""
+/work/kfuss/miniforge3/envs/Tau3Mu/bin/python Train_TauMuNet.py --epochs 3 --batch 2048 --name debug_test --model skimmed_dzd0_cone_size_0.5_knn_10 --lr 0.001 --disco 0.625 --arch arch6 --fusion yes --tau_channel W --gnn_mode final_layer --remark ""
 
 # cleaning of temporal working dir when job was completed:
 rm  -rf /scratch/$USER/${SLURM_JOB_ID}
