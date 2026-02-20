@@ -360,6 +360,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         bce_per_batch = 0
         disco_per_batch = 0
         loss_per_batch = 0
+        
         warmup = 20  # 30
         lambda_eff = disco_reg * min(1.0, epoch / warmup) # we keep lambda for the first warmup epoch so we do in the beginnng large steps into the right directions
 
@@ -404,15 +405,16 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_bce = bce_per_batch/batch_counter
         epoch_disco = disco_per_batch/batch_counter
         training_losses.append(epoch_loss_training)
-        experiment.log_metric("Training loss", epoch_loss_training, epoch=epoch)
-        experiment.log_metric("bce_train", epoch_bce, epoch=epoch)
-        experiment.log_metric("disco_train", epoch_disco, epoch=epoch)
+        experiment.log_metric("Full training loss", epoch_loss_training, epoch=epoch)
+        experiment.log_metric("BCE training loss", epoch_bce, epoch=epoch)
+        experiment.log_metric("Disco training", epoch_disco, epoch=epoch)
 
 
         # validation
         batch_counter = 0
         loss_per_batch = 0
         disco_per_batch = 0
+        bce_per_batch = 0
 
         with torch.no_grad():
             for batch, data in enumerate(dataloader_validation):
@@ -456,21 +458,21 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         # calculate loss per epoch and log it
         epoch_bce_loss_validation = bce_per_batch/batch_counter
         validation_losses.append(epoch_bce_loss_validation)
-        experiment.log_metric("Validation loss", epoch_bce_loss_validation, epoch=epoch)
+        experiment.log_metric("BCE validation loss", epoch_bce_loss_validation, epoch=epoch)
 
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
-        experiment.log_metric("Validation disco", epoch_disco_validation, epoch=epoch)
+        experiment.log_metric("Disco validation", epoch_disco_validation, epoch=epoch)
 
         epoch_loss_validation = loss_per_batch/batch_counter
         scheduler.step(epoch_loss_validation)
 
         ## check for early stop
-        early_stop(epoch_loss_validation,model,epoch,output_path,name)
+        early_stop(epoch_bce_loss_validation,model,epoch,output_path,name)
         if early_stop.early_stop:
             break
         ## log the average loss as well
-        experiment.log_metric("Average Validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
+        experiment.log_metric("Average BCE validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
 
 
 
@@ -641,7 +643,7 @@ if __name__ == "__main__":
     gnn_mode = args.gnn_mode
 
     assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
-    assert gnn_mode in ["BDT", "embed", "final_layer"]
+    assert gnn_mode in ["BDT", "embed_once", "embed_always", "final_layer"]
 
 
     print("==> Running TauMuNet ")
