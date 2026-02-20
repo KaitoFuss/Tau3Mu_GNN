@@ -17,7 +17,7 @@ class TauMuNet(nn.Module):
             num_edge_features = 4, 
             num_graph_level_features=13,
             use_fusion = True,
-            gnn_mode = "final_layer", # can be "BDT", "final_layer", "embed"
+            gnn_mode = "final_layer", # can be "BDT", "final_layer", "embed_once", "embed_always"
             num_classes = 1,
             ):
         super(TauMuNet, self).__init__()
@@ -30,12 +30,15 @@ class TauMuNet(nn.Module):
         self.num_edge_features = num_edge_features
         self.num_graph_level_features = num_graph_level_features
         self.dropout = dropout
-        self.gnn_mode = gnn_mode
+        self.embed_input = gnn_mode in ["embed_once", "embed_always"]
+        self.embed_every_layer = gnn_mode == "embed_always"
+        self.embed_final = gnn_mode == "final_layer"
+
 
         self.input_dims = num_node_features
 
-        if gnn_mode == "embed":
-            self.input_dims += num_graph_level_features
+        if self.embed_input:
+            self.input_dims += self.num_graph_level_features
 
         #batch normalization features
         self.bn_fts = nn.BatchNorm1d(self.num_node_features)
@@ -59,6 +62,8 @@ class TauMuNet(nn.Module):
 
         # Remaining layers
         for in_feat, out_feat in zip(conv_params[:-1], conv_params[1:]):
+            if self.embed_every_layer:
+                in_feat += self.num_graph_level_features
             nns = nn.Sequential(
                 nn.Linear(in_feat, out_feat),
                 nn.BatchNorm1d(out_feat),
@@ -80,7 +85,7 @@ class TauMuNet(nn.Module):
         for idx, (channels, drop_rate) in enumerate(fc_params):
             if idx == 0:
                 in_chn = out_chn if self.use_fusion else conv_params[-1]  
-                if self.gnn_mode == "final_layer":
+                if self.embed_final:
                     in_chn += num_graph_level_features
             else:
                 in_chn = fc_params[idx - 1][0]
@@ -110,12 +115,14 @@ class TauMuNet(nn.Module):
         edge_attr = self.bn_e_fts(edge_attr)
         graph_feat = self.bn_g_fts(graph_feat)
 
-        if self.gnn_mode == "embed":
+        if self.embed_input:
             graph_feat = graph_feat[data.batch]
             x = torch.cat([x, graph_feat], dim=-1)
 
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
+            if idx > 0 and self.embed_every_layer:
+                x = torch.cat([x, graph_feat], dim=-1)
             x = conv(x, edge_index, edge_attr)
             if self.use_fusion:
                 outputs.append(x)
@@ -126,7 +133,7 @@ class TauMuNet(nn.Module):
         #Global average pooling
         x = global_mean_pool(x, batch = data.batch) 
 
-        if self.gnn_mode == "final_layer":
+        if self.embed_final:
             x = torch.cat([x, graph_feat], dim = -1)
         x = self.fc(x)
         x = torch.sigmoid(x)
