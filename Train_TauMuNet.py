@@ -345,6 +345,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     training_losses = []
     validation_losses = []
     validation_discos = []
+    validation_full_losses = []
 
 
     # initalize early stopping class
@@ -465,14 +466,17 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         experiment.log_metric("Disco validation", epoch_disco_validation, epoch=epoch)
 
         epoch_loss_validation = loss_per_batch/batch_counter
+        validation_full_losses.append(epoch_loss_validation)
+        experiment.log_metric("Full validation validation", epoch_loss_validation, epoch=epoch)
+
         scheduler.step(epoch_loss_validation)
 
         ## check for early stop
-        early_stop(epoch_bce_loss_validation,model,epoch,output_path,name)
+        early_stop(epoch_loss_validation,model,epoch,output_path,name)
         if early_stop.early_stop:
             break
         ## log the average loss as well
-        experiment.log_metric("Average BCE validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
+        experiment.log_metric("Average full validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
 
 
 
@@ -488,14 +492,18 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         val_disco_loss = {
             "last_validation_disco": validation_discos[-1],
             "last_val_loss": validation_losses[-1],
+            "last_val_full_loss": validation_full_losses[-1],
             "lambda": disco_reg,
+            "tau_channel": tau_channel,
+            "gnn_mode": gnn_mode,
         }
     else:
         # Save val_disco and val_loss for disco_param
-        best_idx = np.where(np.array(validation_losses) == early_stop.best_loss)[0][-1]
+        best_idx = np.where(np.array(validation_full_losses) == early_stop.best_loss)[0][-1]
         val_disco_loss = {
             "last_validation_disco": validation_discos[best_idx],
-            "last_val_loss": early_stop.best_loss,
+            "last_val_loss": validation_losses[best_idx],
+            "last_val_full_loss": early_stop.best_loss,
             "lambda": disco_reg,
             "tau_channel": tau_channel,
             "gnn_mode": gnn_mode,
