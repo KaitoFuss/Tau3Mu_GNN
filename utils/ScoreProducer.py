@@ -789,7 +789,9 @@ class ScoreProducer:
         all_scores = []
         all_tau_masses = []
         score_dict = {}
+        counter = 1
         for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="1000 MB"):
+            print(f"Processing bunch {counter} of {file_name}")
             bkg_mask = None
             total_events = len(events)
             if self.mask:
@@ -816,6 +818,8 @@ class ScoreProducer:
             # score, tau_mass = self.create_score(graphDataset)
             all_scores.append(score)
             all_tau_masses.append(tau_mass)
+
+            counter += 1
 
         all_scores = ak.flatten(all_scores)
         all_tau_masses = ak.flatten(all_tau_masses)
