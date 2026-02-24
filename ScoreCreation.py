@@ -8,58 +8,12 @@ import numpy as np
 from eval_utils.ModelEval import CPU_Unpickler, load_pkl
 from architectures.TauMuNet import TauMuNet
 from utils.TrainingUtils import get_model_parameters
+from Train_TauMuNet import get_arch_configs
 
 import argparse
 import ROOT
 
-arch_configs = {
-    "arch1": {
-        "conv_params": [256, 128, 64, 32],
-        "fc_params": [(32, 0.8)],
-        "use_fusion": True,
-    },
-    "arch2": {
-        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-        "fc_params": [(32, 0.8)],
-        "use_fusion": True,
-    },
-    "arch3": {
-        "conv_params": [512, 256, 128, 64, 32],
-        "fc_params": [(32, 0.8)],
-        "use_fusion": True,
-    },
-    "arch4": {
-        "conv_params": [512, 256, 128, 64, 32, 16, 8],
-        "fc_params": [(32, 0.8)],
-        "use_fusion": True,
-    },
-    "arch5": {
-        "conv_params": [256, 128, 64, 32],
-        "fc_params": [(64, 0.8)],
-        "use_fusion": True,
-    },
-    "arch6": {
-        "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-        "fc_params": [(64, 0.8)],
-        "use_fusion": True,
-    },
-    "arch7": {
-        "conv_params": [512, 256, 128, 64, 32],
-        "fc_params": [(64, 0.8)],
-        "use_fusion": True,
-    },
-    "arch8": {
-        "conv_params": [512, 256, 128, 64, 32, 16, 8],
-        "fc_params": [(64, 0.8)],
-        "use_fusion": True,
-    },
-    "arch_optuna" : {
-        "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
-        "fc_params" : [(51, 0.8)] ,
-        "use_fusion": True,
-    }
-}
-
+arch_configs = get_arch_configs()
 
 if __name__ == "__main__":
 
@@ -89,7 +43,7 @@ if __name__ == "__main__":
     params = arch_configs[arch]
     model =  TauMuNet(
         conv_params=params["conv_params"],
-        dropout=0.2633831214702671,
+        dropout=params["dropout"],
         fc_params=params["fc_params"],
         num_node_features=num_node_features,
         num_edge_features=num_edge_features,

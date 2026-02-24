@@ -40,7 +40,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type, params, tau_channel, gnn_mode):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode):
     """Train the model and evaluate it.
 
     Args:
@@ -48,7 +48,6 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
         batch_size(int): size of each batch
         learning_rate(float):
         disco_reg(float): regularisation param
-        fusion(bool): fusion toggle
         name(str): name of the training
         model_type (str): Type of the model: which graph constructions params were used; eg. cone_size_0.5_knn_3, dzd0_cone_size_0.5_fully
         params : architecture parameters
@@ -265,12 +264,12 @@ def main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type,
     # Create the model
     model = TauMuNet(
         conv_params=params["conv_params"],
-        dropout=0.2633831214702671,
+        dropout=params["dropout"],
         fc_params=params["fc_params"],
         num_node_features=num_node_features, 
         num_edge_features=num_edge_features,
         num_graph_level_features=num_graph_level_features,
-        use_fusion=fusion,
+        use_fusion=params["use_fusion"],
         gnn_mode=gnn_mode,
     )
 
@@ -519,6 +518,65 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     return training_losses, validation_losses
 
 
+def get_arch_configs():
+    arch_configs = {
+        "arch1": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch2": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch3": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch4": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch5": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch6": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch7": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch8": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch_optuna" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(51, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        }
+    }
+
+    return arch_configs
 
 if __name__ == "__main__":
 
@@ -535,44 +593,7 @@ if __name__ == "__main__":
 )
 
 
-    arch_configs = {
-        "arch1": {
-            "conv_params": [256, 128, 64, 32],
-            "fc_params": [(32, 0.8)],
-        },
-        "arch2": {
-            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-            "fc_params": [(32, 0.8)],
-        },
-        "arch3": {
-            "conv_params": [512, 256, 128, 64, 32],
-            "fc_params": [(32, 0.8)],
-        },
-        "arch4": {
-            "conv_params": [512, 256, 128, 64, 32, 16, 8],
-            "fc_params": [(32, 0.8)],
-        },
-        "arch5": {
-            "conv_params": [256, 128, 64, 32],
-            "fc_params": [(64, 0.8)],
-        },
-        "arch6": {
-            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-            "fc_params": [(64, 0.8)],
-        },
-        "arch7": {
-            "conv_params": [512, 256, 128, 64, 32],
-            "fc_params": [(64, 0.8)],
-        },
-        "arch8": {
-            "conv_params": [512, 256, 128, 64, 32, 16, 8],
-            "fc_params": [(64, 0.8)],
-        },
-        "arch_optuna" : {
-            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
-            "fc_params" : [(51, 0.8)] 
-        }
-    }
+    arch_configs = get_arch_configs()
 
     
     parser.add_argument(
@@ -618,13 +639,6 @@ if __name__ == "__main__":
         )
     
     parser.add_argument(
-        "--fusion",
-        default=True,
-        help="bool for using fusion in GNN",
-        type=str2bool,
-        )
-    
-    parser.add_argument(
     "--tau_channel",
     default="W",
     type=str,
@@ -654,7 +668,6 @@ if __name__ == "__main__":
     name = args.name
     model_type = args.model
     disco_reg = args.disco
-    fusion = args.fusion
     arch = args.arch
     tau_channel = args.tau_channel
     gnn_mode = args.gnn_mode
@@ -692,5 +705,5 @@ if __name__ == "__main__":
     experiment.set_name(name)
 
     
-    main(epochs, batch_size, learning_rate, disco_reg, fusion, name, model_type, arch_configs[arch], tau_channel, gnn_mode)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], tau_channel, gnn_mode)
 
