@@ -27,7 +27,7 @@ def load_pkl(root_dir, file_name_tail):
                     print(f"Error loading {file_path}: {e}")
     return data
 
-def plot_roc(data, key, root_dir, thresholds_bench, title):
+def plot_roc(data, key, root_dir, thresholds_bench, title, tau_channel):
     thresh_benchmark = data[key]["treshold_benchmark"]
     fpr = data[key]["fpr"]
     tpr = data[key]["tpr"]
@@ -36,7 +36,10 @@ def plot_roc(data, key, root_dir, thresholds_bench, title):
     thresh_model = data[key]["threshold"]
 
     ax = plt.gca()
-    plt.plot(fpr, tpr, linewidth=0.9, label=f"AUC: {data[key]['auc']:.3f}, " + key.replace("D_s_decay_signal_skimmed_", ""))
+    if tau_channel == "HF":
+        plt.plot(fpr, tpr, linewidth=0.9, label=f"AUC: {data[key]['auc']:.3f}, " + key.replace("D_s_decay_signal_skimmed_", ""))
+    elif tau_channel == "W":
+        plt.plot(fpr, tpr, linewidth=0.9, label=f"AUC: {data[key]['auc']:.3f}, " + key.replace("W_decay_signal_skimmed_", ""))
     plt.plot(fpr_bench, tpr_bench, linewidth = 0.9, label=f"AUC: {data[key]['auc_benchmark']:.3f}, Benchmark")
     for threshold in thresholds_bench:
         thresh_idx = min(range(len(thresh_benchmark)), key=lambda i: abs(thresh_benchmark[i] - threshold))
@@ -58,7 +61,7 @@ def plot_roc(data, key, root_dir, thresholds_bench, title):
     plt.savefig(os.path.join(root_dir,output_plot_name), dpi=400)
     plt.close()
 
-def plot_roc_bdt(data, root_dir, thresholds_bench, title):
+def plot_roc_bdt(data, root_dir, thresholds_bench, title, tau_channel):
     thresh_benchmark = data["threshold_ISO"]
     fpr_bench = data["fpr_ISO"]
     tpr_bench = data["tpr_ISO"]
@@ -97,7 +100,7 @@ def plot_roc_bdt(data, root_dir, thresholds_bench, title):
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
-def tau_score_hist(root, pickl_name, mode, title):
+def tau_score_hist(root, pickl_name, mode, title, tau_channel):
     data = np.load(root + pickl_name, allow_pickle=True)
     scores = data[f"{mode}_score_bkg"]
     f_tau_mass = data["tau_mass"]
@@ -134,15 +137,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--root_path", type=str, required=True, help="Root directory of results")
     parser.add_argument("--title", type=str, required=True, help="Plot title")
+    parser.add_argument("--tau_channel", type=str, required=True, help="Tau prduction channel")
 
     args = parser.parse_args()
     root_path = args.root_path
     title = args.title
+    tau_channel = args.tau_channel
 
-    data = np.load(root_path + '_roc_4february2026_v0.pck', allow_pickle=True)
-    plot_roc_bdt(data, root_path, [0.5, 0.622, 0.788, 0.874, 0.902, 0.962], title)
-    tau_score_hist(root_path, "tau_score_corr.pkl", "GNN", title)
-    tau_score_hist(root_path, "tau_score_corr.pkl", "ISO", title)
+    data = np.load(root_path + '_roc_24feb2026_v0.pck', allow_pickle=True)
+    plot_roc_bdt(data, root_path, [0.5, 0.622, 0.788, 0.874, 0.902, 0.962], title, tau_channel)
+    tau_score_hist(root_path, "tau_score_corr.pkl", "GNN", title, tau_channel)
+    tau_score_hist(root_path, "tau_score_corr.pkl", "ISO", title, tau_channel)
     # import numpy as np
     # import matplotlib.pyplot as plt
     # import awkward as ak
