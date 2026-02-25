@@ -12,11 +12,13 @@
 mkdir -p /scratch/$USER/${SLURM_JOB_ID}
 export TMPDIR=/scratch/$USER/${SLURM_JOB_ID}
 
+MODEL=high_patience_HF_BDT_vs1
+
 # python program script.py should use CUDA_VISIBLE_DEVICES variable (*NOT* hardcoded GPU's numbers)
 /work/kfuss/miniforge3/envs/Tau3Mu/bin/python ScoreCreation.py \
   --root /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF \
-  --output_folder /work/kfuss/SVJ_GNN/output/early_stop_fix_HF_BDT_vs1/ \
-  --model_name early_stop_fix_HF_BDT_vs1.pt \
+  --output_folder /work/kfuss/SVJ_GNN/output/"$MODEL"/ \
+  --model_name "$MODEL".pt \
   --arch arch6 \
   --tau_channel HF \
   --gnn_mode BDT

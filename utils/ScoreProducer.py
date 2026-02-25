@@ -30,7 +30,8 @@ def __cast_unknown_type_branches(ak_array, field):
 
 
 def __prepare_array(ak_array, field):
-    return ak.packed(ak.without_parameters(__cast_unknown_type_branches(ak_array, field)))
+    # return ak.packed(ak.without_parameters(__cast_unknown_type_branches(ak_array, field)))
+    return ak.to_packed(ak.without_parameters(__cast_unknown_type_branches(ak_array, field)))
 
 
 def __is_rootcompat(a):
@@ -867,7 +868,6 @@ class ScoreProducer:
         # Read data into huge `Data` list.
         all_scores = []
         all_tau_masses = []
-        score_dict = {}
 
         if "signal" in self.root:
             mode = "signal"
@@ -876,15 +876,114 @@ class ScoreProducer:
 
         for file in self.raw_file_names:
             print(f"Processing {file}")
-            all_scores_temp, all_tau_masses_temp, score_dict_temp = self.get_all_scores(file)
+            all_scores_temp, all_tau_masses_temp, score_dict = self.get_all_scores(file)
             all_scores += ak.to_list(all_scores_temp)
             all_tau_masses += ak.to_list(all_tau_masses_temp)
 
-            # this for loop can be replaced by merge of the dicts iff we have no key overlaps
-            for key, score in score_dict_temp.items():
-                if key in score_dict:
-                    raise ValueError(f"{key} has already been processed in another root file")
-                score_dict[key] = score
+            base_name = os.path.basename(file)   # only filename not full path      
+            name_without_ext = os.path.splitext(base_name)[0] # drop .root
+            root_path_sc_only = os.path.join(self.output_folder, f"{name_without_ext}_with_scores_only.root")
+            root_path = os.path.join(self.output_folder, f"{name_without_ext}_with_scores.root")
+
+            runs = []
+            lumis = []
+            events = []
+            scores = []
+
+            for (run, lumi, event), score in score_dict.items():
+                runs.append(run)
+                lumis.append(lumi)
+                events.append(event)
+                scores.append(score)
+
+            runs = np.array(runs, dtype=np.uint64)
+            lumis = np.array(lumis, dtype=np.uint64)
+            events = np.array(events, dtype=np.uint64)
+            scores = np.array(scores, dtype=np.float32)
+
+            scores_to_save = {
+                    "run": runs,
+                    "luminosityBlock": lumis,
+                    "event": events,
+                    "GNN_score": scores,
+                }
+
+            branches = {k: v.dtype for k, v in scores_to_save.items()}
+
+            with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
+                # Create a new TTree in the file
+                tree = f.mktree("Events", branches)
+                tree.extend(scores_to_save)  # Fill the tree with data
+
+            # scores_to_save = ak.Array([{
+            #         "run": runs,
+            #         "luminosityBlock": lumis,
+            #         "event": events,
+            #         "GNN_score": scores,
+            #     }])
+        
+            
+            # with uproot.recreate(root_path_sc_only) as new_file:
+            #     print(f"Writing to {root_path_sc_only}")
+            #     write_tree_maker_root_file(
+            #         output_file_name=root_path_sc_only,
+            #         events=scores_to_save,
+            #         trees={},
+            #     )
+
+            print(f"Saved scores only to {root_path_sc_only}")
+
+            fin = ROOT.TFile.Open(file)
+            t1 = fin.Get("Events")
+
+            friend_file = ROOT.TFile.Open(root_path_sc_only)
+            t2 = friend_file.Get("Events")
+
+            t1.AddFriend("Events", root_path_sc_only)
+
+            # Write merged tree
+            fout = ROOT.TFile.Open(root_path, "RECREATE")
+            t_merged = t1.CloneTree(-1)
+            t_merged.Write("Events")
+            fout.Close()
+
+            fin.Close()
+            friend_file.Close()
+
+            # Open main file
+
+            # fin = ROOT.TFile.Open(file)
+            # t1 = fin.Get("Events")
+
+            # # Open friend file explicitly
+            # friend_file = ROOT.TFile.Open(root_path)
+            # t2 = friend_file.Get("Events")
+
+            # # (Optional but strongly recommended)
+            # t1.BuildIndex("run", "event")
+            # t2.BuildIndex("run", "event")
+
+            # t1.AddFriend(t2)
+
+            # # Write merged tree
+            # fout = ROOT.TFile.Open(f"{file}_with_scores.root", "RECREATE")
+            # t_merged = t1.CloneTree(-1)
+            # t_merged.Write("Events")
+            # fout.Close()
+
+            # # Close everything BEFORE deleting
+            # friend_file.Close()
+            # fin.Close()
+
+            # os.remove(root_path)
+
+            print(f"Merged score and event root files to {root_path}")
+            
+            # os.remove(root_path_sc_only)
+
+            print(f"Deleted temporary file {root_path_sc_only}")
+            
+
 
         os.makedirs(self.output_folder, exist_ok=True)
         # Save raw arrays to compressed npz
@@ -897,16 +996,17 @@ class ScoreProducer:
 
         print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, f'raw_scores_and_tau_mass_{mode}.npz')}")
 
-        csv_path = os.path.join(self.output_folder, f"scores_{mode}.csv")
 
-        # Write the CSV file
-        with open(csv_path, "w", newline="") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(["run", "luminosityBlock", "event", "score"])
-            for (run, lumi, event), score in score_dict.items():
-                writer.writerow([run, lumi, event, score])
+        # csv_path = os.path.join(self.output_folder, f"scores_{mode}.csv")
 
-        print(f"Saved scores to {csv_path}")
+        # # Write the CSV file
+        # with open(csv_path, "w", newline="") as csvfile:
+        #     writer = csv.writer(csvfile)
+        #     writer.writerow(["run", "luminosityBlock", "event", "score"])
+        #     for (run, lumi, event), score in score_dict.items():
+        #         writer.writerow([run, lumi, event, score])
+
+        # print(f"Saved scores to {csv_path}")
         
         
 

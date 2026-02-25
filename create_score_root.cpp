@@ -10,15 +10,20 @@
 static std::unordered_map<std::string, float> scoreMap;
 
 // std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/signal_skimmed_no_resonances.root";
-// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/data_skimmed_no_resonances.root";
+std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/data_skimmed_no_resonances.root";
 
-std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/ds_large_signal_skimmed_no_resonances.root";
-// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part1.root"; // files 1-4!!!
+std::string output_folder = "/work/kfuss/SVJ_GNN/output/early_stop_fix_W_BDT_vs1/";
 
-std::string output_folder = "/work/kfuss/SVJ_GNN/output/early_stop_fix_HF_BDT_vs1/";
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/ds_large_signal_skimmed_no_resonances.root";
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part1.root"; 
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part2.root"; 
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part3.root"; 
+// std::string root_file = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/data_skimmed_no_resonances_part4.root"; 
 
-std::string csv_filename = "scores_signal.csv";
-// std::string csv_filename = "scores_background.csv";
+// std::string output_folder = "/work/kfuss/SVJ_GNN/output/early_stop_fix_HF_BDT_vs1/";
+
+// std::string csv_filename = "scores_signal.csv";
+std::string csv_filename = "scores_background.csv";
 
 
 void LoadScoresCSV(const std::string& filename) {

@@ -63,7 +63,7 @@ if __name__ == "__main__":
                 edge_connection_mode="knn",
                 delta_r_threshold=None,
                 k_knn=10,
-                max_events_to_process=100000,
+                max_events_to_process=None,
                 save_edge_attributes=True,
                 verbose=True,
                 tau_channel=tau_channel,
