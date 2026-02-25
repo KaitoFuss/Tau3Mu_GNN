@@ -52,10 +52,12 @@ args = parser.parse_args()
 model = args.model
 model_path = "/work/kfuss/SVJ_GNN/output/" + model + "/"
 signals = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/" + model + "/ds_large_signal_skimmed_no_resonances_with_scores.root"]
-backgrounds = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part1_with_scores.root", 
-               "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part2_with_scores.root", 
-               "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part3_with_scores.root", 
-               "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part4_with_scores.root"]
+backgrounds = [
+    "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part1_with_scores.root",
+    "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part2_with_scores.root",
+    "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part3_with_scores.root",
+    "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/" + model + "/data_skimmed_no_resonances_part4_with_scores.root"           
+               ]
 
 # give labels human readable names
 modes = defaultdict(OrderedDict)
@@ -256,7 +258,7 @@ print(sig["GNN_Score"])
 
 all_chunks_bkg = []
 print("Going to load bkg events")
-for i in range(4):
+for i in range(len(backgrounds)):
     for events in uproot.iterate(f"{backgrounds[i]}:Events", expressions=branches, library="ak", step_size="100 MB"):
         bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
         events = events[ak.any(bkg_mask, axis=1)]
