@@ -27,3 +27,4 @@ dependencies:
   # conda install root
   # pip install comet_ml
   # pip install seaborn
+  # pip install xgboost

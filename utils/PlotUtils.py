@@ -5,6 +5,8 @@ from torch_geometric.utils import to_networkx
 import matplotlib.pyplot as plt
 import awkward as ak
 import uproot
+import argparse
+import numpy as np
 
 
 def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, leaf_vs_root_factor = 0.5):
@@ -178,3 +180,29 @@ def plot_histogram_root(file_path, column, output_path, score_column=None, score
     filename = os.path.join(output_path, f"{column}_hist.png")
     plt.savefig(filename, dpi=300)
     print(f"Histogram saved to: {filename}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--root_file")
+    parser.add_argument("--column")
+    parser.add_argument("--output_path")
+    parser.add_argument("--title")
+
+    args = parser.parse_args()
+
+    score_column = "GNN_Score"
+    score_cuts = [0.95, 0.97, 0.98, 0.99]
+    xlabel = r"$m_{\tau,\mathrm{fit}}$ [GeV]"
+    ylabel = "Counts"
+    bins = np.linspace(1.40, 2.50, 110)
+
+    root_file = args.root_file
+    column = args.column
+    output_path = args.output_path
+    title = args.title
+
+    plot_histogram_root(root_file, column, output_path, score_column=score_column, score_cuts=score_cuts,
+                        title=title, xlabel=xlabel, ylabel=ylabel,
+                        bins=bins)
