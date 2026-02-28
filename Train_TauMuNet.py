@@ -305,7 +305,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, window_to_load=[0.7,1])
+    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, disco_reg, window_to_load=[0.7,1])
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name, tau_channel, gnn_mode)
@@ -439,7 +439,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
                 else:
                     disco_loss = 0.0 * out[:,0].sum()  # keep graph alive
                 
-                loss_ = bce_loss + lambda_eff * disco_loss
+                loss_ = bce_loss + disco_reg * disco_loss
 
                 loss_per_batch += loss_.item()
                 bce_per_batch += bce_loss.item()

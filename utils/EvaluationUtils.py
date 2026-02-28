@@ -13,7 +13,7 @@ import gc
 
 from utils.TrainingUtils import output_directory
 
-def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, window_to_load= [0.7,1]):
+def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, disco_reg, window_to_load= [0.7,1]):
     """Evaluate the model on each signal dataset independently
 
     Args:
@@ -173,6 +173,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                     'tau_mass': tau_mass.numpy(),
                     'disco': disco,
                     'benchmark': benchmark,
+                    'lambda': disco_reg,
                     # 'benchmark_pt05': benchmark_pt05,
                 }
                 
@@ -183,6 +184,7 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                     'scores': test_scores.numpy(),
                     'tau_mass': tau_mass.numpy(),
                     'disco': disco,
+                    'lambda': disco_reg,
                     # 'benchmark': benchmark,
                     # 'benchmark_pt05': benchmark_pt05,
                 }
@@ -210,6 +212,7 @@ def roc_auc(evaluation_dict, name, tau_channel, gnn_mode, suffix="eval"):
         weights = evaluation_dict[key]["weights"]
         tau_mass = evaluation_dict[key]["tau_mass"]
         disco = evaluation_dict[key]["disco"]
+        lamb = evaluation_dict[key]['lambda']
         if tau_channel == "W":
             benchmark = evaluation_dict[key]["benchmark"]
         # benchmark_pt05 = evaluation_dict[key]["benchmark_pt05"]
@@ -250,6 +253,7 @@ def roc_auc(evaluation_dict, name, tau_channel, gnn_mode, suffix="eval"):
                 "auc_benchmark": auc_benchmark,
                 "tau_channel": tau_channel,
                 "gnn_mode": gnn_mode,
+                'lambda': lamb,
                 # "fpr_benchmark_pt05": fpr_benchmark_pt05,
                 # "tpr_benchmark_pt05": tpr_benchmark_pt05,
                 # "treshold_benchmark_pt05": thres_benchmark_pt05,
@@ -285,6 +289,7 @@ def roc_auc(evaluation_dict, name, tau_channel, gnn_mode, suffix="eval"):
                 "fitted_tau_mass": tau_mass,
                 "tau_channel": tau_channel,
                 "gnn_mode": gnn_mode,
+                'lambda': lamb,
                 # "fpr_benchmark": fpr_benchmark,
                 # "tpr_benchmark": tpr_benchmark,
                 # "treshold_benchmark": thres_benchmark,
@@ -314,7 +319,7 @@ def roc_auc(evaluation_dict, name, tau_channel, gnn_mode, suffix="eval"):
        
 
     output_path = output_directory(name)
-    with open(output_path + "/" + name + suffix + "_ROC_AUC.pkl", 'wb') as f:
+    with open(output_path + "/" + name + "_" + suffix + "_ROC_AUC.pkl", 'wb') as f:
         pickle.dump(output, f)
     print(f"Evaluation data saved in {os.path.join(output_path, name + suffix, '_ROC_AUC.pkl')}")
 
