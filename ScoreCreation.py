@@ -38,7 +38,6 @@ if __name__ == "__main__":
     model_type = args.model
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     params = arch_configs[arch]
     model =  TauMuNet(
@@ -63,12 +62,12 @@ if __name__ == "__main__":
                 edge_connection_mode="knn",
                 delta_r_threshold=None,
                 k_knn=10,
-                max_events_to_process=None,
+                max_events_to_process=100000,
                 save_edge_attributes=True,
                 verbose=True,
                 tau_channel=tau_channel,
                 slimmed=True,
-                shuffle_bool=True,
+                shuffle_bool=False,
                 use_displacement=True,
                 model=model,
                 device=device,

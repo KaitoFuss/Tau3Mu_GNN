@@ -109,14 +109,16 @@ class TauMuNet(nn.Module):
     def forward(self, data):
     
         x, edge_index, edge_attr, graph_feat = data.x, data.edge_index, data.edge_attr, data.graph_level_features
-        
         #batch normalization features
         x = self.bn_fts(x)
         edge_attr = self.bn_e_fts(edge_attr)
         graph_feat = self.bn_g_fts(graph_feat)
 
         if self.embed_input:
-            graph_feat = graph_feat[data.batch]
+            if data.batch is None:
+                graph_feat = graph_feat.repeat(x.size(0), 1)
+            else:
+                graph_feat = graph_feat[data.batch]
             x = torch.cat([x, graph_feat], dim=-1)
 
         outputs = []

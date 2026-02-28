@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import awkward as ak
 import ROOT
 import csv
+import time
+from array import array
 
 def __cast_unknown_type_branches(ak_array, field):
 
@@ -428,6 +430,9 @@ class ScoreProducer:
         self.process()
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict):
+        
+        start = time.time()
+
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
 
@@ -507,7 +512,9 @@ class ScoreProducer:
             mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
             mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
             # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
-
+            end = time.time()
+            # print(f"Data prep time {end - start:.5f}")
+            start = time.time()
             # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
             cone_mask = self.build_cone(
                 pfcands_eta, 
@@ -524,6 +531,9 @@ class ScoreProducer:
                 mu3_phi, 
                 # mu3_idx
             )
+            end = time.time()
+            # print(f"Cone creation time {end - start:.5f}")
+            start = time.time()
             pfcands_pt_masked = pfcands_pt[cone_mask]
             pfcands_eta_masked = pfcands_eta[cone_mask]
             pfcands_phi_masked = pfcands_phi[cone_mask]
@@ -586,7 +596,11 @@ class ScoreProducer:
                     pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             
+            end = time.time()
+            # print(f"Node feature creation time {end - start:.5f}")
+            
             # TODO do this calc outside loop and then just mask inside 
+            start = time.time()
             # Calculate edges and edge features
             matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
             matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
@@ -658,7 +672,10 @@ class ScoreProducer:
                         pos=pos,
                         y=torch.Tensor([self.label])
                     )
-                        
+            
+            end = time.time()
+            # print(f"Edge feature creation time {end - start:.5f}")
+            start = time.time()
             # Add the event weight
             if self.weights == "xsec":
                 if not self.max_events_to_process:
@@ -700,6 +717,10 @@ class ScoreProducer:
                 # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
                 # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
                 # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
+            
+            end = time.time()
+            # print(f"Graph level data add time {end - start:.5f}")
+
             score, tau_mass = self.create_score(graph)
 
             score_dict[key] = score[0]
@@ -791,7 +812,7 @@ class ScoreProducer:
         all_tau_masses = []
         score_dict = {}
         counter = 1
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="1000 MB"):
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="3000 MB"):
             print(f"Processing bunch {counter} of {file_name}")
             bkg_mask = None
             total_events = len(events)
@@ -910,6 +931,8 @@ class ScoreProducer:
 
             branches = {k: v.dtype for k, v in scores_to_save.items()}
 
+            print(f"Saving scores only to {root_path_sc_only}")
+
             with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
                 # Create a new TTree in the file
                 tree = f.mktree("Events", branches)
@@ -931,7 +954,8 @@ class ScoreProducer:
             #         trees={},
             #     )
 
-            print(f"Saved scores only to {root_path_sc_only}")
+            print(f"Merging scores with events {root_path}")
+            start = time.time()
 
             fin = ROOT.TFile.Open(file)
             t1 = fin.Get("Events")
@@ -939,47 +963,41 @@ class ScoreProducer:
             friend_file = ROOT.TFile.Open(root_path_sc_only)
             t2 = friend_file.Get("Events")
 
-            t1.AddFriend("Events", root_path_sc_only)
+            t2.BuildIndex("run", "event")
 
             # Write merged tree
             fout = ROOT.TFile.Open(root_path, "RECREATE")
-            t_merged = t1.CloneTree(-1)
-            t_merged.Write("Events")
+            t_merged = t1.CloneTree(0) # empty tree
+
+            # Prepare buffer for GNN_score
+            gnn_score = array('f', [0.])
+            t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
+
+            # Loop over t1
+            for i in range(t1.GetEntries()):
+                t1.GetEntry(i)
+
+                entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
+
+                if entry2 >= 0:
+                    t2.GetEntry(entry2) 
+                    gnn_score[0] = t2.GNN_score
+                else:
+                    gnn_score[0] = -1.  # default if no match
+
+                t_merged.Fill()
+
+            t_merged.Write()
             fout.Close()
 
             fin.Close()
             friend_file.Close()
 
-            # Open main file
-
-            # fin = ROOT.TFile.Open(file)
-            # t1 = fin.Get("Events")
-
-            # # Open friend file explicitly
-            # friend_file = ROOT.TFile.Open(root_path)
-            # t2 = friend_file.Get("Events")
-
-            # # (Optional but strongly recommended)
-            # t1.BuildIndex("run", "event")
-            # t2.BuildIndex("run", "event")
-
-            # t1.AddFriend(t2)
-
-            # # Write merged tree
-            # fout = ROOT.TFile.Open(f"{file}_with_scores.root", "RECREATE")
-            # t_merged = t1.CloneTree(-1)
-            # t_merged.Write("Events")
-            # fout.Close()
-
-            # # Close everything BEFORE deleting
-            # friend_file.Close()
-            # fin.Close()
-
-            # os.remove(root_path)
-
+            end = time.time()
+            # print(f"ROOT file merging time: {end - start:.3f}")
             print(f"Merged score and event root files to {root_path}")
             
-            # os.remove(root_path_sc_only)
+            os.remove(root_path_sc_only)
 
             print(f"Deleted temporary file {root_path_sc_only}")
             

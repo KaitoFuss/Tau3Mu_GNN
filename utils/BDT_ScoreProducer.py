@@ -111,7 +111,7 @@ branches = features + [
     'Slimmed_TauTo3Mu_fitted_mass',
     'TauPlusMET_Puppi_phi',
     'Slimmed_TauTo3Mu_fitted_phi',
-    'GNN_Score',
+    'GNN_score',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPV',
     'Slimmed_TauTo3Mu_iso_ptPhotons',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPU',
@@ -149,7 +149,7 @@ for i in range(len(backgrounds)):
     for events in uproot.iterate(f"{backgrounds[i]}:Events", expressions=branches, library="ak", step_size="100 MB"):
         # bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) >= 0.00
         # events = events[ak.any(bkg_mask, axis=1)]
-        score_mask = events["GNN_Score"] != -1
+        score_mask = events["GNN_score"] != -1
         events_masked = events[score_mask]
 
         new_fields = {}
@@ -259,7 +259,7 @@ elif tau_channel == "W":
 
     bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
 
-    features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
+    # features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
 
     abs_iso_bkg = bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., bkg["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
     bkg['relative_iso'] = abs_iso_bkg / bkg["Slimmed_TauTo3Mu_fitted_pt"]
@@ -286,7 +286,7 @@ output = {}
 for mode in ["GNN", "ISO"]:
     print(f"now mode {mode}")
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
         classifiers = classifiers_gnn
     elif mode == "ISO":
         if tau_channel == "HF":
