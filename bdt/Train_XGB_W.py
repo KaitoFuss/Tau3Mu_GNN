@@ -79,7 +79,7 @@ labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = 
 # labels['mu3ID'                                                            ] = '$\mu_3$ ID'
 # labels['tauEta'                                                           ] = '$|\eta_{\\tau}|$'
 # labels['relative_iso'                                                     ] = '$\\tau$ iso'
-labels['GNN_Score'                                                          ] = 'GNN Score'
+labels['GNN_score'                                                          ] = 'GNN Score'
 labels['bdt_GNN'                                                            ] = 'BDT'
 labels['Slimmed_TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
 
@@ -161,7 +161,7 @@ branches = features + [
     'Slimmed_TauTo3Mu_fitted_mass',
     'TauPlusMET_Puppi_phi',
     'Slimmed_TauTo3Mu_fitted_phi',
-    'GNN_Score',
+    'GNN_score',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPV',
     'Slimmed_TauTo3Mu_iso_ptPhotons',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPU',
@@ -188,7 +188,8 @@ all_chunks_sig = []
 
 print("Going to load signal events")
 for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-    score_mask = events["GNN_Score"] != -1
+    print("Signal fraction != -1:", ak.mean(events["GNN_score"] != -1))
+    score_mask = events["GNN_score"] != -1
     events = events[score_mask]
     new_fields = {}
     for branch in events.fields:
@@ -203,14 +204,14 @@ sig = ak.concatenate(all_chunks_sig)
 # print(ak.type(sig))
 sig = ak.to_dataframe(sig)
 print(sig.shape)
-print(sig["GNN_Score"])
+print(sig["GNN_score"])
 
 all_chunks_bkg = []
 print("Going to load bkg events")
 for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
     bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
     events = events[ak.any(bkg_mask, axis=1)]
-    score_mask = events["GNN_Score"] != -1
+    score_mask = events["GNN_score"] != -1
     events_masked = events[score_mask]
 
     new_fields = {}
@@ -228,10 +229,10 @@ bkg = ak.to_dataframe(bkg)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()
 print(bkg.shape)
-print(bkg["GNN_Score"])
+print(bkg["GNN_score"])
 
 sig = sig.sample(n=min(100_000, len(sig)), random_state=42).reset_index(drop=True)
-bkg = bkg.sample(n=min(1_000_000, len(bkg)), random_state=42).reset_index(drop=True)
+bkg = bkg.sample(n=min(100_000, len(bkg)), random_state=42).reset_index(drop=True)
 
 print(sig.shape)
 print(bkg.shape)
@@ -293,7 +294,7 @@ bkg['target'] = np.zeros(bkg.shape[0], dtype=int)
 
 # further weight adjustment
 sig['weight'] = 1.
-bkg['weight'] = 0.1
+bkg['weight'] = 1.
 
 def deltaphi(phi1, phi2):
     delta_phi_internal = np.abs(phi1 - phi2)
@@ -373,7 +374,7 @@ both_models = defaultdict(OrderedDict)
 for mode in modes.keys():
     print(f"starting with training with {mode} score")
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['relative_iso']
     
@@ -486,7 +487,7 @@ for mode in modes.keys():
     classifiers = both_models[mode]
 
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['relative_iso']
 
@@ -911,7 +912,7 @@ plt.clf()
 ##########################################################################################
 for mode in modes.keys():
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['relative_iso']
 
@@ -983,7 +984,7 @@ for mode in modes.keys():
 ##########################################################################################
 for mode in modes.keys():
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['relative_iso']
 

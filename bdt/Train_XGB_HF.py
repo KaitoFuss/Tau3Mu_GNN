@@ -73,7 +73,7 @@ labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'                                 
 labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'                                                                                   ] = '$\\mu_2$ $isGlobal$'
 labels['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'                                                                                   ] = '$\\mu_3$ $isGlobal$'
 labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'                                                                ] = '$\\chi^2_{\\tau}$'
-labels['GNN_Score'                                                                                                                ] = 'GNN Score'                                                                                  
+labels['GNN_score'                                                                                                                ] = 'GNN Score'                                                                                  
 # labels['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = 'max(tkRelIsos)'
 labels['bdt_GNN'                                                                                                                  ] = 'BDT'
 labels['Slimmed_TauTo3Mu_fitted_pt'                                                                                               ] = '$\\tau$ $p_{T}$'
@@ -208,13 +208,14 @@ branches = features + [
     'Slimmed_TauTo3Mu_fitted_mass',
     'TauPlusMET_Puppi_phi',
     'Slimmed_TauTo3Mu_fitted_phi',
-    'GNN_Score',
+    'GNN_score',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPV',
     'Slimmed_TauTo3Mu_iso_ptPhotons',
     'Slimmed_TauTo3Mu_iso_ptChargedFromPU',
     'Muon_tkRelIso[Slimmed_TauTo3Mu_mu1_idx]',
     'Muon_tkRelIso[Slimmed_TauTo3Mu_mu2_idx]',
     'Muon_tkRelIso[Slimmed_TauTo3Mu_mu3_idx]',
+    'Slimmed_TauTo3Mu_fitted_pt',
     # 'mu1_refit_muonid_soft', 'mu1_refit_muonid_loose', 'mu1_refit_muonid_medium', 'mu1_refit_muonid_tight',
     # 'mu2_refit_muonid_soft', 'mu2_refit_muonid_loose', 'mu2_refit_muonid_medium', 'mu2_refit_muonid_tight',
     # 'mu3_refit_muonid_soft', 'mu3_refit_muonid_loose', 'mu3_refit_muonid_medium', 'mu3_refit_muonid_tight',
@@ -238,8 +239,8 @@ all_chunks_sig = []
 
 print("Going to load signal events")
 for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-    print("Signal fraction != -1:", ak.mean(events["GNN_Score"] != -1))
-    score_mask = events["GNN_Score"] != -1
+    print("Signal fraction != -1:", ak.mean(events["GNN_score"] != -1))
+    score_mask = events["GNN_score"] != -1
     events = events[score_mask]
     new_fields = {}
     for branch in events.fields:
@@ -254,7 +255,7 @@ sig = ak.concatenate(all_chunks_sig)
 # print(ak.type(sig))
 sig = ak.to_dataframe(sig)
 print(sig.shape)
-print(sig["GNN_Score"])
+print(sig["GNN_score"])
 
 all_chunks_bkg = []
 print("Going to load bkg events")
@@ -262,7 +263,7 @@ for i in range(len(backgrounds)):
     for events in uproot.iterate(f"{backgrounds[i]}:Events", expressions=branches, library="ak", step_size="100 MB"):
         bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
         events = events[ak.any(bkg_mask, axis=1)]
-        score_mask = events["GNN_Score"] != -1
+        score_mask = events["GNN_score"] != -1
         events_masked = events[score_mask]
 
         new_fields = {}
@@ -280,10 +281,10 @@ bkg = ak.to_dataframe(bkg)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()
 print(bkg.shape)
-print(bkg["GNN_Score"])
+print(bkg["GNN_score"])
 
 sig = sig.sample(n=min(100_000, len(sig)), random_state=42).reset_index(drop=True)
-bkg = bkg.sample(n=min(1_000_000, len(bkg)), random_state=42).reset_index(drop=True)
+bkg = bkg.sample(n=min(100_000, len(bkg)), random_state=42).reset_index(drop=True)
 
 
 print(sig.shape)
@@ -348,7 +349,7 @@ bkg['target'] = np.zeros(bkg.shape[0], dtype=int)
 
 # further weight adjustment
 sig['weight'] = 1.
-bkg['weight'] = 0.1
+bkg['weight'] = 1.
 
 def deltaphi(phi1, phi2):
     delta_phi_internal = np.abs(phi1 - phi2)
@@ -495,7 +496,7 @@ both_models = defaultdict(OrderedDict)
 for mode in modes.keys():
     print(f"starting with training with {mode} score")
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
     
@@ -515,9 +516,9 @@ for mode in modes.keys():
     for i, (train_index, test_index) in enumerate(skf.split(train[bdt_features].values, train['target'].values)):
         # if i>1: break
         print('[Fold %d/%d]' % (i + 1, kfold))    
-        sample_weight = train.loc[train.id.isin(train_index), 'weight']
-        X_train, X_valid = train[train.id.isin(train_index)][bdt_features], train[train.id.isin(test_index)][bdt_features]
-        y_train, y_valid = train[train.id.isin(train_index)]['target'], train[train.id.isin(test_index)]['target']
+        sample_weight = train.iloc[train_index]['weight']
+        X_train, X_valid = train.iloc[train_index][bdt_features], train.iloc[test_index][bdt_features]
+        y_train, y_valid = train.iloc[train_index]['target'], train.iloc[test_index]['target']
 
         
         # Train the model! We pass in a max of 1,600 rounds (with early stopping after 70)
@@ -529,7 +530,7 @@ for mode in modes.keys():
             silent           = False,
             subsample        = 0.6,
             colsample_bytree = 0.7,
-            min_child_weight = 1E-6 * np.sum(train[train.id.isin(train_index)].weight),
+            min_child_weight = 1E-6 * np.sum(train.iloc[train_index].weight),
             gamma            = 10, # 20
             seed             = 1986,
             # scale_pos_weight = 0.5,
@@ -609,7 +610,7 @@ for mode in modes.keys():
     classifiers = both_models[mode]
 
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
 
@@ -1035,7 +1036,7 @@ plt.clf()
 ##########################################################################################
 for mode in modes.keys():
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
 
@@ -1107,7 +1108,7 @@ for mode in modes.keys():
 ##########################################################################################
 for mode in modes.keys():
     if mode == "GNN":
-        bdt_features = features + ['GNN_Score']
+        bdt_features = features + ['GNN_score']
     elif mode == "ISO":
         bdt_features = features + ['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)']
 
@@ -1115,10 +1116,9 @@ for mode in modes.keys():
 #####   CORRELATION MATRIX SIGNAL
 ##########################################################################################
     # Compute the correlation matrix for the signal
-    corr = sig[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass']].corr()
+    corr = sig[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_pt', 'Slimmed_TauTo3Mu_fitted_mass']].corr()
     # Set up the matplotlib figure
     f, ax = plt.subplots(figsize=(11, 9))
-
     # Generate a custom diverging colormap
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
@@ -1144,7 +1144,7 @@ for mode in modes.keys():
     print(bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass'])
     print(modes[mode].values())
 
-    corr = bkg[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass']].corr()
+    corr = bkg[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_pt', 'Slimmed_TauTo3Mu_fitted_mass']].corr()
 
     # Set up the matplotlib figure
     f, ax = plt.subplots(figsize=(11, 9))
