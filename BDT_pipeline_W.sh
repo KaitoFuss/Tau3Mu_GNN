@@ -2,7 +2,7 @@
 # 
 #SBATCH -p standard
 #SBATCH --account=t3
-#SBATCH --job-name=sc_W_bkg
+#SBATCH --job-name=BDT_W
 #SBATCH --mem=32G
 #SBATCH -o /work/kfuss/SVJ_GNN/logs/%x-%j.out    # replace default slurm-SLURM_JOB_ID.out; %x is a job-name (or script name when there is no job-name)
 #SBATCH -e /work/kfuss/SVJ_GNN/logs/%x-%j.err    # replace default slurm-SLURM_JOB_ID.err 
@@ -13,7 +13,7 @@ CHANNEL=W
 GNN_MODE=BDT
 PLOT_MODE=tau_hist_after
 
-python bdt/Train_XGB_HF.py --model "$MODEL"
+python bdt/Train_XGB_W.py --model "$MODEL"
 
 python utils/BDT_ScoreProducer.py --model "$MODEL" \
     --classifier_gnn /work/kfuss/SVJ_GNN/output/"$MODEL"/GNN_classifiers_24feb2026_v0.pck \

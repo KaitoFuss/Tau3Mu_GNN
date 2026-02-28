@@ -2,7 +2,7 @@
 # 
 #SBATCH -p standard
 #SBATCH --account=t3
-#SBATCH --job-name=sc_W_bkg
+#SBATCH --job-name=BDT_HF
 #SBATCH --mem=32G
 #SBATCH -o /work/kfuss/SVJ_GNN/logs/%x-%j.out    # replace default slurm-SLURM_JOB_ID.out; %x is a job-name (or script name when there is no job-name)
 #SBATCH -e /work/kfuss/SVJ_GNN/logs/%x-%j.err    # replace default slurm-SLURM_JOB_ID.err 

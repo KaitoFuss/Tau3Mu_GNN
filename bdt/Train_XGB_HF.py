@@ -1141,9 +1141,6 @@ for mode in modes.keys():
 #####   CORRELATION MATRIX BACKGROUND
 ##########################################################################################
     # Compute the correlation matrix for the background
-    print(bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass'])
-    print(modes[mode].values())
-
     corr = bkg[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_pt', 'Slimmed_TauTo3Mu_fitted_mass']].corr()
 
     # Set up the matplotlib figure

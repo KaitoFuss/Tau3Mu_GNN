@@ -137,17 +137,17 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, threshol
         first_ROC = False
 
     if bdt_data_loc is not None:
-        bdt_data = np.load(bdt_data_loc, allow_pickle=True)
-
-        thresh_benchmark = bdt_data["threshold_ISO"]
-        fpr_bench = bdt_data["fpr_ISO"]
-        tpr_bench = bdt_data["tpr_ISO"]
+        bdt_data = np.load(bdt_data_loc + '_roc_log24feb2026_v0.pck', allow_pickle=True)
         thresh_bdt = bdt_data["threshold_GNN"]
         fpr_bdt = bdt_data["fpr_GNN"]
         tpr_bdt = bdt_data["tpr_GNN"]
 
-        bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"AUC: {bdt_data['auc_GNN']:.3f} $\lambda$ = {lambdas[-1]}, BDT GNN")
-        bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"AUC: {bdt_data['auc_ISO']:.3f}, ISO")
+        thresh_benchmark = bdt_data["threshold_ISO"]
+        fpr_bench = bdt_data["fpr_ISO"]
+        tpr_bench = bdt_data["tpr_ISO"]
+
+        bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT GNN $\lambda$ = {lambdas[-1]}, AUC: {bdt_data['auc_GNN']:.3f}")
+        bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {bdt_data['auc_ISO']:.3f}")
 
         bdt_color = bdt_line.get_color()
         bench_color = bench_line.get_color()
@@ -192,7 +192,7 @@ def tau_score_hist(root, pickl_name, mode, title, tau_channel):
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
         plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"GNN Score > {cut}")
-    plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts:\n {tau_channel} channel {mode}, {title}") 
+    plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of GNN score:\n {tau_channel} channel {mode}, {title}") 
     xarray = np.linspace(1.40, 2.50, 1000)
     plt.plot(xarray, 100*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)))
     plt.xlabel(r"$m_{\tau,\mathrm{fit}}$ [GeV]")
@@ -217,7 +217,7 @@ def tau_score_hist_after(root, pickl_name, mode, title, tau_channel):
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
         plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"BDT Score > {cut}")
-    plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts:\n {tau_channel} channel {mode}, {title}") 
+    plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of BDT score:\n {tau_channel} channel {mode}, {title}") 
     xarray = np.linspace(1.40, 2.50, 1000)
     plt.plot(xarray, 100*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)))
     plt.xlabel(r"$m_{\tau,\mathrm{fit}}$ [GeV]")
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     if plot_mode == "tau_hist_after":
         tau_score_hist(output_path, "raw_scores_and_tau_mass_background.npz", gnn_mode, title, tau_channel)
 
-    elif plot_mode == "ROC_comp_prelim":
+    elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
         thresholds = [0.5, 0.85, 0.95, 0.99, 0.999]
         plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, thresholds, tau_channel, sculpt_degree, lambdas)
