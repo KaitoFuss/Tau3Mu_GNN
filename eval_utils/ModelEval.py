@@ -206,7 +206,7 @@ def tau_score_hist(root, pickl_name, mode, title, tau_channel):
     plt.close()
 
 def tau_score_hist_after(root, pickl_name, mode, title, tau_channel):
-    data = np.load(root + pickl_name, allow_pickle=True)
+    data = load_pkl(root, pickl_name)[0]
     scores = data["GNN_score_bkg"]
     f_tau_mass = data["tau_mass"]
     print("data shape is", len(f_tau_mass))
@@ -227,7 +227,7 @@ def tau_score_hist_after(root, pickl_name, mode, title, tau_channel):
     plt.legend()
     # plt.yscale('log')
     print(f"{mode}_after_tau_hist.png has been saved.")
-    plt.savefig(os.path.join(root, f'{mode}_tau_hist.png'), dpi=400)
+    plt.savefig(os.path.join(root, f'{mode}_after__tau_hist.png'), dpi=400)
     plt.close()
 
 
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     if plot_mode == "tau_hist":
         tau_score_hist(output_path, "raw_scores_and_tau_mass_background.npz", gnn_mode, title, tau_channel)
     if plot_mode == "tau_hist_after":
-        tau_score_hist(output_path, "raw_scores_and_tau_mass_background.npz", gnn_mode, title, tau_channel)
+        tau_score_hist_after(output_path, "tau_score_corr.pkl", gnn_mode, title, tau_channel)
 
     elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
