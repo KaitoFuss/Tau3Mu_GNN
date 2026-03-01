@@ -339,6 +339,7 @@ class ScoreProducer:
         device=None,
         normalizer=None,
         output_folder=None,
+        storage_folder=None,
     ):
 
         self.root = root
@@ -368,6 +369,7 @@ class ScoreProducer:
         self.device = device
         self.normalizer = normalizer
         self.output_folder = output_folder
+        self.storage_folder = storage_folder
         self.edge_connection_methods = {
             "fully": self.connect_fully,
             "knn": self.connect_knn,
@@ -903,8 +905,8 @@ class ScoreProducer:
 
             base_name = os.path.basename(file)   # only filename not full path      
             name_without_ext = os.path.splitext(base_name)[0] # drop .root
-            root_path_sc_only = os.path.join(self.output_folder, f"{name_without_ext}_with_scores_only.root")
-            root_path = os.path.join(self.output_folder, f"{name_without_ext}_with_scores.root")
+            root_path_sc_only = os.path.join(self.storage_folder, f"{name_without_ext}_with_scores_only.root")
+            root_path = os.path.join(self.storage_folder, f"{name_without_ext}_with_scores.root")
 
             runs = []
             lumis = []
