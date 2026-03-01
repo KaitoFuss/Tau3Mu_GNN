@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument('--tau_channel', type=str, required=True, help="Tau production channel")
     parser.add_argument('--gnn_mode', type=str, default="BDT", help="GNN Mode")
     parser.add_argument('--model', type=str, default="skimmed_dzd0_cone_size_0.5_knn_10", help="Which model to train/ which graph construction was used")
+    parser.add_argument('--storage_folder', type=str, required=True, help="Output to store the root files with the scores")
 
     args = parser.parse_args()
 
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     tau_channel = args.tau_channel
     gnn_mode = args.gnn_mode
     model_type = args.model
+    storage_folder = args.storage_folder
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -72,5 +74,6 @@ if __name__ == "__main__":
                 model=model,
                 device=device,
                 normalizer=normalizer,
-                output_folder=output_folder
+                output_folder=output_folder,
+                storage_folder=storage_folder
             )
