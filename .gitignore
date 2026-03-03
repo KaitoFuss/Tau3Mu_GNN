@@ -177,3 +177,9 @@ output/
 logs/
 
 .zshrc
+
+# Ignore model eval script
+src/tau3mu_gnn/model_eval/signal_histo.py
+
+# Ignore the entire tests folder
+tests/
