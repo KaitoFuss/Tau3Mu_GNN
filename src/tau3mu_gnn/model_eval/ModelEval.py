@@ -101,7 +101,7 @@ def plot_roc_bdt(data, root_dir, thresholds_bench, title, tau_channel):
     plt.close()
 
 
-def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, thresholds_bench, tau_channel, sculpt_degree, lambdas):
+def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas):
 
     ax = plt.gca()
     first_ROC = True
@@ -118,10 +118,10 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, threshol
         line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{gnn_data['gnn_mode']} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
         curve_color = line.get_color()
 
-        for i, threshold in enumerate(thresholds_bench):
+        for i, fpr_cut in enumerate(fpr_targets):
             # GNN model point
             if first_ROC:
-                thresh_idx_model = min(range(len(thresh_model)), key=lambda j: abs(thresh_model[j] - threshold))
+                thresh_idx_model = np.argmin(np.abs(fpr - fpr_cut))
                 x_model, y_model = fpr[thresh_idx_model], tpr[thresh_idx_model]
                 tpr_targets.append(y_model)
 
@@ -132,7 +132,7 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, threshol
                 x_model, y_model = fpr[thresh_idx_model], tpr[thresh_idx_model]
             
             plt.scatter(x_model, y_model, s=20, color=curve_color)
-            plt.text(x_model * 1.1, y_model, f"{thresh_model[thresh_idx_model]:.3f}", fontsize=6, color=curve_color)
+            plt.text(x_model * 1.1, y_model, f"{thresh_model[thresh_idx_model]:.5f}", fontsize=6, color=curve_color)
         
         first_ROC = False
 
@@ -152,20 +152,20 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, threshol
         bdt_color = bdt_line.get_color()
         bench_color = bench_line.get_color()
 
-        for i, threshold in enumerate(thresholds_bench):
+        for i, _ in enumerate(fpr_targets):
             tpr_target = tpr_targets[i]
 
             thresh_idx_model = min(range(len(tpr_bdt)), key=lambda j: abs(tpr_bdt[j] - tpr_target))
             x_model, y_model = fpr_bdt[thresh_idx_model], tpr_bdt[thresh_idx_model]
                 
             plt.scatter(x_model, y_model, s=20, color=bdt_color)
-            plt.text(x_model * 1.1, y_model, f"{thresh_bdt[thresh_idx_model]:.3f}", fontsize=6, color=bdt_color)
+            plt.text(x_model * 1.1, y_model, f"{thresh_bdt[thresh_idx_model]:.5f}", fontsize=6, color=bdt_color)
 
             thresh_idx_model = min(range(len(tpr_bench)), key=lambda j: abs(tpr_bench[j] - tpr_target))
             x_model, y_model = fpr_bench[thresh_idx_model], tpr_bench[thresh_idx_model]
                 
             plt.scatter(x_model, y_model, s=20, color=bench_color)
-            plt.text(x_model * 1.1, y_model, f"{thresh_benchmark[thresh_idx_model]:.3f}", fontsize=6, color=bench_color)
+            plt.text(x_model * 1.1, y_model, f"{thresh_benchmark[thresh_idx_model]:.5f}", fontsize=6, color=bench_color)
 
     plt.grid()
     plt.legend(fontsize=7)
@@ -232,7 +232,7 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
         if use_fpr:
             counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.5f}, FPR: {fpr_cuts[i]:.0e}", histtype="step")
         else:
-            counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.2f}")
+            counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.2f}", histtype="step")
         max_bin_heights.append(counts.max())
     xarray = np.linspace(1.40, 2.50, 1000)
     ampl = sorted(max_bin_heights, reverse=True)[1]
@@ -296,5 +296,5 @@ if __name__ == "__main__":
 
     elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
-        thresholds = [0.5, 0.85, 0.95, 0.99, 0.999]
-        plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, thresholds, tau_channel, sculpt_degree, lambdas)
+        fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
+        plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas)
