@@ -160,13 +160,15 @@ for i in range(len(backgrounds)):
                 new_fields[branch] = events_masked[branch]
 
         events_stripped = ak.zip(new_fields)
-        all_chunks_bkg.append(events_stripped)
-bkg = ak.concatenate(all_chunks_bkg)
+        df_chunk = ak.to_dataframe(events_masked)
+        all_chunks_bkg.append(df_chunk)
+
+bkg = pd.concat(all_chunks_bkg, ignore_index=True)
 # print(ak.type(bkg))
-bkg = ak.to_dataframe(bkg)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()
 print(bkg.shape)
+print(bkg.columns)
 
 # sig = sig.sample(n=min(100_000, len(sig)), random_state=42).reset_index(drop=True)
 # bkg = bkg.sample(n=min(100_000, len(bkg)), random_state=42).reset_index(drop=True)
@@ -257,7 +259,7 @@ elif tau_channel == "W":
 
     features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
 
-    bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
+    # bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
 
     # features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
 

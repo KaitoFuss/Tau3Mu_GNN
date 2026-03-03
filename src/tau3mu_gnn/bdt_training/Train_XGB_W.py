@@ -210,23 +210,23 @@ all_chunks_bkg = []
 print("Going to load bkg events")
 for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
     bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
-    events = events[ak.any(bkg_mask, axis=1)]
+    events = events[ak.all(bkg_mask, axis=1)]
     score_mask = events["GNN_score"] != -1
     events_masked = events[score_mask]
 
     new_fields = {}
-    for branch in events.fields:
-        arr = events[branch]
+    for branch in events_masked.fields:
+        arr = events_masked[branch]
         if arr.ndim > 1 and ak.any(ak.num(arr, axis=1) > 1):
             new_fields[branch] = ak.firsts(arr)
         else:
             new_fields[branch] = arr
 
     events_masked = ak.zip(new_fields)
-    all_chunks_bkg.append(events_masked)
+    df_chunk = ak.to_dataframe(events_masked)
+    all_chunks_bkg.append(df_chunk)
 
-bkg = ak.concatenate(all_chunks_bkg)
-bkg = ak.to_dataframe(bkg)
+bkg = pd.concat(all_chunks_bkg, ignore_index=True)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()
 print(bkg.shape)
@@ -309,10 +309,10 @@ bkg['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(bk
 
 features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
 
-sig['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = sig['Slimmed_TauTo3Mu_fitted_pt'] / sig['TauPlusMET_PuppiMET_pt']
-bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
+# sig['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = sig['Slimmed_TauTo3Mu_fitted_pt'] / sig['TauPlusMET_PuppiMET_pt']
+# bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
 
-features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
+# features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
 
 abs_iso_sig = sig["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * sig["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
 sig['relative_iso'] = abs_iso_sig / sig["Slimmed_TauTo3Mu_fitted_pt"]
@@ -395,9 +395,9 @@ for mode in modes.keys():
     for i, (train_index, test_index) in enumerate(skf.split(train[bdt_features].values, train['target'].values)):
         # if i>1: break
         print('[Fold %d/%d]' % (i + 1, kfold))    
-        sample_weight = train.loc[train.id.isin(train_index), 'weight']
-        X_train, X_valid = train[train.id.isin(train_index)][bdt_features], train[train.id.isin(test_index)][bdt_features]
-        y_train, y_valid = train[train.id.isin(train_index)]['target'], train[train.id.isin(test_index)]['target']
+        sample_weight = train.iloc[train_index]['weight']
+        X_train, X_valid = train.iloc[train_index][bdt_features], train.iloc[test_index][bdt_features]
+        y_train, y_valid = train.iloc[train_index]['target'], train.iloc[test_index]['target']
         
         # Train the model! We pass in a max of 1,600 rounds (with early stopping after 70)
         # and the custom metric (maximize=True tells xgb that higher metric is better)
@@ -408,7 +408,7 @@ for mode in modes.keys():
             verbosity        = 1,
             subsample        = 0.6,
             colsample_bytree = 0.7,
-            min_child_weight = 1E-6 * np.sum(train[train.id.isin(train_index)].weight),
+            min_child_weight = 1E-6 * np.sum(train.iloc[train_index].weight),
             gamma            = 10, # 20
             seed             = 1986,
             # scale_pos_weight = 0.5,
@@ -530,8 +530,6 @@ plt.xlim([10**-5, 1.0])
 plt.ylim([0.0, 1.0])
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-
-plt.xscale('log')
 
 fpr_GNN, tpr_GNN, wps_GNN = roc_curve(test.target, test.bdt_GNN, sample_weight=test.weight)
 auc_GNN = roc_auc_score(test.target, test.bdt_GNN, sample_weight=test.weight)
