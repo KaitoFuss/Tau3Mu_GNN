@@ -1,6 +1,6 @@
 from sklearn.metrics import roc_curve, roc_auc_score
 import numpy as np
-from data_loading.graphDataLoader import GraphDataLoader
+from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
@@ -8,10 +8,10 @@ import re
 import pickle
 import os
 import torch
-import utils.TrainingUtils as utrain
+import tau3mu_gnn.gnn_training.TrainingUtils as utrain
 import gc
 
-from utils.TrainingUtils import output_directory
+from tau3mu_gnn.gnn_training.TrainingUtils import output_directory
 
 def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, disco_reg, window_to_load= [0.7,1]):
     """Evaluate the model on each signal dataset independently

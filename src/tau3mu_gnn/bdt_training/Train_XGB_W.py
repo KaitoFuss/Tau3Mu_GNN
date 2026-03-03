@@ -224,7 +224,8 @@ for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, l
     events_stripped = ak.zip(new_fields)
     all_chunks_bkg.append(events_stripped)
 bkg = ak.concatenate(all_chunks_bkg)
-# print(ak.type(bkg))
+print(ak.type(bkg))
+print(bkg)
 bkg = ak.to_dataframe(bkg)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()

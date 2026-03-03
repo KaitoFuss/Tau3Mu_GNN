@@ -1,7 +1,7 @@
 from torch_geometric.utils import to_networkx
 import matplotlib.pyplot as plt
 import networkx as nx
-from ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 import numpy as np
 import matplotlib.patches as mpatches
 

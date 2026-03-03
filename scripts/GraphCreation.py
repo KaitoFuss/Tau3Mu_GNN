@@ -1,4 +1,4 @@
-from utils.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 import logging
 import argparse
 import os

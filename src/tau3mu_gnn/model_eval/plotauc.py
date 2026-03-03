@@ -1,4 +1,4 @@
-import utils.EvaluationUtils as eval
+import tau3mu_gnn.gnn_training.EvaluationUtils as eval
 import pickle
 
 pkl_path = "output/puppi_optunabest_newdata_vs35/eval_ROC_AUC.pkl"

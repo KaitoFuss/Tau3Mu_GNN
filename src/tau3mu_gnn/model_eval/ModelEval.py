@@ -227,7 +227,7 @@ def tau_score_hist_after(root, pickl_name, mode, title, tau_channel):
     plt.legend()
     # plt.yscale('log')
     print(f"{mode}_after_tau_hist.png has been saved.")
-    plt.savefig(os.path.join(root, f'{mode}_after__tau_hist.png'), dpi=400)
+    plt.savefig(os.path.join(root, f'{mode}_after_tau_hist.png'), dpi=400)
     plt.close()
 
 

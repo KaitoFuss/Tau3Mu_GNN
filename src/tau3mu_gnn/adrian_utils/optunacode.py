@@ -3,8 +3,8 @@ import optuna
 
 from comet_ml import Experiment
 
-from utils.NormalizerUtils import OnTheFlyNormalizer
-from data_loading.graphDataLoader import GraphDataLoader
+from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
+from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
 from architectures.TauMuNet import TauMuNet
 from tqdm import tqdm 
 
@@ -17,11 +17,11 @@ import numpy as np
 import dcor
 import gc
 
-import utils.EvaluationUtils as ueval
-import utils.TrainingUtils as utrain
+import tau3mu_gnn.gnn_training.EvaluationUtils as ueval
+import tau3mu_gnn.gnn_training.TrainingUtils as utrain
 
 import linecache
-from utils.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 import tracemalloc
 
 # import mdmm

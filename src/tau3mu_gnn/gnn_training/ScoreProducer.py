@@ -8,8 +8,8 @@ from tqdm import tqdm
 import vector
 import logging
 from torch_geometric.utils import negative_sampling
-from utils.LundTreeUtils import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
-import utils.AwkwardArrayUtils as akUtl
+from tau3mu_gnn.utils.LundTreeUtils import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
+import tau3mu_gnn.utils.AwkwardArrayUtils as akUtl
 import matplotlib.pyplot as plt
 import awkward as ak
 import ROOT

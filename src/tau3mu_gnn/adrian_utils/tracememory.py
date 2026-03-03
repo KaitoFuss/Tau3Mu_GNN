@@ -1,6 +1,6 @@
 import linecache
 import os
-from utils.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 import tracemalloc
 
 def display_top(snapshot, key_type='lineno', limit=3):

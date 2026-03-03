@@ -1,13 +1,13 @@
 
-from utils.ScoreProducer import ScoreProducer
+from tau3mu_gnn.gnn_training.ScoreProducer import ScoreProducer
 import torch
 import pickle
-from utils.PlotUtils import plot_histogram_root
+from tau3mu_gnn.utils.PlotUtils import plot_histogram_root
 import os
 import numpy as np
-from eval_utils.ModelEval import CPU_Unpickler, load_pkl
-from architectures.TauMuNet import TauMuNet
-from utils.TrainingUtils import get_model_parameters
+from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
+from tau3mu_gnn.architectures.TauMuNet import TauMuNet
+from tau3mu_gnn.gnn_training.TrainingUtils import get_model_parameters
 from Train_TauMuNet import get_arch_configs
 
 import argparse

@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from eval_utils.ModelEval import CPU_Unpickler, load_pkl
+from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
 
 
 def extract_data_from_pickled_dict(pickled_data):

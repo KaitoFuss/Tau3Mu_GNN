@@ -1,7 +1,7 @@
-from utils.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 from torch_geometric.loader import DataLoader
 from typing import Optional, List
-from utils.NormalizerUtils import OnTheFlyNormalizer
+from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
 from torch.utils.data import ConcatDataset, WeightedRandomSampler
 import numpy as np
 import os
