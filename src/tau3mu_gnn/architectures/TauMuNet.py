@@ -140,3 +140,87 @@ class TauMuNet(nn.Module):
         x = self.fc(x)
         x = torch.sigmoid(x)
         return x
+    
+def get_arch_configs():
+    arch_configs = {
+        "arch1": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch2": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch3": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch4": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch5": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch6": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch7": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch8": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "arch_optuna" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(51, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "final_layer1" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "final_layer2" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(512, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "final_layer3" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+        "final_layer4" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(512, 0.8), (256, 0.8), (32, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
+    }
+
+    return arch_configs
