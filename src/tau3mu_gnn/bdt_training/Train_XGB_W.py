@@ -215,17 +215,17 @@ for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, l
     events_masked = events[score_mask]
 
     new_fields = {}
-    for branch in events_masked.fields:
-        if events_masked[branch].ndim > 1 and ak.any(ak.num(events_masked[branch], axis=1) > 1):
-            new_fields[branch] = ak.firsts(events_masked[branch])
+    for branch in events.fields:
+        arr = events[branch]
+        if arr.ndim > 1 and ak.any(ak.num(arr, axis=1) > 1):
+            new_fields[branch] = ak.firsts(arr)
         else:
-            new_fields[branch] = events_masked[branch]
+            new_fields[branch] = arr
 
-    events_stripped = ak.zip(new_fields)
-    all_chunks_bkg.append(events_stripped)
+    events_masked = ak.zip(new_fields)
+    all_chunks_bkg.append(events_masked)
+
 bkg = ak.concatenate(all_chunks_bkg)
-print(ak.type(bkg))
-print(bkg)
 bkg = ak.to_dataframe(bkg)
 nan_rows = bkg[bkg.isna().any(axis=1)]
 bkg = bkg.dropna()
@@ -405,7 +405,7 @@ for mode in modes.keys():
             max_depth        = 8,
             learning_rate    = 0.005, # 0.01
             n_estimators     = 1000, # 400
-            silent           = False,
+            verbosity        = 1,
             subsample        = 0.6,
             colsample_bytree = 0.7,
             min_child_weight = 1E-6 * np.sum(train[train.id.isin(train_index)].weight),
