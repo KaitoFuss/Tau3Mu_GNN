@@ -221,6 +221,12 @@ def get_arch_configs():
             "use_fusion": True,
             "dropout": 0.2633831214702671,
         },
+        "final_layer5" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(2056, 0.8), (512, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+        },
     }
 
     return arch_configs
