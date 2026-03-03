@@ -180,55 +180,89 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, threshol
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
-def tau_score_hist(root, pickl_name, mode, title, tau_channel):
-    data = np.load(root + pickl_name, allow_pickle=True)
-    scores = data["scores"]
-    f_tau_mass = data["tau_mass"]
-    print("data shape is", len(f_tau_mass))
+def tau_score_hist(root, mode, title, tau_channel, plot_mode):
+    use_fpr = plot_mode.endswith("fpr")
 
-    score_cuts = [0.95, 0.97, 0.98, 0.99]
+    if plot_mode.startswith("tau_hist") and not plot_mode.startswith("tau_hist_after"):
+        model = "GNN"
+
+        data = np.load(root + "raw_scores_and_tau_mass_background.npz", allow_pickle=True)
+        scores = data["scores"]
+        f_tau_mass = data["tau_mass"]
+
+        if use_fpr:
+            gnn_data = load_pkl(root, "eval_ROC_AUC.pkl")
+            gnn_data = next(iter(gnn_data[0].values()))
+            
+            fpr = gnn_data["fpr"]
+            tpr = gnn_data["tpr"]
+            thresh_model = gnn_data["threshold"]
+
+    elif plot_mode.startswith("tau_hist_after"):
+        model = "BDT"
+
+        data = load_pkl(root, "tau_score_corr.pkl")[0]
+        scores = data["GNN_score_bkg"]
+        f_tau_mass = data["tau_mass"]
+
+        if use_fpr:
+            bdt_data = np.load(root + '_roc_log24feb2026_v0.pck', allow_pickle=True)
+            thresh_model = bdt_data["threshold_GNN"]
+            fpr = bdt_data["fpr_GNN"]
+            tpr = bdt_data["tpr_GNN"]
+    else:
+        raise ValueError(f"Unknown plot_mode: {plot_mode}")
+
+
+    print("data shape is", len(f_tau_mass))
+    if plot_mode.endswith("fpr"):
+        fpr_cuts = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2]
+        score_cuts = []
+        for fpr_cut in fpr_cuts:
+            cut = np.interp(fpr_cut, fpr, thresh_model)
+            score_cuts.append(cut)
+    else:
+        score_cuts = [0.95, 0.97, 0.98, 0.99]
+
     bins = np.linspace(1.40, 2.50, 110)
-    for cut in score_cuts:
+    max_bin_heights = []
+    for i, cut in enumerate(score_cuts):
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
-        plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"GNN Score > {cut}")
-    plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of GNN score:\n {tau_channel} channel {mode}, {title}") 
+        if use_fpr:
+            counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.5f}, FPR: {fpr_cuts[i]:.0e}", histtype="step")
+        else:
+            counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.2f}")
+        max_bin_heights.append(counts.max())
     xarray = np.linspace(1.40, 2.50, 1000)
-    plt.plot(xarray, 100*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)))
+    ampl = sorted(max_bin_heights, reverse=True)[1]
+    plt.plot(xarray, ampl*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)), label="Signal Gaussian (20 MeV width)")
     plt.xlabel(r"$m_{\tau,\mathrm{fit}}$ [GeV]")
     plt.ylabel("Counts")
     plt.xlim(1.40, 2.50)
     plt.grid()
     plt.legend()
     # plt.yscale('log')
-    print(f"{mode}_tau_hist.png has been saved.")
-    plt.savefig(os.path.join(root, f'{mode}_tau_hist.png'), dpi=400)
+    if use_fpr:
+        plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of {model} score \nfor fixed FPR: {tau_channel} channel {mode}, {title}") 
+    else:
+        plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of {model} score:\n {tau_channel} channel {mode}, {title}") 
+
+    if plot_mode.startswith("tau_hist_after"):
+        if use_fpr:
+            save_name = f'{mode}_after_tau_hist_fpr.png'
+        else:
+            save_name = f'{mode}_after_tau_hist.png'
+    else:
+        if use_fpr:
+            save_name = f'{mode}_tau_hist_fpr.png'
+        else:
+            save_name = f'{mode}_tau_hist.png'
+
+    plt.savefig(os.path.join(root, save_name), dpi=400)
     plt.close()
 
-def tau_score_hist_after(root, pickl_name, mode, title, tau_channel):
-    data = load_pkl(root, pickl_name)[0]
-    scores = data["GNN_score_bkg"]
-    f_tau_mass = data["tau_mass"]
-    print("data shape is", len(f_tau_mass))
-
-    score_cuts = [0.95, 0.97, 0.98, 0.99]
-    bins = np.linspace(1.40, 2.50, 110)
-    for cut in score_cuts:
-        mask = scores > cut
-        filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
-        plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"BDT Score > {cut}")
-    plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of BDT score:\n {tau_channel} channel {mode}, {title}") 
-    xarray = np.linspace(1.40, 2.50, 1000)
-    plt.plot(xarray, 100*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)))
-    plt.xlabel(r"$m_{\tau,\mathrm{fit}}$ [GeV]")
-    plt.ylabel("Counts")
-    plt.xlim(1.40, 2.50)
-    plt.grid()
-    plt.legend()
-    # plt.yscale('log')
-    print(f"{mode}_after_tau_hist.png has been saved.")
-    plt.savefig(os.path.join(root, f'{mode}_after_tau_hist.png'), dpi=400)
-    plt.close()
+    print(f"{save_name} has been saved.")
 
 
 if __name__ == "__main__":
@@ -257,10 +291,8 @@ if __name__ == "__main__":
     bdt_location = args.bdt_location
     lambdas = args.lambdas
 
-    if plot_mode == "tau_hist":
-        tau_score_hist(output_path, "raw_scores_and_tau_mass_background.npz", gnn_mode, title, tau_channel)
-    if plot_mode == "tau_hist_after":
-        tau_score_hist_after(output_path, "tau_score_corr.pkl", gnn_mode, title, tau_channel)
+    if plot_mode.startswith("tau_hist"):
+        tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode)
 
     elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
