@@ -8,7 +8,7 @@ import numpy as np
 from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
 from tau3mu_gnn.architectures.TauMuNet import TauMuNet
 from tau3mu_gnn.gnn_training.TrainingUtils import get_model_parameters
-from Train_TauMuNet import get_arch_configs
+from tau3mu_gnn.architectures.TauMuNet import get_arch_configs
 
 import argparse
 import ROOT

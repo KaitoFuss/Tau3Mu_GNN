@@ -1,8 +1,8 @@
 from comet_ml import Experiment
 
-from utils.NormalizerUtils import OnTheFlyNormalizer
-from data_loading.graphDataLoader import GraphDataLoader
-from architectures.TauMuNet import TauMuNet
+from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
+from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
+from tau3mu_gnn.architectures.TauMuNet import TauMuNet
 from tqdm import tqdm 
 
 import time
@@ -12,11 +12,12 @@ import os
 import pickle
 import numpy as np
 
-import utils.EvaluationUtils as ueval
-import utils.TrainingUtils as utrain
+import tau3mu_gnn.gnn_training.EvaluationUtils as ueval
+import tau3mu_gnn.gnn_training.TrainingUtils as utrain
 
 # import linecache
-from utils.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.architectures.TauMuNet import get_arch_configs
 # import tracemalloc
 
 
@@ -517,77 +518,12 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
     return training_losses, validation_losses
 
-
-def get_arch_configs():
-    arch_configs = {
-        "arch1": {
-            "conv_params": [256, 128, 64, 32],
-            "fc_params": [(32, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch2": {
-            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-            "fc_params": [(32, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch3": {
-            "conv_params": [512, 256, 128, 64, 32],
-            "fc_params": [(32, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch4": {
-            "conv_params": [512, 256, 128, 64, 32, 16, 8],
-            "fc_params": [(32, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch5": {
-            "conv_params": [256, 128, 64, 32],
-            "fc_params": [(64, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch6": {
-            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
-            "fc_params": [(64, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch7": {
-            "conv_params": [512, 256, 128, 64, 32],
-            "fc_params": [(64, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch8": {
-            "conv_params": [512, 256, 128, 64, 32, 16, 8],
-            "fc_params": [(64, 0.8)],
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        },
-        "arch_optuna" : {
-            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
-            "fc_params" : [(51, 0.8)] ,
-            "use_fusion": True,
-            "dropout": 0.2633831214702671,
-        }
-    }
-
-    return arch_configs
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--arch",
         type=str,
-        choices=[
-            "arch1", "arch2", "arch3", "arch4",
-            "arch5", "arch6", "arch7", "arch8", "arch_optuna"
-        ],
         default="arch1",
         help="Choose model architecture"
 )
