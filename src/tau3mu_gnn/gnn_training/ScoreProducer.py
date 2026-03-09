@@ -814,7 +814,7 @@ class ScoreProducer:
         all_tau_masses = []
         score_dict = {}
         counter = 1
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="3000 MB"):
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="2000 MB"):
             print(f"Processing bunch {counter} of {file_name}")
             bkg_mask = None
             total_events = len(events)
