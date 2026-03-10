@@ -101,7 +101,7 @@ def plot_roc_bdt(data, root_dir, thresholds_bench, title, tau_channel):
     plt.close()
 
 
-def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas):
+def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs):
 
     ax = plt.gca()
     first_ROC = True
@@ -114,8 +114,10 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
         fpr = gnn_data["fpr"]
         tpr = gnn_data["tpr"]
         thresh_model = gnn_data["threshold"]
-
-        line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{gnn_data['gnn_mode']} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
+        if gnn_data['gnn_mode'] == "final_layer":
+            line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
+        else:
+            line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN for {gnn_data['gnn_mode']} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
         curve_color = line.get_color()
 
         for i, fpr_cut in enumerate(fpr_targets):
@@ -146,7 +148,7 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
         fpr_bench = bdt_data["fpr_ISO"]
         tpr_bench = bdt_data["tpr_ISO"]
 
-        bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT GNN $\lambda$ = {lambdas[-1]}, AUC: {bdt_data['auc_GNN']:.3f}")
+        bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[-1]}, AUC: {bdt_data['auc_GNN']:.3f}")
         bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {bdt_data['auc_ISO']:.3f}")
 
         bdt_color = bdt_line.get_color()
@@ -279,6 +281,7 @@ if __name__ == "__main__":
     parser.add_argument("--gnn_archs_location", required=False, nargs='+')
     parser.add_argument("--bdt_location", default=None)
     parser.add_argument("--lambdas", required=False, nargs='+')
+    parser.add_argument("--archs", required=False, nargs='+')
 
     args = parser.parse_args()
     output_path = args.output_path
@@ -290,6 +293,7 @@ if __name__ == "__main__":
     gnn_archs_location = args.gnn_archs_location
     bdt_location = args.bdt_location
     lambdas = args.lambdas
+    archs = args.archs
 
     if plot_mode.startswith("tau_hist"):
         tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode)
@@ -297,4 +301,4 @@ if __name__ == "__main__":
     elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
-        plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas)
+        plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
