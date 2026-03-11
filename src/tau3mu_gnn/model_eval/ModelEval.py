@@ -110,7 +110,7 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
     for i, gnn_data_loc in enumerate(gnn_data_locs):
         gnn_data = load_pkl(gnn_data_loc, "eval_ROC_AUC.pkl")
         gnn_data = next(iter(gnn_data[0].values()))
-        
+
         fpr = gnn_data["fpr"]
         tpr = gnn_data["tpr"]
         thresh_model = gnn_data["threshold"]
@@ -120,7 +120,7 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
             line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN for {gnn_data['gnn_mode']} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
         curve_color = line.get_color()
 
-        for i, fpr_cut in enumerate(fpr_targets):
+        for k, fpr_cut in enumerate(fpr_targets):
             # GNN model point
             if first_ROC:
                 thresh_idx_model = np.argmin(np.abs(fpr - fpr_cut))
@@ -129,7 +129,7 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
 
             # GNN model point matching
             else:
-                tpr_target = tpr_targets[i]
+                tpr_target = tpr_targets[k]
                 thresh_idx_model = min(range(len(tpr)), key=lambda j: abs(tpr[j] - tpr_target))
                 x_model, y_model = fpr[thresh_idx_model], tpr[thresh_idx_model]
             
@@ -215,8 +215,12 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
     else:
         raise ValueError(f"Unknown plot_mode: {plot_mode}")
 
+    print("fpr monotonic increasing:", np.all(np.diff(fpr) >= 0))
+    print("fpr[:10]:", fpr[:10])
+    print("thresh[:10]:", thresh_model[:10])
+    print("eval set size:", len(fpr))
 
-    print("data shape is", len(f_tau_mass))
+    print("length of inferenced data set is ", len(f_tau_mass))
     if plot_mode.endswith("fpr"):
         fpr_cuts = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2]
         score_cuts = []
@@ -231,6 +235,10 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
     for i, cut in enumerate(score_cuts):
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
+        print(f"We have now filtered {len(filtered_data)} events for an FPR of {fpr_cuts[i]:.0e}.\nWe would expect to roughly have {len(f_tau_mass) * fpr_cuts[i]} events insted.\nWrong by a factor of {len(filtered_data)/(len(f_tau_mass) * fpr_cuts[i])}")
+        n_pass = np.sum(scores > cut)
+        actual_fpr = n_pass / len(scores)
+        print(f"Target FPR: {fpr_cuts[i]:.0e}, threshold: {cut:.6f}, actual FPR on inference set: {actual_fpr:.2e}, ratio: {actual_fpr/fpr_cuts[i]:.2f}")
         if use_fpr:
             counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.5f}, FPR: {fpr_cuts[i]:.0e}", histtype="step")
         else:
