@@ -922,7 +922,7 @@ class ScoreProducer:
             runs = np.array(runs, dtype=np.uint64)
             lumis = np.array(lumis, dtype=np.uint64)
             events = np.array(events, dtype=np.uint64)
-            scores = np.array(scores, dtype=np.float32)
+            scores = np.array(scores, dtype=np.float64)
 
             scores_to_save = {
                     "run": runs,
