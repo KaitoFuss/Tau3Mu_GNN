@@ -18,6 +18,7 @@ class TauMuNet(nn.Module):
             num_graph_level_features=13,
             use_fusion = True,
             gnn_mode = "final_layer", # can be "BDT", "final_layer", "embed_once", "embed_always"
+            scoring=False,
             num_classes = 1,
             ):
         super(TauMuNet, self).__init__()
@@ -33,6 +34,7 @@ class TauMuNet(nn.Module):
         self.embed_input = gnn_mode in ["embed_once", "embed_always"]
         self.embed_every_layer = gnn_mode == "embed_always"
         self.embed_final = gnn_mode == "final_layer"
+        self.scoring = scoring
 
 
         self.input_dims = num_node_features
@@ -138,7 +140,8 @@ class TauMuNet(nn.Module):
         if self.embed_final:
             x = torch.cat([x, graph_feat], dim = -1)
         x = self.fc(x)
-        x = torch.sigmoid(x)
+        if not self.scoring:
+            x = torch.sigmoid(x)
         return x
     
 def get_arch_configs():
