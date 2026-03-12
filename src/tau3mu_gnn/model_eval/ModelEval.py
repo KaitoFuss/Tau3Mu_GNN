@@ -195,7 +195,7 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
     plt.xlim(1e-5, 1)
     plt.title(f"ROC Curves: different GNN archs vs BDT with GNN score for {tau_channel} channel")
 
-    output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}1.png"
+    output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}_full.png"
     print(f"{output_plot_name} has been saved.")
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
@@ -215,7 +215,6 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
         thresh_model = gnn_data["threshold"]
 
         print(f"Size of full dataset is {len(fpr)}")
-        print(fpr)
         if gnn_data['gnn_mode'] == "final_layer":
             line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
         else:

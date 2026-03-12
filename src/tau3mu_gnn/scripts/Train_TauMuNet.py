@@ -201,7 +201,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
 
     datasets = datasets_signal + datasets_bkg
     # create on the fly normalizer and save the mean and std 
-    means_x, stds_x, means_edge, stds_edge, means_graph, stds_graph = utrain.Normalize(datasets)
+    means_x, stds_x, means_edge, stds_edge, means_graph, stds_graph = utrain.Normalize(datasets, model_type, tau_channel)
 
     # normalizer = OnTheFlyNormalizer(["x"], means, stds)
 
@@ -256,8 +256,8 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         normalizer=normalizer,
         drop_last=True,
     )
-    
-    
+
+
     ###--------- Create the Model -----------------------------------------------------------
     # Input parameters for the Model
     num_node_features, num_edge_features, num_graph_level_features = utrain.get_model_parameters(model_type, tau_channel)

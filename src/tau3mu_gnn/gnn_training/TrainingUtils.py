@@ -8,56 +8,59 @@ import pandas as pd
 
 
 
-def Normalize(datasets):
+def Normalize(datasets, model_type, tau_channel):
     """Create means and stds for the normalization.
-
     Args:
         datasets (lists): List of all (dataset folder, graph_file_name) pairs
-
     Returns: means, stds (np.array)
         
     """
-
     graph_dict = {}
-
-
     for directory, key in datasets:
         print(directory, key)
-        graph_dict[key] = ConeGraphProducer(directory,key)
+        graph_dict[key] = ConeGraphProducer(directory, key)
 
+    num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
 
-
-    means_x, stds_x = 0., 0.
-    means_edge, stds_edge = 0., 0.
-    means_graph, stds_graph = 0., 0.
-    weights = []
-
-    for key in graph_dict:
-        for graph in graph_dict[key]:
-            means_x += torch.nan_to_num(graph.x.sum(dim=0)*graph.w)
-            means_edge += torch.nan_to_num(graph.edge_attr.sum(dim=0)*graph.w)
-            means_graph += torch.nan_to_num(graph.graph_level_features.sum(dim=0)*graph.w)
-            weights.append(graph.w)
-    means_x /= sum(weights)
-    means_edge /= sum(weights)
-    means_graph /= sum(weights)
+    # First pass: means
+    total_w_x, total_w_edge, total_w_graph = 0., 0., 0.
+    means_x     = torch.zeros(num_node_features)
+    means_edge  = torch.zeros(num_edge_features)
+    means_graph = torch.zeros(num_graph_level_features)
 
     for key in graph_dict:
         for graph in graph_dict[key]:
-            graph.x = torch.nan_to_num(graph.x)   
-            graph.edge_attr = torch.nan_to_num(graph.edge_attr)   
-            graph.graph_level_features = torch.nan_to_num(graph.graph_level_features)   
-            
-            stds_x += ((graph.x - means_x)**2).sum(dim=0)*graph.w
-            stds_edge += ((graph.edge_attr - means_edge)**2).sum(dim=0)*graph.w
-            stds_graph += ((graph.graph_level_features - means_graph)**2).sum(dim=0)*graph.w
+            w = graph.w.item() if torch.is_tensor(graph.w) else float(graph.w)
+            total_w_x     += w * graph.x.shape[0]
+            total_w_edge  += w * graph.edge_attr.shape[0]
+            total_w_graph += w
+            means_x     += torch.nan_to_num(graph.x.sum(dim=0))                    * w
+            means_edge  += torch.nan_to_num(graph.edge_attr.sum(dim=0))             * w
+            means_graph += torch.nan_to_num(graph.graph_level_features.sum(dim=0)) * w
 
-    stds_x /= sum(weights)
-    stds_x = torch.sqrt(stds_x)
-    stds_edge /= sum(weights)
-    stds_edge = torch.sqrt(stds_edge)
-    stds_graph /= sum(weights)
-    stds_graph = torch.sqrt(stds_graph)
+    means_x     /= total_w_x
+    means_edge  /= total_w_edge
+    means_graph /= total_w_graph
+
+    # Second pass: stds
+    total_w_x, total_w_edge, total_w_graph = 0., 0., 0.
+    stds_x     = torch.zeros(num_node_features)
+    stds_edge  = torch.zeros(num_edge_features)
+    stds_graph = torch.zeros(num_graph_level_features)
+
+    for key in graph_dict:
+        for graph in graph_dict[key]:
+            w = graph.w.item() if torch.is_tensor(graph.w) else float(graph.w)
+            total_w_x     += w * graph.x.shape[0]
+            total_w_edge  += w * graph.edge_attr.shape[0]
+            total_w_graph += w
+            stds_x     += ((torch.nan_to_num(graph.x)                      - means_x)    ** 2).sum(dim=0) * w
+            stds_edge  += ((torch.nan_to_num(graph.edge_attr)               - means_edge) ** 2).sum(dim=0) * w
+            stds_graph += ((torch.nan_to_num(graph.graph_level_features)    - means_graph)** 2).sum(dim=0) * w
+
+    stds_x     = torch.sqrt(stds_x     / total_w_x)
+    stds_edge  = torch.sqrt(stds_edge  / total_w_edge)
+    stds_graph = torch.sqrt(stds_graph / total_w_graph)
 
     return means_x, stds_x, means_edge, stds_edge, means_graph, stds_graph
 
