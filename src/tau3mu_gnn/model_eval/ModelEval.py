@@ -6,6 +6,7 @@ import numpy as np
 import awkward as ak
 import matplotlib.pyplot as plt
 import argparse
+from sklearn.metrics import roc_curve, auc
 
 class CPU_Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
@@ -100,6 +101,104 @@ def plot_roc_bdt(data, root_dir, thresholds_bench, title, tau_channel):
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
+def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs):
+
+    ax = plt.gca()
+    first_ROC = True
+    tpr_targets = []
+    
+    for i, gnn_data_loc in enumerate(gnn_data_locs):
+        gnn_sig = np.load(gnn_data_loc + 'raw_scores_and_tau_mass_signal.npz', allow_pickle=True)
+        gnn_bkg = np.load(gnn_data_loc + 'raw_scores_and_tau_mass_background.npz', allow_pickle=True)
+
+        gnn_sig_scores = gnn_sig["scores"]
+        gnn_bkg_scores = gnn_bkg["scores"]
+        
+        tau_mass = gnn_bkg["tau_mass"]
+        sideband_mask = np.abs(tau_mass - 1.78) > 0.08
+        gnn_bkg_scores = gnn_bkg_scores[sideband_mask]
+        
+        gnn_sig_scores = gnn_sig_scores[~np.isnan(gnn_sig_scores)]
+        gnn_bkg_scores = gnn_bkg_scores[~np.isnan(gnn_bkg_scores)]
+
+        rng = np.random.default_rng(42)
+
+        print(f"Size of signal dataset is {len(gnn_sig_scores)}.")
+        print(f"Size of background dataset is {len(gnn_bkg_scores)}.")
+
+        labels = np.concatenate([np.ones(len(gnn_sig_scores)), np.zeros(len(gnn_bkg_scores))])
+        scores_all = np.concatenate([gnn_sig_scores, gnn_bkg_scores])
+
+        fpr, tpr, thresh_model = roc_curve(labels, scores_all)
+        auc_full = auc(fpr, tpr)
+
+        if i < len(archs):
+            line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}, AUC: {auc_full:.3f}")
+        else:
+            line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN for BDT $\lambda$ = {lambdas[i]}, AUC: {auc_full:.3f}")
+        curve_color = line.get_color()
+
+        for k, fpr_cut in enumerate(fpr_targets):
+            # GNN model point
+            if first_ROC:
+                thresh_idx_model = np.argmin(np.abs(fpr - fpr_cut))
+                x_model, y_model = fpr[thresh_idx_model], tpr[thresh_idx_model]
+                tpr_targets.append(y_model)
+
+            # GNN model point matching
+            else:
+                tpr_target = tpr_targets[k]
+                thresh_idx_model = min(range(len(tpr)), key=lambda j: abs(tpr[j] - tpr_target))
+                x_model, y_model = fpr[thresh_idx_model], tpr[thresh_idx_model]
+            
+            plt.scatter(x_model, y_model, s=20, color=curve_color)
+            plt.text(x_model * 1.1, y_model, f"{thresh_model[thresh_idx_model]:.5f}", fontsize=6, color=curve_color)
+        
+        first_ROC = False
+
+    if bdt_data_loc is not None:
+        bdt_data = np.load(bdt_data_loc + '_roc_log24feb2026_v0.pck', allow_pickle=True)
+        thresh_bdt = bdt_data["threshold_GNN"]
+        fpr_bdt = bdt_data["fpr_GNN"]
+        tpr_bdt = bdt_data["tpr_GNN"]
+
+        thresh_benchmark = bdt_data["threshold_ISO"]
+        fpr_bench = bdt_data["fpr_ISO"]
+        tpr_bench = bdt_data["tpr_ISO"]
+
+        bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[-1]}, AUC: {bdt_data['auc_GNN']:.3f}")
+        bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {bdt_data['auc_ISO']:.3f}")
+
+        bdt_color = bdt_line.get_color()
+        bench_color = bench_line.get_color()
+
+        for i, _ in enumerate(fpr_targets):
+            tpr_target = tpr_targets[i]
+
+            thresh_idx_model = min(range(len(tpr_bdt)), key=lambda j: abs(tpr_bdt[j] - tpr_target))
+            x_model, y_model = fpr_bdt[thresh_idx_model], tpr_bdt[thresh_idx_model]
+                
+            plt.scatter(x_model, y_model, s=20, color=bdt_color)
+            plt.text(x_model * 1.1, y_model, f"{thresh_bdt[thresh_idx_model]:.5f}", fontsize=6, color=bdt_color)
+
+            thresh_idx_model = min(range(len(tpr_bench)), key=lambda j: abs(tpr_bench[j] - tpr_target))
+            x_model, y_model = fpr_bench[thresh_idx_model], tpr_bench[thresh_idx_model]
+                
+            plt.scatter(x_model, y_model, s=20, color=bench_color)
+            plt.text(x_model * 1.1, y_model, f"{thresh_benchmark[thresh_idx_model]:.5f}", fontsize=6, color=bench_color)
+
+    plt.grid()
+    plt.legend(fontsize=7)
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.xscale('log')
+    plt.xlim(1e-5, 1)
+    plt.title(f"ROC Curves: different GNN archs vs BDT with GNN score for {tau_channel} channel")
+
+    output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}1.png"
+    print(f"{output_plot_name} has been saved.")
+    plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
+    plt.close()
 
 def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs):
 
@@ -114,6 +213,9 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
         fpr = gnn_data["fpr"]
         tpr = gnn_data["tpr"]
         thresh_model = gnn_data["threshold"]
+
+        print(f"Size of full dataset is {len(fpr)}")
+        print(fpr)
         if gnn_data['gnn_mode'] == "final_layer":
             line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
         else:
@@ -193,12 +295,17 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
         f_tau_mass = data["tau_mass"]
 
         if use_fpr:
-            gnn_data = load_pkl(root, "eval_ROC_AUC.pkl")
-            gnn_data = next(iter(gnn_data[0].values()))
-            
-            fpr = gnn_data["fpr"]
-            tpr = gnn_data["tpr"]
-            thresh_model = gnn_data["threshold"]
+            signal = np.load(root + 'raw_scores_and_tau_mass_signal.npz', allow_pickle=True)
+            scores_signal = data["scores"]
+            nan_mask = ~np.isnan(scores)
+            scores = scores[~np.isnan(scores)]
+            f_tau_mass = f_tau_mass[nan_mask]
+            scores_signal = scores_signal[~np.isnan(scores_signal)]
+
+            labels = np.concatenate([np.ones(len(scores_signal)), np.zeros(len(scores))])
+            scores_all = np.concatenate([scores_signal, scores])
+
+            fpr, tpr, thresh_model = roc_curve(labels, scores_all)
 
     elif plot_mode.startswith("tau_hist_after"):
         model = "BDT"
@@ -215,14 +322,12 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
     else:
         raise ValueError(f"Unknown plot_mode: {plot_mode}")
 
-    print("fpr monotonic increasing:", np.all(np.diff(fpr) >= 0))
-    print("fpr[:10]:", fpr[:10])
-    print("thresh[:10]:", thresh_model[:10])
-    print("eval set size:", len(fpr))
 
     print("length of inferenced data set is ", len(f_tau_mass))
-    if plot_mode.endswith("fpr"):
+    if use_fpr:
+        print("eval set size to get fpr is:", len(fpr))
         fpr_cuts = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2]
+        # fpr_cuts = [1e-2, 0.05, 0.1, 0.2]
         score_cuts = []
         for fpr_cut in fpr_cuts:
             cut = np.interp(fpr_cut, fpr, thresh_model)
@@ -235,11 +340,11 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
     for i, cut in enumerate(score_cuts):
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
-        print(f"We have now filtered {len(filtered_data)} events for an FPR of {fpr_cuts[i]:.0e}.\nWe would expect to roughly have {len(f_tau_mass) * fpr_cuts[i]} events insted.\nWrong by a factor of {len(filtered_data)/(len(f_tau_mass) * fpr_cuts[i])}")
-        n_pass = np.sum(scores > cut)
-        actual_fpr = n_pass / len(scores)
-        print(f"Target FPR: {fpr_cuts[i]:.0e}, threshold: {cut:.6f}, actual FPR on inference set: {actual_fpr:.2e}, ratio: {actual_fpr/fpr_cuts[i]:.2f}")
         if use_fpr:
+            print(f"We have now filtered {len(filtered_data)} events for an FPR of {fpr_cuts[i]:.0e}.\nWe would expect to roughly have {len(f_tau_mass) * fpr_cuts[i]} events insted.")
+            n_pass = np.sum(scores > cut)
+            actual_fpr = n_pass / len(scores)
+            print(f"Target FPR: {fpr_cuts[i]:.0e}, threshold: {cut:.6f}, actual FPR on inference set: {actual_fpr:.2e}, ratio: {actual_fpr/fpr_cuts[i]:.2f}")
             counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.5f}, FPR: {fpr_cuts[i]:.0e}", histtype="step")
         else:
             counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.2f}", histtype="step")
@@ -310,3 +415,7 @@ if __name__ == "__main__":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
         plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
+    elif plot_mode == "ROC_comp_full":
+        root_dir = "/work/kfuss/SVJ_GNN/output/"
+        fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
+        plot_roc_gnn_arch_comparison_full(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)

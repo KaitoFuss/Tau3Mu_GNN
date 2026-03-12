@@ -60,17 +60,23 @@ if __name__ == "__main__":
 
     print("Starting the ScoreProducer")
 
+    max_events_to_process = 100000
+
+    if max_events_to_process is None:
+        shuffle = False
+    else:
+        shuffle = True
 
     ScoreProducer(root=input_file,
                 edge_connection_mode="knn",
                 delta_r_threshold=None,
                 k_knn=10,
-                max_events_to_process=100000,
+                max_events_to_process=max_events_to_process,
                 save_edge_attributes=True,
                 verbose=True,
                 tau_channel=tau_channel,
                 slimmed=True,
-                shuffle_bool=False,
+                shuffle_bool=shuffle,
                 use_displacement=True,
                 model=model,
                 device=device,
