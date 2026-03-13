@@ -123,25 +123,25 @@ branches = features + [
     # 'mu3_refit_muonid_soft', 'mu3_refit_muonid_loose', 'mu3_refit_muonid_medium', 'mu3_refit_muonid_tight',
 ]
 
-# all_chunks_sig = []
+all_chunks_sig = []
+print("Going to load signal events")
+for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
+    score_mask = events["GNN_Score"] != -1
+    events = events[score_mask]
+    new_fields = {}
+    for branch in events.fields:
+        if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
+            new_fields[branch] = ak.firsts(events[branch])
+        else:
+            new_fields[branch] = events[branch]
 
-# print("Going to load signal events")
-# for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-#     score_mask = events["GNN_Score"] != -1
-#     events = events[score_mask]
-#     new_fields = {}
-#     for branch in events.fields:
-#         if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
-#             new_fields[branch] = ak.firsts(events[branch])
-#         else:
-#             new_fields[branch] = events[branch]
-
-#     events_masked = ak.zip(new_fields)
-#     all_chunks_sig.append(events_masked)
-# sig = ak.concatenate(all_chunks_sig)
-# # print(ak.type(sig))
-# sig = ak.to_dataframe(sig)
-# print(sig.shape)
+    events_masked = ak.zip(new_fields)
+    all_chunks_sig.append(events_masked)
+sig = ak.concatenate(all_chunks_sig)
+# print(ak.type(sig))
+sig = ak.to_dataframe(sig)
+print(sig.shape)
+print(sig.columns)
 
 all_chunks_bkg = []
 print("Going to load bkg events")
@@ -180,7 +180,7 @@ print(bkg.columns)
 ##########################################################################################
 
 bkg['target'] = np.zeros(bkg.shape[0], dtype=int)
-# sig['target'] = np.ones(sig.shape[0], dtype=int)
+sig['target'] = np.ones(sig.shape[0], dtype=int)
 
 
 def deltaphi(phi1, phi2):
@@ -190,9 +190,8 @@ def deltaphi(phi1, phi2):
 
     return delta_phi
 
-# sig['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_pt[Slimmed_TauTo3Mu_mu3_idx]']
-
 if tau_channel == "HF":
+    sig['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_pt[Slimmed_TauTo3Mu_mu3_idx]']
     bkg['Muon_pt_Slimmed_TauTo3Mu_mu3_idx'] = bkg['Muon_pt[Slimmed_TauTo3Mu_mu3_idx]']
 
     features += ['Muon_pt_Slimmed_TauTo3Mu_mu3_idx']
@@ -213,37 +212,37 @@ if tau_channel == "HF":
     # features += ['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx']
     # features.remove('Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]')
 
-    # sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]']
+    sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]']
     bkg['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx'] = bkg['Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]']
 
     features += ['Muon_isGlobal_Slimmed_TauTo3Mu_mu1_idx']
     features.remove('Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]')
 
-    # sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]']
+    sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]']
     bkg['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx'] = bkg['Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]']
 
     features += ['Muon_isGlobal_Slimmed_TauTo3Mu_mu2_idx']
     features.remove('Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]')
 
-    # sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]']
+    sig['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'] = sig['Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]']
     bkg['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx'] = bkg['Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]']
 
     features += ['Muon_isGlobal_Slimmed_TauTo3Mu_mu3_idx']
     features.remove('Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]')
 
-    # sig['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'] = sig['Slimmed_TauTo3Mu_vtx_chi2']/sig['Slimmed_TauTo3Mu_vtx_Ndof']
+    sig['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'] = sig['Slimmed_TauTo3Mu_vtx_chi2']/sig['Slimmed_TauTo3Mu_vtx_Ndof']
     bkg['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'] = bkg['Slimmed_TauTo3Mu_vtx_chi2']/bkg['Slimmed_TauTo3Mu_vtx_Ndof']
 
     features += ['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)']
 
-    # sig['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = np.max(
-    #     np.stack([
-    #         sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu1_idx]'].values,
-    #         sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu2_idx]'].values,
-    #         sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu3_idx]'].values
-    #     ], axis=0),
-    #     axis=0
-    # )
+    sig['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = np.max(
+        np.stack([
+            sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu1_idx]'].values,
+            sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu2_idx]'].values,
+            sig['Muon_tkRelIso[Slimmed_TauTo3Mu_mu3_idx]'].values
+        ], axis=0),
+        axis=0
+    )
 
     bkg['max(Muon_tkRelIso_Slimmed_TauTo3Mu_mu1_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu2_idx Muon_tkRelIso_Slimmed_TauTo3Mu_mu3_idx)'] = np.max(
         np.stack([
@@ -256,6 +255,7 @@ if tau_channel == "HF":
 
 elif tau_channel == "W":
     bkg['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(bkg['TauPlusMET_Puppi_phi'], bkg['Slimmed_TauTo3Mu_fitted_phi'])
+    sig['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(sig['TauPlusMET_Puppi_phi'], sig['Slimmed_TauTo3Mu_fitted_phi'])
 
     features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
 
@@ -266,16 +266,16 @@ elif tau_channel == "W":
     abs_iso_bkg = bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., bkg["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
     bkg['relative_iso'] = abs_iso_bkg / bkg["Slimmed_TauTo3Mu_fitted_pt"]
 
-# sig['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(sig['TauPlusMET_Puppi_phi'], sig['Slimmed_TauTo3Mu_fitted_phi'])
+    abs_iso_sig = sig["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * sig["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
+    sig['relative_iso'] = abs_iso_sig / sig["Slimmed_TauTo3Mu_fitted_pt"]
+
+
 
 # features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
 
 # sig['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = sig['Slimmed_TauTo3Mu_fitted_pt'] / sig['TauPlusMET_PuppiMET_pt']
 
 # features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
-
-# abs_iso_sig = sig["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * sig["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
-# sig['relative_iso'] = abs_iso_sig / sig["Slimmed_TauTo3Mu_fitted_pt"]
 
 
 with open(classifier_file_gnn, "rb") as f:
@@ -299,18 +299,23 @@ for mode in ["GNN", "ISO"]:
 
     n_class = len(classifiers)
     bkg  ['bdt_' + mode] = np.zeros_like(bkg.Slimmed_TauTo3Mu_fitted_mass)
+    sig  ['bdt_' + mode] = np.zeros_like(sig.Slimmed_TauTo3Mu_fitted_mass)
 
 
     for i, iclas in classifiers.items():
         print(f'evaluating the {i}-th classifier')
         bkg  ['bdt_fold%d_' %i + mode] = iclas.predict_proba(bkg[bdt_features])[:, 1]
         bkg  ['bdt_' + mode] += iclas.predict_proba(bkg[bdt_features])[:, 1] / n_class
+        sig  ['bdt_fold%d_' %i + mode] = iclas.predict_proba(sig[bdt_features])[:, 1]
+        sig  ['bdt_' + mode] += iclas.predict_proba(sig[bdt_features])[:, 1] / n_class
 
     if mode == "GNN":
         output["GNN_score_bkg"] = bkg.bdt_GNN
+        output["GNN_score_sig"] = sig.bdt_GNN
 
     elif mode == "ISO":
         output["ISO_score_bkg"] = bkg.bdt_ISO
+        output["ISO_score_sig"] = sig.bdt_ISO
 
 
     output["tau_mass"] = bkg.Slimmed_TauTo3Mu_fitted_mass
