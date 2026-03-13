@@ -295,7 +295,7 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
 
         if use_fpr:
             signal = np.load(root + 'raw_scores_and_tau_mass_signal.npz', allow_pickle=True)
-            scores_signal = data["scores"]
+            scores_signal = signal["scores"]
             nan_mask = ~np.isnan(scores)
             scores = scores[~np.isnan(scores)]
             f_tau_mass = f_tau_mass[nan_mask]
