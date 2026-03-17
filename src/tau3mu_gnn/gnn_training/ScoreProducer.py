@@ -440,15 +440,12 @@ class ScoreProducer:
         self.process()
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict_for_root):
-        
-        start = time.time()
 
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
-
         indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
         events = events[indices] 
         runs = events["run"]
@@ -522,9 +519,7 @@ class ScoreProducer:
             mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
             mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
             # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
-            end = time.time()
-            # print(f"Data prep time {end - start:.5f}")
-            start = time.time()
+
             # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
             cone_mask = self.build_cone(
                 pfcands_eta, 
@@ -541,9 +536,6 @@ class ScoreProducer:
                 mu3_phi, 
                 # mu3_idx
             )
-            end = time.time()
-            # print(f"Cone creation time {end - start:.5f}")
-            start = time.time()
             pfcands_pt_masked = pfcands_pt[cone_mask]
             pfcands_eta_masked = pfcands_eta[cone_mask]
             pfcands_phi_masked = pfcands_phi[cone_mask]
@@ -606,11 +598,7 @@ class ScoreProducer:
                     pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             
-            end = time.time()
-            # print(f"Node feature creation time {end - start:.5f}")
-            
             # TODO do this calc outside loop and then just mask inside 
-            start = time.time()
             # Calculate edges and edge features
             matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
             matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
@@ -683,9 +671,6 @@ class ScoreProducer:
                         y=torch.Tensor([self.label])
                     )
             
-            end = time.time()
-            # print(f"Edge feature creation time {end - start:.5f}")
-            start = time.time()
             # Add the event weight
             if self.weights == "xsec":
                 if not self.max_events_to_process:
@@ -727,12 +712,11 @@ class ScoreProducer:
                 # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
                 # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
                 # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
-            
-            end = time.time()
-            # print(f"Graph level data add time {end - start:.5f}")
-
+                
             score_model_dict, tau_mass = self.create_score(graph)
             for name in self.model_names:
+                if key in score_dict_for_root[name]:
+                    print(f"WARNING: overwriting score in {name} for {key}")
                 score_dict_for_root[name][key] = score_model_dict[name][0]
 
                 scores_dict_all_models[name].append(score_model_dict[name][0])
@@ -870,7 +854,7 @@ class ScoreProducer:
         tau_mass = graph.fitted_tau_mass
 
         for i, model in enumerate(self.models):
-            graph_copy = copy.copy(graph)
+            graph_copy = graph.clone()
             device = self.device
             model = model.to(device)
             model.eval()
@@ -878,31 +862,32 @@ class ScoreProducer:
             with torch.no_grad():
                 # Compute scores for each graph
                 graph_copy.x = graph_copy.x.float()  # Ensure float32
-
+                print(f"Now model {self.model_names[i]}")
                 if self.normalizers[i] is not None:
                     means_x = torch.tensor(self.normalizers[i]["means_x"], dtype=torch.float, device=graph_copy.x.device)
                     stds_x = torch.tensor(self.normalizers[i]["stds_x"], dtype=torch.float, device=graph_copy.x.device)
-                    # print(f"Node features before norm - mean: {graph.x.mean(dim=0)}, std: {graph.x.std(dim=0)}")
+                    print(f"Node features before norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
                     graph_copy.x = (graph_copy.x - means_x) / stds_x
-                    # print(f"Feature mean and std: {means_x, stds_x}")
-                    # print(f"Node features after norm - mean: {graph.x.mean(dim=0)}, std: {graph.x.std(dim=0)}")
+                    print(f"Feature mean and std: {means_x, stds_x}")
+                    print(f"Node features after norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
 
                     means_edge = torch.tensor(self.normalizers[i]["means_edge"], dtype=torch.float, device=graph_copy.edge_attr.device)
                     stds_edge = torch.tensor(self.normalizers[i]["stds_edge"], dtype=torch.float, device=graph_copy.edge_attr.device)
-                    # print(f"Edge features before norm - mean: {graph.edge_attr.mean(dim=0)}, std: {graph.edge_attr.std(dim=0)}")
+                    print(f"Edge features before norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
                     graph_copy.edge_attr = (graph_copy.edge_attr - means_edge) / stds_edge
-                    # print(f"Edge mean and std: {means_edge, stds_edge}")
-                    # print(f"Edge features after norm - mean: {graph.edge_attr.mean(dim=0)}, std: {graph.edge_attr.std(dim=0)}")
+                    print(f"Edge mean and std: {means_edge, stds_edge}")
+                    print(f"Edge features after norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
                     
                     means_graph = torch.tensor(self.normalizers[i]["means_graph"], dtype=torch.float, device=graph_copy.graph_level_features.device)
                     stds_graph = torch.tensor(self.normalizers[i]["stds_graph"], dtype=torch.float, device=graph_copy.graph_level_features.device)
-                    # print(f"Graph features before norm - mean: {graph.graph_level_features.mean(dim=0)}, std: {graph.graph_level_features.std(dim=0)}")
+                    print(f"Graph features before norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
                     graph_copy.graph_level_features = (graph_copy.graph_level_features - means_graph) / stds_graph
-                    # print(f"Graph feature mean and std: {means_graph, stds_graph}")
-                    # print(f"Graph features after norm - mean: {graph.graph_level_features.mean(dim=0)}, std: {graph.graph_level_features.std(dim=0)}")
+                    print(f"Graph feature mean and std: {means_graph, stds_graph}")
+                    print(f"Graph features after norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
                     
                 graph_copy = graph_copy.to(device)
                 out = model(graph_copy)
+                print(f"model output (logit): {out[:,0]}")
                 scores[self.model_names[i]] = out[:,0].cpu().detach().numpy()
         return scores, tau_mass
 
@@ -949,8 +934,8 @@ class ScoreProducer:
                     events.append(event)
                     scores.append(score)
 
-                runs = np.array(runs, dtype=np.uint64)
-                lumis = np.array(lumis, dtype=np.uint64)
+                runs = np.array(runs, dtype=np.uint32)
+                lumis = np.array(lumis, dtype=np.uint32)
                 events = np.array(events, dtype=np.uint64)
                 scores = np.array(scores, dtype=np.float64)
 
@@ -979,7 +964,8 @@ class ScoreProducer:
                 friend_file = ROOT.TFile.Open(root_path_sc_only)
                 t2 = friend_file.Get("Events")
 
-                t2.BuildIndex("run", "event")
+                # t2.BuildIndex("run", "event")
+                t2.BuildIndex("run", "luminosityBlock*10000000000LL+event")
 
                 # Write merged tree
                 fout = ROOT.TFile.Open(root_path, "RECREATE")
@@ -993,7 +979,8 @@ class ScoreProducer:
                 for i in range(t1.GetEntries()):
                     t1.GetEntry(i)
 
-                    entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
+                    # entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
+                    entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.luminosityBlock*10000000000+t1.event)
 
                     if entry2 >= 0:
                         t2.GetEntry(entry2) 
