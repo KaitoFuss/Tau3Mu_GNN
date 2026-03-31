@@ -126,7 +126,7 @@ branches = features + [
 all_chunks_sig = []
 print("Going to load signal events")
 for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-    score_mask = events["GNN_Score"] != -1
+    score_mask = events["GNN_score"] != -1
     events = events[score_mask]
     new_fields = {}
     for branch in events.fields:
