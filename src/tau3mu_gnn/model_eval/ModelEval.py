@@ -340,7 +340,8 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
-def tau_score_hist(root, mode, title, tau_channel, plot_mode):
+def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
+    normalize = view == "normalized"
     use_fpr = plot_mode.endswith("fpr")
 
     if plot_mode.startswith("tau_hist") and not plot_mode.startswith("tau_hist_after"):
@@ -395,29 +396,40 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
             print("WARNING: GNN scores have been passed through sigmoid as score cuts on logits is ill-balanced.")
             scores = 1 / (1 + np.exp(-scores)) 
         score_cuts = [0.95, 0.97, 0.98, 0.99]
-
-    bins = np.linspace(1.40, 2.50, 110)
+    
+    if normalize:
+        bins = np.linspace(1.40, 2.50, 55)
+    else:
+        bins = np.linspace(1.40, 2.50, 110)
+    
     xarray = np.linspace(1.40, 2.50, 1000)
     amplitudes = []
     for i, cut in enumerate(score_cuts):
         mask = scores > cut
         filtered_data = ak.to_numpy(ak.concatenate([f_tau_mass[mask]]))
+        weights = np.ones(len(filtered_data)) / len(filtered_data) if normalize else None
         if use_fpr:
             tpr_at_cut = np.interp(fpr_cuts[i], fpr, tpr)
             print(f"We have now filtered {len(filtered_data)} events for an FPR of {fpr_cuts[i]:.0e}.\nWe would expect to roughly have {len(f_tau_mass) * fpr_cuts[i]} events insted.")
             n_pass = np.sum(scores > cut)
             actual_fpr = n_pass / len(scores)
             print(f"Target FPR: {fpr_cuts[i]:.0e}, threshold: {cut:.6f}, actual FPR on inference set: {actual_fpr:.2e}, ratio: {actual_fpr/fpr_cuts[i]:.2f}")
-            counts, _, patches = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.5f}, FPR: {fpr_cuts[i]:.0e}", histtype="step")
+            counts, _, patches = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.5f}, FPR: {fpr_cuts[i]:.0e}", histtype="step", weights=weights)
             color = patches[0].get_edgecolor()
-            if tau_channel == "HF":
-                ampl = tpr_at_cut * 200
-            elif tau_channel == "W":
-                ampl = tpr_at_cut * 200
-            if i == 0:
+            if not normalize:
+                if tau_channel == "HF":
+                    ampl = tpr_at_cut * 200
+                elif tau_channel == "W":
+                    ampl = tpr_at_cut * 200
+
+                if i == 0:
+                    plt.plot(xarray, ampl*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)), label="Signal Gaussian (20 MeV width)", color=color, linewidth=0.8)
+                else:
+                    plt.plot(xarray, ampl*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)), color=color, linewidth=0.8)
+            elif normalize and i == len(score_cuts) - 1:
+                ampl = counts.max() * 1.1
                 plt.plot(xarray, ampl*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)), label="Signal Gaussian (20 MeV width)", color=color, linewidth=0.8)
-            else:
-                plt.plot(xarray, ampl*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)), color=color, linewidth=0.8)
+
         else:
             counts, _, _ = plt.hist(filtered_data, bins=bins, alpha=0.6, label=f"{model} Score > {cut:.2f}", histtype="step")
             amplitudes.append(counts.max())
@@ -426,7 +438,10 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
         ampl = sorted(amplitudes, reverse=True)[1]
         plt.plot(xarray, ampl*np.exp(-(xarray - 1.78)**2 / (2*0.02**2)), label="Signal Gaussian (20 MeV width)")
     plt.xlabel(r"$m_{\tau,\mathrm{fit}}$ [GeV]")
-    plt.ylabel("Counts")
+    if normalize:
+        plt.ylabel("Density")
+    else:
+        plt.ylabel("Counts")
     plt.xlim(1.40, 2.50)
     plt.grid()
     plt.legend()
@@ -437,22 +452,24 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode):
     else:
         plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of {model} score:\n {tau_channel} channel {mode}, {title}") 
 
+    suffix = "_normalized" if normalize else ""
     if plot_mode.startswith("tau_hist_after"):
         if use_fpr:
-            save_name = f'{mode}_after_tau_hist_fpr.png'
+            save_name = f'{mode}_after_tau_hist_fpr{suffix}.png'
         else:
-            save_name = f'{mode}_after_tau_hist.png'
+            save_name = f'{mode}_after_tau_hist{suffix}.png'
     else:
         if use_fpr:
-            save_name = f'{mode}_tau_hist_fpr.png'
+            save_name = f'{mode}_tau_hist_fpr{suffix}.png'
         else:
-            save_name = f'{mode}_tau_hist.png'
+            save_name = f'{mode}_tau_hist{suffix}.png'
 
     plt.savefig(os.path.join(root, save_name), dpi=400)
     plt.close()
 
     print(f"{save_name} has been saved.")
 
+    return
 
 if __name__ == "__main__":
     # root_dir = '/work/kfuss/SVJ_GNN/output/knn_new_vs7'
@@ -469,6 +486,7 @@ if __name__ == "__main__":
     parser.add_argument("--bdt_location", default=None)
     parser.add_argument("--lambdas", required=False, nargs='+')
     parser.add_argument("--archs", required=False, nargs='+')
+    parser.add_argument("--view", default=None)
 
     args = parser.parse_args()
     output_path = args.output_path
@@ -481,9 +499,14 @@ if __name__ == "__main__":
     bdt_location = args.bdt_location
     lambdas = args.lambdas
     archs = args.archs
+    view = args.view
 
     if plot_mode.startswith("tau_hist"):
-        tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode)
+        if view == "both":
+            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, "non_normalized")
+            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, "normalized")
+        else:
+            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, view)
 
     elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/"
