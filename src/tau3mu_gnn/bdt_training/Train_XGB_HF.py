@@ -527,7 +527,7 @@ for mode in modes.keys():
             max_depth        = 8,
             learning_rate    = 0.005, # 0.01
             n_estimators     = 1000, # 400
-            silent           = False,
+            verbosity        = 1,
             subsample        = 0.6,
             colsample_bytree = 0.7,
             min_child_weight = 1E-6 * np.sum(train.iloc[train_index].weight),

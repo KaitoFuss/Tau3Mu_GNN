@@ -8,7 +8,7 @@ import numpy as np
 from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
 from tau3mu_gnn.architectures.TauMuNet import TauMuNet
 from tau3mu_gnn.gnn_training.TrainingUtils import get_model_parameters
-from Train_TauMuNet import get_arch_configs
+from tau3mu_gnn.architectures.TauMuNet import get_arch_configs
 
 import argparse
 import ROOT
@@ -21,8 +21,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--root', type=str, required=True, help='Folder to read the data from')
     parser.add_argument('--output_folder', type=str, required=True, help="Output to store the files with the scores")
-    parser.add_argument('--model_name', type=str, required=True, help="Name of GNN model")
-    parser.add_argument('--arch', type=str, required=True, help="Architecture of GNN model")
+    parser.add_argument('--model_names', type=str, required=True, help="Name of GNN model", nargs='+')
+    parser.add_argument('--archs', type=str, required=True, help="Architecture of GNN model", nargs='+')
     parser.add_argument('--tau_channel', type=str, required=True, help="Tau production channel")
     parser.add_argument('--gnn_mode', type=str, default="BDT", help="GNN Mode")
     parser.add_argument('--model', type=str, default="skimmed_dzd0_cone_size_0.5_knn_10", help="Which model to train/ which graph construction was used")
@@ -32,8 +32,8 @@ if __name__ == "__main__":
 
     input_file = args.root
     output_folder = args.output_folder
-    model_name = args.model_name
-    arch = args.arch
+    model_names = args.model_names
+    archs = args.archs
     tau_channel = args.tau_channel
     gnn_mode = args.gnn_mode
     model_type = args.model
@@ -41,39 +41,60 @@ if __name__ == "__main__":
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    params = arch_configs[arch]
-    model =  TauMuNet(
-        conv_params=params["conv_params"],
-        dropout=params["dropout"],
-        fc_params=params["fc_params"],
-        num_node_features=num_node_features,
-        num_edge_features=num_edge_features,
-        num_graph_level_features=num_graph_level_features,
-        use_fusion=params["use_fusion"],
-        gnn_mode=gnn_mode,
-    )
-    model.load_state_dict(torch.load(output_folder + model_name, map_location=device)['model_state_dict'])
-    # Load the normalizer
-    normalizer = load_pkl(output_folder, "Normalization.pkl")[0]
+    assert len(model_names) == len(archs), f"Number of model names ({len(model_names)}) must match number of architectures ({len(archs)}). Got model_names={model_names}, archs={archs}"
+    
+    output_folders = []
+    models = []
+    normalizers = []
+    for i, model_name in enumerate(model_names):
+    
+        params = arch_configs[archs[i]]
+
+        model =  TauMuNet(
+            conv_params=params["conv_params"],
+            dropout=params["dropout"],
+            fc_params=params["fc_params"],
+            num_node_features=num_node_features,
+            num_edge_features=num_edge_features,
+            num_graph_level_features=num_graph_level_features,
+            use_fusion=params["use_fusion"],
+            gnn_mode=gnn_mode,
+            scoring=True, 
+            scale_down_params=params["fusion_scale_down_params"],
+        )
+        model.load_state_dict(torch.load(output_folder + model_name + "/" + model_name + ".pt", map_location=device)['model_state_dict'])
+        # Load the normalizer
+        normalizer = load_pkl(output_folder + model_name + "/", "Normalization.pkl")[0]
+
+        models.append(model)
+        normalizers.append(normalizer)
+        output_folders.append(output_folder + model_name + "/")
 
 
     print("Starting the ScoreProducer")
 
+    max_events_to_process = 100000
+
+    if max_events_to_process is None:
+        shuffle = False
+    else:
+        shuffle = True
 
     ScoreProducer(root=input_file,
                 edge_connection_mode="knn",
                 delta_r_threshold=None,
                 k_knn=10,
-                max_events_to_process=100000,
+                max_events_to_process=max_events_to_process,
                 save_edge_attributes=True,
                 verbose=True,
                 tau_channel=tau_channel,
                 slimmed=True,
-                shuffle_bool=False,
+                shuffle_bool=shuffle,
                 use_displacement=True,
-                model=model,
+                models=models,
                 device=device,
-                normalizer=normalizer,
-                output_folder=output_folder,
-                storage_folder=storage_folder
+                normalizers=normalizers,
+                output_folders=output_folders,
+                storage_folder=storage_folder,
+                model_names=model_names
             )

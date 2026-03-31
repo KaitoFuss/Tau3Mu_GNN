@@ -16,6 +16,7 @@ import ROOT
 import csv
 import time
 from array import array
+import copy
 
 def __cast_unknown_type_branches(ak_array, field):
 
@@ -335,11 +336,12 @@ class ScoreProducer:
         slimmed=False,
         shuffle_bool=False,
         use_displacement=False,
-        model=None,
+        models=None,
         device=None,
-        normalizer=None,
-        output_folder=None,
+        normalizers=None,
+        output_folders=None,
         storage_folder=None,
+        model_names=None
     ):
 
         self.root = root
@@ -365,19 +367,24 @@ class ScoreProducer:
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
-        self.model = model
+        self.models = models
         self.device = device
-        self.normalizer = normalizer
-        self.output_folder = output_folder
+        self.normalizers = normalizers
+        self.output_folders = output_folders
         self.storage_folder = storage_folder
+        self.model_names = model_names
         self.edge_connection_methods = {
             "fully": self.connect_fully,
             "knn": self.connect_knn,
             "r_threshold": self.connect_r_threshold,
         } 
 
-        if self.output_folder:
-            os.makedirs(self.output_folder, exist_ok=True)
+        if not (len(self.models) == len(self.normalizers) == len(self.output_folders)):
+            raise ValueError(f"models ({len(self.models)}), normalizers ({len(self.normalizers)}) and output_folders ({len(self.output_folders)}) must all have the same length")
+
+        if self.output_folders:
+            for output_folder in self.output_folders:
+                os.makedirs(output_folder, exist_ok=True)
 
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
@@ -428,26 +435,24 @@ class ScoreProducer:
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
             logging.warning("Using approximation for initial number of events with max number of events")
-        self.model.eval()
+        for model in self.models:
+            model.eval()
         self.process()
 
-    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict):
-        
-        start = time.time()
+    def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict_for_root):
 
         prefix = "Slimmed_" if self.slimmed else ""
         n_prefix = "Slimmed" if self.slimmed else ""
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
-
         indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
         events = events[indices] 
         runs = events["run"]
         lumis = events["luminosityBlock"]
         event_ids = events["event"]
         tau_masses = []
-        scores = []
+        scores_dict_all_models = {name: [] for name in self.model_names}
 
         if self.mask:
             bkg_mask = bkg_mask[indices]
@@ -514,9 +519,7 @@ class ScoreProducer:
             mu3_eta = event[f"{prefix}TauTo3Mu_mu3_eta"][tau_mask][nt] 
             mu3_phi = event[f"{prefix}TauTo3Mu_mu3_phi"][tau_mask][nt] 
             # mu3_pt = event[f"{prefix}TauTo3Mu_mu3_pt"][tau_mask][nt] 
-            end = time.time()
-            # print(f"Data prep time {end - start:.5f}")
-            start = time.time()
+
             # Ensuring that cone is large enough such that all 3mu are inside it; center of cone will be (fitted_tau_eta, fitted_tau_phi)
             cone_mask = self.build_cone(
                 pfcands_eta, 
@@ -533,9 +536,6 @@ class ScoreProducer:
                 mu3_phi, 
                 # mu3_idx
             )
-            end = time.time()
-            # print(f"Cone creation time {end - start:.5f}")
-            start = time.time()
             pfcands_pt_masked = pfcands_pt[cone_mask]
             pfcands_eta_masked = pfcands_eta[cone_mask]
             pfcands_phi_masked = pfcands_phi[cone_mask]
@@ -584,9 +584,9 @@ class ScoreProducer:
                     pfcands_phi_masked,
                     pfcands_pdgId_masked,
                     pfcands_mass_masked,
+                    pfcands_puppiWeight_masked,
                     pfcands_d0_masked,   
                     pfcands_dz_masked,
-                    pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             else:
                 features = torch.tensor(np.array([
@@ -598,11 +598,7 @@ class ScoreProducer:
                     pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             
-            end = time.time()
-            # print(f"Node feature creation time {end - start:.5f}")
-            
             # TODO do this calc outside loop and then just mask inside 
-            start = time.time()
             # Calculate edges and edge features
             matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
             matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
@@ -675,9 +671,6 @@ class ScoreProducer:
                         y=torch.Tensor([self.label])
                     )
             
-            end = time.time()
-            # print(f"Edge feature creation time {end - start:.5f}")
-            start = time.time()
             # Add the event weight
             if self.weights == "xsec":
                 if not self.max_events_to_process:
@@ -719,18 +712,17 @@ class ScoreProducer:
                 # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
                 # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
                 # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
-            
-            end = time.time()
-            # print(f"Graph level data add time {end - start:.5f}")
+                
+            score_model_dict, tau_mass = self.create_score(graph)
+            for name in self.model_names:
+                if key in score_dict_for_root[name]:
+                    print(f"WARNING: overwriting score in {name} for {key}")
+                score_dict_for_root[name][key] = score_model_dict[name][0]
 
-            score, tau_mass = self.create_score(graph)
-
-            score_dict[key] = score[0]
-
-            scores.append(score[0])
+                scores_dict_all_models[name].append(score_model_dict[name][0])
             tau_masses.append(tau_mass[0])
 
-        return scores, tau_masses
+        return scores_dict_all_models, tau_masses
 
     def get_all_scores(self, file_name):
 
@@ -810,11 +802,11 @@ class ScoreProducer:
         if self.use_displacement:
             branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
 
-        all_scores = []
+        all_scores_dict = {name: [] for name in self.model_names}
         all_tau_masses = []
-        score_dict = {}
+        score_dicts = {name: {} for name in self.model_names}
         counter = 1
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="3000 MB"):
+        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="2000 MB"):
             print(f"Processing bunch {counter} of {file_name}")
             bkg_mask = None
             total_events = len(events)
@@ -827,7 +819,7 @@ class ScoreProducer:
             if gen_events_before_selection is None:
                 gen_events_before_selection = total_events
             events_to_process = min(self.max_events_to_process, len(events)) if self.max_events_to_process else len(events)
-            score, tau_mass = self.process_event(
+            scores_per_model, tau_mass = self.process_event(
                 0,
                 events_to_process,
                 events,
@@ -837,18 +829,20 @@ class ScoreProducer:
                 events_to_process,
                 bkg_mask,
                 npvs_weights,
-                score_dict,
+                score_dicts,
             )
             # score, tau_mass = self.create_score(graphDataset)
-            all_scores.append(score)
+            for name in self.model_names:
+                all_scores_dict[name].append(scores_per_model[name])
             all_tau_masses.append(tau_mass)
 
             counter += 1
 
-        all_scores = ak.flatten(all_scores)
+        for name in self.model_names:
+            all_scores_dict[name] = ak.flatten(all_scores_dict[name])
         all_tau_masses = ak.flatten(all_tau_masses)
         
-        return all_scores, all_tau_masses, score_dict
+        return all_scores_dict, all_tau_masses, score_dicts
 
     @property
     def raw_file_names(self):
@@ -856,40 +850,52 @@ class ScoreProducer:
 
     def create_score(self, graph):
         # Dictionary to hold scores
+        scores = {}
+        tau_mass = graph.fitted_tau_mass
 
-        model = self.model
-        device = self.device
-        model = model.to(device)
-        model.eval()
+        for i, model in enumerate(self.models):
+            graph_copy = graph.clone()
+            device = self.device
+            model = model.to(device)
+            model.eval()
 
-        with torch.no_grad():
-            # Compute scores for each graph
-            graph.x = graph.x.float()  # Ensure float32
-            tau_mass = graph.fitted_tau_mass
+            with torch.no_grad():
+                # Compute scores for each graph
+                graph_copy.x = graph_copy.x.float()  # Ensure float32
+                # print(f"Now model {self.model_names[i]}")
+                if self.normalizers[i] is not None:
+                    means_x = torch.tensor(self.normalizers[i]["means_x"], dtype=torch.float, device=graph_copy.x.device)
+                    stds_x = torch.tensor(self.normalizers[i]["stds_x"], dtype=torch.float, device=graph_copy.x.device)
+                    # print(f"Node features before norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
+                    graph_copy.x = (graph_copy.x - means_x) / stds_x
+                    # print(f"Feature mean and std: {means_x, stds_x}")
+                    # print(f"Node features after norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
 
-            if self.normalizer is not None:
-                means_x = torch.tensor(self.normalizer["means_x"], dtype=torch.float, device=graph.x.device)
-                stds_x = torch.tensor(self.normalizer["stds_x"], dtype=torch.float, device=graph.x.device)
-                graph.x = (graph.x - means_x) / stds_x
-
-                means_edge = torch.tensor(self.normalizer["means_edge"], dtype=torch.float, device=graph.edge_attr.device)
-                stds_edge = torch.tensor(self.normalizer["stds_edge"], dtype=torch.float, device=graph.edge_attr.device)
-                graph.edge_attr = (graph.edge_attr - means_edge) / stds_edge
-                
-                means_graph = torch.tensor(self.normalizer["means_graph"], dtype=torch.float, device=graph.graph_level_features.device)
-                stds_graph = torch.tensor(self.normalizer["stds_graph"], dtype=torch.float, device=graph.graph_level_features.device)
-                graph.graph_level_features = (graph.graph_level_features - means_graph) / stds_graph
-                
-            graph = graph.to(device)
-            out = model(graph)
-            score = out[:,0].cpu().detach().numpy()
-        return score, tau_mass
+                    means_edge = torch.tensor(self.normalizers[i]["means_edge"], dtype=torch.float, device=graph_copy.edge_attr.device)
+                    stds_edge = torch.tensor(self.normalizers[i]["stds_edge"], dtype=torch.float, device=graph_copy.edge_attr.device)
+                    # print(f"Edge features before norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
+                    graph_copy.edge_attr = (graph_copy.edge_attr - means_edge) / stds_edge
+                    # print(f"Edge mean and std: {means_edge, stds_edge}")
+                    # print(f"Edge features after norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
+                    
+                    means_graph = torch.tensor(self.normalizers[i]["means_graph"], dtype=torch.float, device=graph_copy.graph_level_features.device)
+                    stds_graph = torch.tensor(self.normalizers[i]["stds_graph"], dtype=torch.float, device=graph_copy.graph_level_features.device)
+                    # print(f"Graph features before norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
+                    graph_copy.graph_level_features = (graph_copy.graph_level_features - means_graph) / stds_graph
+                    # print(f"Graph feature mean and std: {means_graph, stds_graph}")
+                    # print(f"Graph features after norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
+                    
+                graph_copy = graph_copy.to(device)
+                out = model(graph_copy)
+                # print(f"model output (logit): {out[:,0]}")
+                scores[self.model_names[i]] = out[:,0].cpu().detach().numpy()
+        return scores, tau_mass
 
 
     def process(self):
 
         # Read data into huge `Data` list.
-        all_scores = []
+        all_scores_dict = {name: [] for name in self.model_names}
         all_tau_masses = []
 
         if "signal" in self.root:
@@ -899,136 +905,123 @@ class ScoreProducer:
 
         for file in self.raw_file_names:
             print(f"Processing {file}")
-            all_scores_temp, all_tau_masses_temp, score_dict = self.get_all_scores(file)
-            all_scores += ak.to_list(all_scores_temp)
+            # all_scores_temp, all_tau_masses_temp, score_dict = self.get_all_scores(file)
+            all_scores_temp_dict, all_tau_masses_temp, score_dict_all_models = self.get_all_scores(file)
+
+            # all_scores += ak.to_list(all_scores_temp)
+            # all_tau_masses += ak.to_list(all_tau_masses_temp)
+
             all_tau_masses += ak.to_list(all_tau_masses_temp)
 
-            base_name = os.path.basename(file)   # only filename not full path      
-            name_without_ext = os.path.splitext(base_name)[0] # drop .root
-            root_path_sc_only = os.path.join(self.storage_folder, f"{name_without_ext}_with_scores_only.root")
-            root_path = os.path.join(self.storage_folder, f"{name_without_ext}_with_scores.root")
+            for model_name in self.model_names:
+                all_scores_dict[model_name] += ak.to_list(all_scores_temp_dict[model_name])
 
-            runs = []
-            lumis = []
-            events = []
-            scores = []
+                base_name = os.path.basename(file)   # only filename not full path      
+                name_without_ext = os.path.splitext(base_name)[0] # drop .root
+                model_storage = os.path.join(self.storage_folder, model_name)
+                os.makedirs(model_storage, exist_ok=True)
+                root_path_sc_only = os.path.join(model_storage, f"{name_without_ext}_with_scores_only.root")
+                root_path = os.path.join(model_storage, f"{name_without_ext}_with_scores.root")
 
-            for (run, lumi, event), score in score_dict.items():
-                runs.append(run)
-                lumis.append(lumi)
-                events.append(event)
-                scores.append(score)
+                runs = []
+                lumis = []
+                events = []
+                scores = []
 
-            runs = np.array(runs, dtype=np.uint64)
-            lumis = np.array(lumis, dtype=np.uint64)
-            events = np.array(events, dtype=np.uint64)
-            scores = np.array(scores, dtype=np.float32)
+                for (run, lumi, event), score in score_dict_all_models[model_name].items():
+                    runs.append(run)
+                    lumis.append(lumi)
+                    events.append(event)
+                    scores.append(score)
 
-            scores_to_save = {
-                    "run": runs,
-                    "luminosityBlock": lumis,
-                    "event": events,
-                    "GNN_score": scores,
-                }
+                runs = np.array(runs, dtype=np.uint32)
+                lumis = np.array(lumis, dtype=np.uint32)
+                events = np.array(events, dtype=np.uint64)
+                scores = np.array(scores, dtype=np.float64)
 
-            branches = {k: v.dtype for k, v in scores_to_save.items()}
+                scores_to_save = {
+                        "run": runs,
+                        "luminosityBlock": lumis,
+                        "event": events,
+                        "GNN_score": scores,
+                    }
 
-            print(f"Saving scores only to {root_path_sc_only}")
+                branches = {k: v.dtype for k, v in scores_to_save.items()}
 
-            with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
-                # Create a new TTree in the file
-                tree = f.mktree("Events", branches)
-                tree.extend(scores_to_save)  # Fill the tree with data
+                print(f"Saving scores only to {root_path_sc_only}")
 
-            # scores_to_save = ak.Array([{
-            #         "run": runs,
-            #         "luminosityBlock": lumis,
-            #         "event": events,
-            #         "GNN_score": scores,
-            #     }])
-        
+                with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
+                    # Create a new TTree in the file
+                    tree = f.mktree("Events", branches)
+                    tree.extend(scores_to_save)  # Fill the tree with data
+
+                print(f"Merging scores with events {root_path}")
+                start = time.time()
+
+                fin = ROOT.TFile.Open(file)
+                t1 = fin.Get("Events")
+
+                friend_file = ROOT.TFile.Open(root_path_sc_only)
+                t2 = friend_file.Get("Events")
+
+                t2.BuildIndex("run", "event")
+
+                # Write merged tree
+                fout = ROOT.TFile.Open(root_path, "RECREATE")
+                t_merged = t1.CloneTree(0) # empty tree
+
+                # Prepare buffer for GNN_score
+                gnn_score = array('f', [0.])
+                t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
+
+                count = 0
+                # Loop over t1
+                for i in range(t1.GetEntries()):
+                    t1.GetEntry(i)
+
+                    # entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
+                    entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
+
+                    if entry2 >= 0:
+                        t2.GetEntry(entry2) 
+                        gnn_score[0] = t2.GNN_score
+                        count += 1
+                    else:
+                        gnn_score[0] = -1.  # default if no match
+
+                    t_merged.Fill()
+
+                print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
+                t_merged.Write()
+                fout.Close()
+
+                fin.Close()
+                friend_file.Close()
+
+                end = time.time()
+                # print(f"ROOT file merging time: {end - start:.3f}")
+                print(f"Merged score and event root files to {root_path}")
+                
+                os.remove(root_path_sc_only)
+
+                print(f"Deleted temporary file {root_path_sc_only}")
             
-            # with uproot.recreate(root_path_sc_only) as new_file:
-            #     print(f"Writing to {root_path_sc_only}")
-            #     write_tree_maker_root_file(
-            #         output_file_name=root_path_sc_only,
-            #         events=scores_to_save,
-            #         trees={},
-            #     )
-
-            print(f"Merging scores with events {root_path}")
-            start = time.time()
-
-            fin = ROOT.TFile.Open(file)
-            t1 = fin.Get("Events")
-
-            friend_file = ROOT.TFile.Open(root_path_sc_only)
-            t2 = friend_file.Get("Events")
-
-            t2.BuildIndex("run", "event")
-
-            # Write merged tree
-            fout = ROOT.TFile.Open(root_path, "RECREATE")
-            t_merged = t1.CloneTree(0) # empty tree
-
-            # Prepare buffer for GNN_score
-            gnn_score = array('f', [0.])
-            t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
-
-            # Loop over t1
-            for i in range(t1.GetEntries()):
-                t1.GetEntry(i)
-
-                entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-
-                if entry2 >= 0:
-                    t2.GetEntry(entry2) 
-                    gnn_score[0] = t2.GNN_score
-                else:
-                    gnn_score[0] = -1.  # default if no match
-
-                t_merged.Fill()
-
-            t_merged.Write()
-            fout.Close()
-
-            fin.Close()
-            friend_file.Close()
-
-            end = time.time()
-            # print(f"ROOT file merging time: {end - start:.3f}")
-            print(f"Merged score and event root files to {root_path}")
-            
-            os.remove(root_path_sc_only)
-
-            print(f"Deleted temporary file {root_path_sc_only}")
-            
-
-
-        os.makedirs(self.output_folder, exist_ok=True)
         # Save raw arrays to compressed npz
+        for name, output_folder in zip(self.model_names, self.output_folders):
+            os.makedirs(output_folder, exist_ok=True)
+            np.savez_compressed(
+                os.path.join(output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
+                scores=all_scores_dict[name],
+                tau_mass=all_tau_masses,
+            )
+            print(f"Raw scores and tau masses saved to: {os.path.join(output_folder, f'raw_scores_and_tau_mass_{mode}.npz')}")
         
-        np.savez_compressed(
-            os.path.join(self.output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
-            scores=all_scores,
-            tau_mass=all_tau_masses,
-        )
-
-        print(f"Raw scores and tau masses saved to: {os.path.join(self.output_folder, f'raw_scores_and_tau_mass_{mode}.npz')}")
-
-
-        # csv_path = os.path.join(self.output_folder, f"scores_{mode}.csv")
-
-        # # Write the CSV file
-        # with open(csv_path, "w", newline="") as csvfile:
-        #     writer = csv.writer(csvfile)
-        #     writer.writerow(["run", "luminosityBlock", "event", "score"])
-        #     for (run, lumi, event), score in score_dict.items():
-        #         writer.writerow([run, lumi, event, score])
-
-        # print(f"Saved scores to {csv_path}")
-        
-        
+        # np.savez_compressed(
+        #     os.path.join(self.output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
+        #     scores=all_scores,
+        #     tau_mass=all_tau_masses,
+        # )
+        return        
 
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:

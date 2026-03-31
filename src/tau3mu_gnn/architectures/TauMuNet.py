@@ -18,7 +18,9 @@ class TauMuNet(nn.Module):
             num_graph_level_features=13,
             use_fusion = True,
             gnn_mode = "final_layer", # can be "BDT", "final_layer", "embed_once", "embed_always"
+            scoring=False,
             num_classes = 1,
+            scale_down_params=[],
             ):
         super(TauMuNet, self).__init__()
 
@@ -33,12 +35,16 @@ class TauMuNet(nn.Module):
         self.embed_input = gnn_mode in ["embed_once", "embed_always"]
         self.embed_every_layer = gnn_mode == "embed_always"
         self.embed_final = gnn_mode == "final_layer"
-
+        self.scoring = scoring
+        self.scale_down = True if scale_down_params else False
+        self.scale_down_params = scale_down_params
 
         self.input_dims = num_node_features
 
         if self.embed_input:
             self.input_dims += self.num_graph_level_features
+        
+        assert not self.scale_down or self.use_fusion, "scale_down requires use_fusion"
 
         #batch normalization features
         self.bn_fts = nn.BatchNorm1d(self.num_node_features)
@@ -80,6 +86,23 @@ class TauMuNet(nn.Module):
             in_chn = sum(x for x in conv_params)
             out_chn = np.clip((in_chn // 128) * 128, 128, 1024)
             self.fusion_block = nn.Sequential(nn.Linear(in_chn, out_chn), nn.ReLU(), nn.BatchNorm1d(out_chn))
+        
+            scale_down_fcs = []
+            if self.scale_down:
+                for idx, (channels, drop_rate) in enumerate(scale_down_params):
+                    if idx == 0:
+                        in_chn = out_chn
+                    else:
+                        in_chn = scale_down_params[idx - 1][0]
+                    
+                    scale_down_fcs.append(nn.Sequential(
+                        nn.Linear(in_chn, channels),
+                        nn.ReLU(),
+                        nn.BatchNorm1d(channels),
+                        nn.Dropout(drop_rate)
+                    ))
+                out_chn = scale_down_params[-1][0]
+                self.scale_down_fc = nn.Sequential(*scale_down_fcs)
 
         fcs = []
         for idx, (channels, drop_rate) in enumerate(fc_params):
@@ -134,9 +157,159 @@ class TauMuNet(nn.Module):
 
         #Global average pooling
         x = global_mean_pool(x, batch = data.batch) 
+    
+        if self.scale_down: 
+            x = self.scale_down_fc(x)
 
         if self.embed_final:
             x = torch.cat([x, graph_feat], dim = -1)
         x = self.fc(x)
-        x = torch.sigmoid(x)
+        if not self.scoring:
+            x = torch.sigmoid(x)
         return x
+    
+def get_arch_configs():
+    arch_configs = {
+        "arch1": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch2": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch3": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch4": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(32, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch5": {
+            "conv_params": [256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch6": {
+            "conv_params": [256, 256, 128, 128, 64, 64, 32, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch7": {
+            "conv_params": [512, 256, 128, 64, 32],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch8": {
+            "conv_params": [512, 256, 128, 64, 32, 16, 8],
+            "fc_params": [(64, 0.8)],
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "arch_optuna" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(51, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "final_layer1" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "final_layer2" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(512, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "final_layer3" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "final_layer4" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(512, 0.8), (256, 0.8), (32, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "final_layer5" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(2056, 0.8), (512, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [],
+        },
+        "scale_down1" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [(256, 0.2), (64, 0.2), (1, 0.)],
+        },
+        "scale_down2" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [(256, 0.2), (64, 0.2), (8, 0.2)],
+        },
+        "scale_down3" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [(256, 0.2), (64, 0.2), (16, 0.2)],
+        },
+        "scale_down4" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [(256, 0.2), (64, 0.2), (32, 0.2)],
+        },
+        "scale_down5" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [(64, 0.2), (8, 0.2)],
+        },
+        "scale_down6" : {
+            "conv_params" : [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+            "fc_params" : [(256, 0.8), (128, 0.8), (128, 0.8), (64, 0.8)] ,
+            "use_fusion": True,
+            "dropout": 0.2633831214702671,
+            "fusion_scale_down_params": [(256, 0.2), (32, 0.2)],
+        },
+    }
+
+    return arch_configs
