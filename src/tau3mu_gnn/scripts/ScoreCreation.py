@@ -59,7 +59,8 @@ if __name__ == "__main__":
             num_graph_level_features=num_graph_level_features,
             use_fusion=params["use_fusion"],
             gnn_mode=gnn_mode,
-            scoring=True
+            scoring=True, 
+            scale_down_params=params["fusion_scale_down_params"],
         )
         model.load_state_dict(torch.load(output_folder + model_name + "/" + model_name + ".pt", map_location=device)['model_state_dict'])
         # Load the normalizer

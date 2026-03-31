@@ -272,6 +272,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         num_graph_level_features=num_graph_level_features,
         use_fusion=params["use_fusion"],
         gnn_mode=gnn_mode,
+        scale_down_params=params["fusion_scale_down_params"],
     )
 
     # Define the optimizer
