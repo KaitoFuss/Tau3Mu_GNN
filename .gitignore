@@ -183,3 +183,6 @@ src/tau3mu_gnn/model_eval/signal_histo.py
 
 # Ignore the entire tests folder
 tests/
+
+# Ignore notebook folder
+notebooks/
