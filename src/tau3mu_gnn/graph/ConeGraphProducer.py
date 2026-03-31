@@ -311,7 +311,7 @@ class ConeGraphProducer(InMemoryDataset):
                         pfcands_mass_masked,
                         pfcands_puppiWeight_masked,
                         pfcands_d0_masked,   
-                        pfcands_dz_masked   
+                        pfcands_dz_masked,
                     ]).T, dtype=torch.float)
                 else:
                     features = torch.tensor(np.array([

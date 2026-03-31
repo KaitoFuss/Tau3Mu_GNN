@@ -584,9 +584,9 @@ class ScoreProducer:
                     pfcands_phi_masked,
                     pfcands_pdgId_masked,
                     pfcands_mass_masked,
+                    pfcands_puppiWeight_masked,
                     pfcands_d0_masked,   
                     pfcands_dz_masked,
-                    pfcands_puppiWeight_masked,
                 ]).T, dtype=torch.float)
             else:
                 features = torch.tensor(np.array([
@@ -862,32 +862,32 @@ class ScoreProducer:
             with torch.no_grad():
                 # Compute scores for each graph
                 graph_copy.x = graph_copy.x.float()  # Ensure float32
-                print(f"Now model {self.model_names[i]}")
+                # print(f"Now model {self.model_names[i]}")
                 if self.normalizers[i] is not None:
                     means_x = torch.tensor(self.normalizers[i]["means_x"], dtype=torch.float, device=graph_copy.x.device)
                     stds_x = torch.tensor(self.normalizers[i]["stds_x"], dtype=torch.float, device=graph_copy.x.device)
-                    print(f"Node features before norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
+                    # print(f"Node features before norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
                     graph_copy.x = (graph_copy.x - means_x) / stds_x
-                    print(f"Feature mean and std: {means_x, stds_x}")
-                    print(f"Node features after norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
+                    # print(f"Feature mean and std: {means_x, stds_x}")
+                    # print(f"Node features after norm - mean: {graph_copy.x.mean(dim=0)}, std: {graph_copy.x.std(dim=0)}")
 
                     means_edge = torch.tensor(self.normalizers[i]["means_edge"], dtype=torch.float, device=graph_copy.edge_attr.device)
                     stds_edge = torch.tensor(self.normalizers[i]["stds_edge"], dtype=torch.float, device=graph_copy.edge_attr.device)
-                    print(f"Edge features before norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
+                    # print(f"Edge features before norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
                     graph_copy.edge_attr = (graph_copy.edge_attr - means_edge) / stds_edge
-                    print(f"Edge mean and std: {means_edge, stds_edge}")
-                    print(f"Edge features after norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
+                    # print(f"Edge mean and std: {means_edge, stds_edge}")
+                    # print(f"Edge features after norm - mean: {graph_copy.edge_attr.mean(dim=0)}, std: {graph_copy.edge_attr.std(dim=0)}")
                     
                     means_graph = torch.tensor(self.normalizers[i]["means_graph"], dtype=torch.float, device=graph_copy.graph_level_features.device)
                     stds_graph = torch.tensor(self.normalizers[i]["stds_graph"], dtype=torch.float, device=graph_copy.graph_level_features.device)
-                    print(f"Graph features before norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
+                    # print(f"Graph features before norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
                     graph_copy.graph_level_features = (graph_copy.graph_level_features - means_graph) / stds_graph
-                    print(f"Graph feature mean and std: {means_graph, stds_graph}")
-                    print(f"Graph features after norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
+                    # print(f"Graph feature mean and std: {means_graph, stds_graph}")
+                    # print(f"Graph features after norm - mean: {graph_copy.graph_level_features.mean(dim=0)}, std: {graph_copy.graph_level_features.std(dim=0)}")
                     
                 graph_copy = graph_copy.to(device)
                 out = model(graph_copy)
-                print(f"model output (logit): {out[:,0]}")
+                # print(f"model output (logit): {out[:,0]}")
                 scores[self.model_names[i]] = out[:,0].cpu().detach().numpy()
         return scores, tau_mass
 
@@ -964,8 +964,7 @@ class ScoreProducer:
                 friend_file = ROOT.TFile.Open(root_path_sc_only)
                 t2 = friend_file.Get("Events")
 
-                # t2.BuildIndex("run", "event")
-                t2.BuildIndex("run", "luminosityBlock*10000000000LL+event")
+                t2.BuildIndex("run", "event")
 
                 # Write merged tree
                 fout = ROOT.TFile.Open(root_path, "RECREATE")
@@ -975,21 +974,24 @@ class ScoreProducer:
                 gnn_score = array('f', [0.])
                 t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
 
+                count = 0
                 # Loop over t1
                 for i in range(t1.GetEntries()):
                     t1.GetEntry(i)
 
                     # entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-                    entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.luminosityBlock*10000000000+t1.event)
+                    entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
 
                     if entry2 >= 0:
                         t2.GetEntry(entry2) 
                         gnn_score[0] = t2.GNN_score
+                        count += 1
                     else:
                         gnn_score[0] = -1.  # default if no match
 
                     t_merged.Fill()
 
+                print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
                 t_merged.Write()
                 fout.Close()
 
