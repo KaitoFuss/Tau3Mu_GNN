@@ -271,7 +271,7 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
         tpr = gnn_data["tpr"]
         thresh_model = gnn_data["threshold"]
 
-        print(f"Size of full dataset is {len(fpr)}")
+        print(f"Size of fpr list is {len(fpr)}")
         if gnn_data['gnn_mode'] == "final_layer":
             line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN {archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}, AUC: {gnn_data['auc']:.3f}")
         else:
@@ -355,7 +355,7 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
             signal = np.load(root + 'raw_scores_and_tau_mass_signal.npz', allow_pickle=True)
             scores_signal = signal["scores"]
             nan_mask = ~np.isnan(scores)
-            scores = scores[~np.isnan(scores)]
+            scores = scores[nan_mask]
             f_tau_mass = f_tau_mass[nan_mask]
             scores_signal = scores_signal[~np.isnan(scores_signal)]
 
@@ -372,19 +372,19 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
         f_tau_mass = data["tau_mass"]
 
         if use_fpr:
-            GNN_bkg = data["GNN_score_bkg"]
-            GNN_sig = data["GNN_score_sig"]
-            GNN_scores = np.concatenate([GNN_sig, GNN_bkg])
-            GNN_labels = np.concatenate([np.ones(len(GNN_sig)), np.zeros(len(GNN_bkg))])
-            fpr, tpr, thresh_model = roc_curve(GNN_labels, GNN_scores)
+            scores_signal = data["GNN_score_sig"]
+            scores_all = np.concatenate([scores_signal, scores])
+            labels = np.concatenate([np.ones(len(scores_signal)), np.zeros(len(scores))])
+            fpr, tpr, thresh_model = roc_curve(labels, scores_all)
 
     else:
         raise ValueError(f"Unknown plot_mode: {plot_mode}")
 
 
-    print("length of inferenced data set is ", len(f_tau_mass))
+    print("length of inferenced bkg data set is ", len(scores))
+    print("length of inferenced sig data set is ", len(scores_signal))
     if use_fpr:
-        print("eval set size to get fpr is:", len(fpr))
+        print("lenght of fpr list is:", len(fpr))
         fpr_cuts = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2]
         # fpr_cuts = [1e-2, 0.05, 0.1, 0.2]
         score_cuts = []
