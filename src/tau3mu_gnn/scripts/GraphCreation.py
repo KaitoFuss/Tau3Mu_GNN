@@ -5,7 +5,7 @@ import os
 
 
 # default values
-max_events_to_process = 100000
+max_events_to_process = 300000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -114,12 +114,13 @@ if __name__ == "__main__":
     # )
 
     prefix = "Selected_"
+    graph_file_ident = "skimmed_300k"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
         # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
-            [base_direc_W_signal, "skimmed"],
+            [base_direc_W_signal, graph_file_ident],
         ]
         W_graph_level_branches = [
             f'{prefix}TauTo3Mu_fitted_pt',
@@ -165,7 +166,7 @@ if __name__ == "__main__":
         # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
-            [base_direc_W_bkg, "skimmed"]
+            [base_direc_W_bkg, graph_file_ident]
         ]
         for base_direc, bkg_identifier in root_bkgs_skimmed:
             output_ident_bkg = "W_decay_background_" + bkg_identifier.replace("/", "")
@@ -191,7 +192,7 @@ if __name__ == "__main__":
         base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
 
         root_HF_signals_skimmed = [
-            [base_direc_HF_signal, "skimmed"],
+            [base_direc_HF_signal, graph_file_ident],
         ]
         HF_graph_level_branches = [
             f'Muon_pt[{prefix}TauTo3Mu_mu3_idx]',
@@ -237,7 +238,7 @@ if __name__ == "__main__":
         # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
         base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
         root_bkgs_skimmed = [
-            [base_direc_HF_bkg, "skimmed"]
+            [base_direc_HF_bkg, graph_file_ident]
         ]
 
         for base_direc, bkg_identifier in root_bkgs_skimmed:
