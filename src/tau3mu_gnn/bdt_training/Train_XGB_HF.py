@@ -264,7 +264,7 @@ print("Going to load bkg events")
 for i in range(len(backgrounds)):
     for events in uproot.iterate(f"{backgrounds[i]}:Events", expressions=branches, library="ak", step_size="100 MB"):
         bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
-        events = events[ak.any(bkg_mask, axis=1)]
+        events = events[ak.all(bkg_mask, axis=1)]
         score_mask = events["GNN_score"] != -1
         events_masked = events[score_mask]
 
@@ -404,7 +404,7 @@ bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx'] = bkg[f'Muon_isGlobal[{prefix}Tau
 features += [f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx']
 features.remove(f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]')
 
-sig[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}auTo3Mu_vtx_Ndof**-1)'] = sig[f'{prefix}TauTo3Mu_vtx_chi2']/sig[f'{prefix}TauTo3Mu_vtx_Ndof']
+sig[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)'] = sig[f'{prefix}TauTo3Mu_vtx_chi2']/sig[f'{prefix}TauTo3Mu_vtx_Ndof']
 bkg[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)'] = bkg[f'{prefix}TauTo3Mu_vtx_chi2']/bkg[f'{prefix}TauTo3Mu_vtx_Ndof']
 
 features += [f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)']
