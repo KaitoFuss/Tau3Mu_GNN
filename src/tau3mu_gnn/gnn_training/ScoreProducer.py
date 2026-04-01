@@ -389,10 +389,11 @@ class ScoreProducer:
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
         # Assert that no incompatible flags are used
+        prefix = "Selected_" if self.slimmed else ""
 
         if self.tau_channel == "W":
             self.graph_level_branches = [
-                'Slimmed_TauTo3Mu_fitted_pt',
+                f'{prefix}TauTo3Mu_fitted_pt',
                 'TauPlusMET_Tau_Puppi_mT',
                 #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
                 #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
@@ -403,33 +404,33 @@ class ScoreProducer:
                 'TauPlusMET_Puppi_pt',
                 'TauPlusMET_PuppiMETminPz',
                 'TauPlusMET_PuppiMETmaxPz',
-                'Slimmed_TauTo3Mu_dZmu12', 
-                'Slimmed_TauTo3Mu_dZmu13', 
-                'Slimmed_TauTo3Mu_dZmu23',
-                'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
-                'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
-                'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+                f'{prefix}TauTo3Mu_dZmu12', 
+                f'{prefix}TauTo3Mu_dZmu13', 
+                f'{prefix}TauTo3Mu_dZmu23',
+                f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
+                f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+                f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
             ]
         elif self.tau_channel == "HF":
             self.graph_level_branches = [
-                'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
-            
+                f'Muon_pt[{prefix}TauTo3Mu_mu3_idx]',
+                
                 # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
                 # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
                 # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
 
-                'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
-                'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
-                'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+                f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]', 
+                f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]', 
+                f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]', 
 
-                'Slimmed_TauTo3Mu_dZmu12', 
-                'Slimmed_TauTo3Mu_dZmu13', 
-                'Slimmed_TauTo3Mu_dZmu23', 
+                f'{prefix}TauTo3Mu_dZmu12', 
+                f'{prefix}TauTo3Mu_dZmu13', 
+                f'{prefix}TauTo3Mu_dZmu23', 
 
-                'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
-                'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+                f'{prefix}TauTo3Mu_sigLxy_3muVtxBS', 
+                f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu', 
 
-                'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+                f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
             ]
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
@@ -441,8 +442,9 @@ class ScoreProducer:
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict_for_root):
 
-        prefix = "Slimmed_" if self.slimmed else ""
-        n_prefix = "Slimmed" if self.slimmed else ""
+        prefix = "Selected_" if self.slimmed else ""
+        n_prefix = "Selected" if self.slimmed else ""
+        old_prefix = "Slimmed_" if self.slimmed else ""
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
@@ -468,17 +470,20 @@ class ScoreProducer:
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
 
-            pfcands_pt = event[f"{prefix}PFCands_pt"]
-            pfcands_eta = event[f"{prefix}PFCands_eta"]
-            pfcands_phi = event[f"{prefix}PFCands_phi"]
-            pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
-            pfcands_mass = event[f"{prefix}PFCands_mass"]
-            pfcands_charge = event[f"{prefix}PFCands_charge"]
-            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
+            pfcands_pt = event[f"{old_prefix}PFCands_pt"]
+            pfcands_eta = event[f"{old_prefix}PFCands_eta"]
+            pfcands_phi = event[f"{old_prefix}PFCands_phi"]
+            pfcands_pdgId = event[f"{old_prefix}PFCands_pdgId"]
+            pfcands_mass = event[f"{old_prefix}PFCands_mass"]
+            pfcands_charge = event[f"{old_prefix}PFCands_charge"]
+            pfcands_pupppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             key = (runs[i_ev], lumis[i_ev], event_ids[i_ev])
             tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
+            if n_tau == 0:
+                # print("Skipping event as all TauCands have not been selected")
+                continue
             nt = np.argmax(event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask])
             
             # Read data for fitted tau from event
@@ -545,8 +550,8 @@ class ScoreProducer:
             pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
             if self.use_displacement:
-                pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
-                pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
+                pfcands_d0_masked = event[f"{old_prefix}PFCands_d0"][cone_mask]
+                pfcands_dz_masked = event[f"{old_prefix}PFCands_dz"][cone_mask]
             else:
                 pfcands_d0_masked, pfcands_dz_masked = None, None 
 
@@ -749,17 +754,18 @@ class ScoreProducer:
             gen_events_before_selection = None
             npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
 
-        prefix = "Slimmed_" if self.slimmed else ""
-        n_prefix = "Slimmed" if self.slimmed else ""
+        prefix = "Selected_" if self.slimmed else ""
+        n_prefix = "Selected" if self.slimmed else ""
+        old_prefix = "Slimmed_" if self.slimmed else ""
         branches_to_load = [
             # f"n{n_prefix}PFCands",
-            f"{prefix}PFCands_pt",
-            f"{prefix}PFCands_eta",
-            f"{prefix}PFCands_phi",
-            f"{prefix}PFCands_pdgId",
-            f"{prefix}PFCands_mass",  
-            f"{prefix}PFCands_charge",
-            f"{prefix}PFCands_puppiWeight",
+            f"{old_prefix}PFCands_pt",
+            f"{old_prefix}PFCands_eta",
+            f"{old_prefix}PFCands_phi",
+            f"{old_prefix}PFCands_pdgId",
+            f"{old_prefix}PFCands_mass",  
+            f"{old_prefix}PFCands_charge",
+            f"{old_prefix}PFCands_puppiWeight",
             f"n{n_prefix}TauTo3Mu",
             # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -800,7 +806,7 @@ class ScoreProducer:
             pass # no additional features needed
 
         if self.use_displacement:
-            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
+            branches_to_load += [f"{old_prefix}PFCands_d0", f"{old_prefix}PFCands_dz"]
 
         all_scores_dict = {name: [] for name in self.model_names}
         all_tau_masses = []

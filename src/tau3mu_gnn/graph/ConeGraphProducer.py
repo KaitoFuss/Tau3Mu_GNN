@@ -167,8 +167,9 @@ class ConeGraphProducer(InMemoryDataset):
         return n_initial
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights):
-        prefix = "Slimmed_" if self.slimmed else ""
-        n_prefix = "Slimmed" if self.slimmed else ""
+        prefix = "Selected_" if self.slimmed else ""
+        n_prefix = "Selected" if self.slimmed else ""
+        old_prefix = "Slimmed_" if self.slimmed else ""
         graphs = []
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
@@ -191,13 +192,13 @@ class ConeGraphProducer(InMemoryDataset):
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
 
-            pfcands_pt = event[f"{prefix}PFCands_pt"]
-            pfcands_eta = event[f"{prefix}PFCands_eta"]
-            pfcands_phi = event[f"{prefix}PFCands_phi"]
-            pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
-            pfcands_mass = event[f"{prefix}PFCands_mass"]
-            pfcands_charge = event[f"{prefix}PFCands_charge"]
-            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
+            pfcands_pt = event[f"{old_prefix}PFCands_pt"]
+            pfcands_eta = event[f"{old_prefix}PFCands_eta"]
+            pfcands_phi = event[f"{old_prefix}PFCands_phi"]
+            pfcands_pdgId = event[f"{old_prefix}PFCands_pdgId"]
+            pfcands_mass = event[f"{old_prefix}PFCands_mass"]
+            pfcands_charge = event[f"{old_prefix}PFCands_charge"]
+            pfcands_pupppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -270,8 +271,8 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
                 if self.use_displacement:
-                    pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
-                    pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
+                    pfcands_d0_masked = event[f"{old_prefix}PFCands_d0"][cone_mask]
+                    pfcands_dz_masked = event[f"{old_prefix}PFCands_dz"][cone_mask]
                 else:
                     pfcands_d0_masked, pfcands_dz_masked = None, None 
 
@@ -467,17 +468,18 @@ class ConeGraphProducer(InMemoryDataset):
             gen_events_before_selection = None
             npvs_weights = np.load(self.root + f"/signal_{self.tau_channel}_npvs_weights.npz")["weight_per_bin"]
 
-        prefix = "Slimmed_" if self.slimmed else ""
-        n_prefix = "Slimmed" if self.slimmed else ""
+        prefix = "Selected_" if self.slimmed else ""
+        n_prefix = "Selected" if self.slimmed else ""
+        old_prefix = "Slimmed_" if self.slimmed else ""
         branches_to_load = [
             # f"n{n_prefix}PFCands",
-            f"{prefix}PFCands_pt",
-            f"{prefix}PFCands_eta",
-            f"{prefix}PFCands_phi",
-            f"{prefix}PFCands_pdgId",
-            f"{prefix}PFCands_mass",  
-            f"{prefix}PFCands_charge",
-            f"{prefix}PFCands_puppiWeight",
+            f"{old_prefix}PFCands_pt",
+            f"{old_prefix}PFCands_eta",
+            f"{old_prefix}PFCands_phi",
+            f"{old_prefix}PFCands_pdgId",
+            f"{old_prefix}PFCands_mass",  
+            f"{old_prefix}PFCands_charge",
+            f"{old_prefix}PFCands_puppiWeight",
             f"n{n_prefix}TauTo3Mu",
             # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -516,7 +518,7 @@ class ConeGraphProducer(InMemoryDataset):
             pass # no additional features needed
 
         if self.use_displacement:
-            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"] 
+            branches_to_load += [f"{old_prefix}PFCands_d0", f"{old_prefix}PFCands_dz"] 
 
         # with uproot.open(f"{file_name}:Events") as in_file:
         #     events = in_file.arrays(branches_to_load, library="ak")

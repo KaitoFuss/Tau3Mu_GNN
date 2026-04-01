@@ -113,14 +113,16 @@ if __name__ == "__main__":
     #     delta_r_threshold=delta_r
     # )
 
+    prefix = "Selected_"
+
     if tau_channel == "W":
-        base_direc_W_signal = "data/signal_W"
+        base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
         # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
             [base_direc_W_signal, "skimmed"],
         ]
         W_graph_level_branches = [
-            'Slimmed_TauTo3Mu_fitted_pt',
+            f'{prefix}TauTo3Mu_fitted_pt',
             'TauPlusMET_Tau_Puppi_mT',
             #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
             #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
@@ -131,12 +133,12 @@ if __name__ == "__main__":
             'TauPlusMET_Puppi_pt',
             'TauPlusMET_PuppiMETminPz',
             'TauPlusMET_PuppiMETmaxPz',
-            'Slimmed_TauTo3Mu_dZmu12', 
-            'Slimmed_TauTo3Mu_dZmu13', 
-            'Slimmed_TauTo3Mu_dZmu23',
-            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
-            'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
-            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+            f'{prefix}TauTo3Mu_dZmu12', 
+            f'{prefix}TauTo3Mu_dZmu13', 
+            f'{prefix}TauTo3Mu_dZmu23',
+            f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
+            f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+            f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
         ]
 
         for base_direc, signal_identifier in root_W_signals_skimmed:
@@ -159,7 +161,7 @@ if __name__ == "__main__":
                 save_benchmark_score=True
             )
         
-        base_direc_W_bkg = "data/background_W"
+        base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
         # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
@@ -186,30 +188,30 @@ if __name__ == "__main__":
     
     elif tau_channel == "HF":
         # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
-        base_direc_HF_signal = "data/signal_HF"
+        base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
 
         root_HF_signals_skimmed = [
             [base_direc_HF_signal, "skimmed"],
         ]
         HF_graph_level_branches = [
-            'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
+            f'Muon_pt[{prefix}TauTo3Mu_mu3_idx]',
             
             # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
             # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
             # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
 
-            'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
-            'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
-            'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+            f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]', 
+            f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]', 
+            f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]', 
 
-            'Slimmed_TauTo3Mu_dZmu12', 
-            'Slimmed_TauTo3Mu_dZmu13', 
-            'Slimmed_TauTo3Mu_dZmu23', 
+            f'{prefix}TauTo3Mu_dZmu12', 
+            f'{prefix}TauTo3Mu_dZmu13', 
+            f'{prefix}TauTo3Mu_dZmu23', 
 
-            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
-            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+            f'{prefix}TauTo3Mu_sigLxy_3muVtxBS', 
+            f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu', 
 
-            'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+            f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
         ]
 
         for base_direc, signal_identifier in root_HF_signals_skimmed:
@@ -233,7 +235,7 @@ if __name__ == "__main__":
             )
 
         # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
-        base_direc_HF_bkg = "data/background_HF"
+        base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
         root_bkgs_skimmed = [
             [base_direc_HF_bkg, "skimmed"]
         ]

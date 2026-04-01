@@ -51,14 +51,16 @@ args = parser.parse_args()
 
 model = args.model
 model_path = "/work/kfuss/SVJ_GNN/output/" + model + "/"
-signals = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/" + model + "/signal_skimmed_no_resonances_with_scores.root"]
-backgrounds = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/" + model + "/data_skimmed_no_resonances_with_scores.root"]
+signals = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/" + model + "/selected_signal_skimmed_no_resonances_with_scores.root"]
+backgrounds = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/" + model + "/selected_data_skimmed_no_resonances_with_scores.root"]
 
 # give labels human readable names
 modes = defaultdict(OrderedDict)
 labels = modes["GNN"]
 
-labels['Slimmed_TauTo3Mu_fitted_pt'                                         ] = '$\\tau$ $p_{T}$'
+prefix = "Selected_"
+
+labels[f'{prefix}TauTo3Mu_fitted_pt'                                         ] = '$\\tau$ $p_{T}$'
 labels['TauPlusMET_Tau_Puppi_mT'                                            ] = '$m_{T}(\\tau, MET)$'
 labels['TauPlusMET_PuppiMET_pt'                                             ] = 'MET $p_{T}$'
 # labels['cand_refit_tau_pt/cand_refit_met_pt'                              ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
@@ -66,13 +68,13 @@ labels['TauPlusMET_PuppiMET_pt'                                             ] = 
 labels['TauPlusMET_Puppi_pt'                                                ] = 'W $p_{T}$'
 labels['TauPlusMET_PuppiMETminPz'                                           ] = '$max(ME_z^i)$'
 labels['TauPlusMET_PuppiMETmaxPz'                                           ] = '$min(ME_z^i)$'
-labels['Slimmed_TauTo3Mu_dZmu12'                                            ] = '$\Delta z (\mu_1, \mu_2)$'
-labels['Slimmed_TauTo3Mu_dZmu13'                                            ] = '$\Delta z (\mu_1, \mu_3)$'
-labels['Slimmed_TauTo3Mu_dZmu23'                                            ] = '$\Delta z (\mu_2, \mu_3)$'
-labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                   ] = 'SV L/$\sigma$'
-labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'          ] = '$\\chi^2_{\\tau}$'
-labels['Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu'                                ] = 'SV cos($\\theta_{IP}$)'
-labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = '$\Delta\phi(\\tau MET)$'
+labels[f'{prefix}TauTo3Mu_dZmu12'                                            ] = '$\Delta z (\mu_1, \mu_2)$'
+labels[f'{prefix}TauTo3Mu_dZmu13'                                            ] = '$\Delta z (\mu_1, \mu_3)$'
+labels[f'{prefix}TauTo3Mu_dZmu23'                                            ] = '$\Delta z (\mu_2, \mu_3)$'
+labels[f'{prefix}TauTo3Mu_sigLxy_3muVtxBS'                                   ] = 'SV L/$\sigma$'
+labels[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)'          ] = '$\\chi^2_{\\tau}$'
+labels[f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu'                                ] = 'SV cos($\\theta_{IP}$)'
+labels[f'deltaPhi(TauPlusMET_Puppi_phi, {prefix}TauTo3Mu_fitted_phi)'        ] = '$\Delta\phi(\\tau MET)$'
 # labels['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'            ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
 # labels['mu1ID'                                                            ] = '$\mu_1$ ID'
 # labels['mu2ID'                                                            ] = '$\mu_2$ ID'
@@ -81,11 +83,11 @@ labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = 
 # labels['relative_iso'                                                     ] = '$\\tau$ iso'
 labels['GNN_score'                                                          ] = 'GNN Score'
 labels['bdt_GNN'                                                            ] = 'BDT'
-labels['Slimmed_TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
+labels[f'{prefix}TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
 
 labels = modes["ISO"]
 
-labels['Slimmed_TauTo3Mu_fitted_pt'                                         ] = '$\\tau$ $p_{T}$'
+labels[f'{prefix}TauTo3Mu_fitted_pt'                                         ] = '$\\tau$ $p_{T}$'
 labels['TauPlusMET_Tau_Puppi_mT'                                            ] = '$m_{T}(\\tau, MET)$'
 labels['TauPlusMET_PuppiMET_pt'                                             ] = 'MET $p_{T}$'
 # labels['cand_refit_tau_pt/cand_refit_met_pt'                              ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
@@ -93,13 +95,13 @@ labels['TauPlusMET_PuppiMET_pt'                                             ] = 
 labels['TauPlusMET_Puppi_pt'                                                ] = 'W $p_{T}$'
 labels['TauPlusMET_PuppiMETminPz'                                           ] = '$max(ME_z^i)$'
 labels['TauPlusMET_PuppiMETmaxPz'                                           ] = '$min(ME_z^i)$'
-labels['Slimmed_TauTo3Mu_dZmu12'                                            ] = '$\Delta z (\mu_1, \mu_2)$'
-labels['Slimmed_TauTo3Mu_dZmu13'                                            ] = '$\Delta z (\mu_1, \mu_3)$'
-labels['Slimmed_TauTo3Mu_dZmu23'                                            ] = '$\Delta z (\mu_2, \mu_3)$'
-labels['Slimmed_TauTo3Mu_sigLxy_3muVtxBS'                                   ] = 'SV L/$\sigma$'
-labels['Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)'          ] = '$\chi^2_{\tau}$'
-labels['Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu'                                ] = 'SV cos($\\theta_{IP}$)'
-labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = '$\Delta\phi(\\tau, MET)$'
+labels[f'{prefix}TauTo3Mu_dZmu12'                                            ] = '$\Delta z (\mu_1, \mu_2)$'
+labels[f'{prefix}TauTo3Mu_dZmu13'                                            ] = '$\Delta z (\mu_1, \mu_3)$'
+labels[f'{prefix}TauTo3Mu_dZmu23'                                            ] = '$\Delta z (\mu_2, \mu_3)$'
+labels[f'{prefix}TauTo3Mu_sigLxy_3muVtxBS'                                   ] = 'SV L/$\sigma$'
+labels[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)'          ] = '$\chi^2_{\tau}$'
+labels[f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu'                                ] = 'SV cos($\\theta_{IP}$)'
+labels[f'deltaPhi(TauPlusMET_Puppi_phi, {prefix}TauTo3Mu_fitted_phi)'        ] = '$\Delta\phi(\\tau, MET)$'
 # labels['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'            ] = '$\\tau$ $p_{T}$/MET $p_{T}$' # only for >= v2
 # labels['mu1ID'                                                            ] = '$\mu_1$ ID'
 # labels['mu2ID'                                                            ] = '$\mu_2$ ID'
@@ -108,7 +110,7 @@ labels['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'        ] = 
 labels['relative_iso'                                                       ] = '$\\tau$ iso'
 # labels['GNN_Score'                                                        ] = 'GNN Score'
 labels['bdt_ISO'                                                            ] = 'BDT'
-labels['Slimmed_TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
+labels[f'{prefix}TauTo3Mu_fitted_mass'                                       ] = '$\\tau$ mass'
 
 
 ##########################################################################################
@@ -136,7 +138,7 @@ tag = '24feb2026_v0'
 ##########################################################################################
 
 features = [
-    'Slimmed_TauTo3Mu_fitted_pt',
+    f'{prefix}TauTo3Mu_fitted_pt',
     'TauPlusMET_Tau_Puppi_mT',
     #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
     #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
@@ -147,24 +149,24 @@ features = [
     'TauPlusMET_Puppi_pt',
     'TauPlusMET_PuppiMETminPz',
     'TauPlusMET_PuppiMETmaxPz',
-    'Slimmed_TauTo3Mu_dZmu12', 
-    'Slimmed_TauTo3Mu_dZmu13', 
-    'Slimmed_TauTo3Mu_dZmu23',
-    'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
-    'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
-    'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+    f'{prefix}TauTo3Mu_dZmu12', 
+    f'{prefix}TauTo3Mu_dZmu13', 
+    f'{prefix}TauTo3Mu_dZmu23',
+    f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
+    f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+    f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
 ]
 
 branches = features + [
-    'Slimmed_TauTo3Mu_charge',
-    'Slimmed_TauTo3Mu_fitted_eta',
-    'Slimmed_TauTo3Mu_fitted_mass',
+    f'{prefix}TauTo3Mu_charge',
+    f'{prefix}TauTo3Mu_fitted_eta',
+    f'{prefix}TauTo3Mu_fitted_mass',
     'TauPlusMET_Puppi_phi',
-    'Slimmed_TauTo3Mu_fitted_phi',
+    f'{prefix}TauTo3Mu_fitted_phi',
     'GNN_score',
-    'Slimmed_TauTo3Mu_iso_ptChargedFromPV',
-    'Slimmed_TauTo3Mu_iso_ptPhotons',
-    'Slimmed_TauTo3Mu_iso_ptChargedFromPU',
+    f'{prefix}TauTo3Mu_iso_ptChargedFromPV',
+    f'{prefix}TauTo3Mu_iso_ptPhotons',
+    f'{prefix}TauTo3Mu_iso_ptChargedFromPU',
     # 'mu1_refit_muonid_soft', 'mu1_refit_muonid_loose', 'mu1_refit_muonid_medium', 'mu1_refit_muonid_tight',
     # 'mu2_refit_muonid_soft', 'mu2_refit_muonid_loose', 'mu2_refit_muonid_medium', 'mu2_refit_muonid_tight',
     # 'mu3_refit_muonid_soft', 'mu3_refit_muonid_loose', 'mu3_refit_muonid_medium', 'mu3_refit_muonid_tight',
@@ -196,20 +198,21 @@ for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, libra
         if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
             new_fields[branch] = ak.firsts(events[branch])
         else:
-            new_fields[branch] = events[branch]
+            new_fields[branch] = ak.firsts(events[branch])
 
     events_masked = ak.zip(new_fields)
     all_chunks_sig.append(events_masked)
 sig = ak.concatenate(all_chunks_sig)
 # print(ak.type(sig))
 sig = ak.to_dataframe(sig)
+sig = sig.dropna()
 print(sig.shape)
 print(sig["GNN_score"])
 
 all_chunks_bkg = []
 print("Going to load bkg events")
 for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-    bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) > 0.08
+    bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
     events = events[ak.all(bkg_mask, axis=1)]
     score_mask = events["GNN_score"] != -1
     events_masked = events[score_mask]
@@ -220,7 +223,7 @@ for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, l
         if arr.ndim > 1 and ak.any(ak.num(arr, axis=1) > 1):
             new_fields[branch] = ak.firsts(arr)
         else:
-            new_fields[branch] = arr
+            new_fields[branch] = ak.firsts(arr)
 
     events_masked = ak.zip(new_fields)
     df_chunk = ak.to_dataframe(events_masked)
@@ -304,21 +307,21 @@ def deltaphi(phi1, phi2):
 
     return delta_phi
 
-sig['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(sig['TauPlusMET_Puppi_phi'], sig['Slimmed_TauTo3Mu_fitted_phi'])
-bkg['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)'] = deltaphi(bkg['TauPlusMET_Puppi_phi'], bkg['Slimmed_TauTo3Mu_fitted_phi'])
+sig[f'deltaPhi(TauPlusMET_Puppi_phi, {prefix}TauTo3Mu_fitted_phi)'] = deltaphi(sig['TauPlusMET_Puppi_phi'], sig[f'{prefix}TauTo3Mu_fitted_phi'])
+bkg[f'deltaPhi(TauPlusMET_Puppi_phi, {prefix}TauTo3Mu_fitted_phi)'] = deltaphi(bkg['TauPlusMET_Puppi_phi'], bkg[f'{prefix}TauTo3Mu_fitted_phi'])
 
-features += ['deltaPhi(TauPlusMET_Puppi_phi, Slimmed_TauTo3Mu_fitted_phi)']
+features += [f'deltaPhi(TauPlusMET_Puppi_phi, {prefix}TauTo3Mu_fitted_phi)']
 
 # sig['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = sig['Slimmed_TauTo3Mu_fitted_pt'] / sig['TauPlusMET_PuppiMET_pt']
 # bkg['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)'] = bkg['Slimmed_TauTo3Mu_fitted_pt'] / bkg['TauPlusMET_PuppiMET_pt']
 
 # features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
 
-abs_iso_sig = sig["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * sig["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
-sig['relative_iso'] = abs_iso_sig / sig["Slimmed_TauTo3Mu_fitted_pt"]
+abs_iso_sig = sig[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., sig[f"{prefix}TauTo3Mu_iso_ptPhotons"] - 0.2 * sig[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"])
+sig['relative_iso'] = abs_iso_sig / sig[f"{prefix}TauTo3Mu_fitted_pt"]
 
-abs_iso_bkg = bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., bkg["Slimmed_TauTo3Mu_iso_ptPhotons"] - 0.2 * bkg["Slimmed_TauTo3Mu_iso_ptChargedFromPU"])
-bkg['relative_iso'] = abs_iso_bkg / bkg["Slimmed_TauTo3Mu_fitted_pt"]
+abs_iso_bkg = bkg[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"] + np.maximum(0., bkg[f"{prefix}TauTo3Mu_iso_ptPhotons"] - 0.2 * bkg[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"])
+bkg['relative_iso'] = abs_iso_bkg / bkg[f"{prefix}TauTo3Mu_fitted_pt"]
 
 ##########################################################################################
 #####   COMPACTIFY AND ADD THE (POG) MUON ID TO THE SAMPLES
@@ -481,10 +484,10 @@ n_class = len(classifiers)
 
 for mode in modes.keys():
 
-    train['bdt_' + mode] = np.zeros_like(train.Slimmed_TauTo3Mu_fitted_mass)
-    test ['bdt_' + mode] = np.zeros_like(test .Slimmed_TauTo3Mu_fitted_mass)
-    sig  ['bdt_' + mode] = np.zeros_like(sig.Slimmed_TauTo3Mu_fitted_mass)
-    bkg  ['bdt_' + mode] = np.zeros_like(bkg.Slimmed_TauTo3Mu_fitted_mass)
+    train['bdt_' + mode] = np.zeros_like(train.Selected_TauTo3Mu_fitted_mass)
+    test ['bdt_' + mode] = np.zeros_like(test .Selected_TauTo3Mu_fitted_mass)
+    sig  ['bdt_' + mode] = np.zeros_like(sig.Selected_TauTo3Mu_fitted_mass)
+    bkg  ['bdt_' + mode] = np.zeros_like(bkg.Selected_TauTo3Mu_fitted_mass)
     classifiers = both_models[mode]
 
     if mode == "GNN":
@@ -538,7 +541,7 @@ plt.plot(fpr_GNN, tpr_GNN, label='test sample GNN', color='b')
 output = {}
 
 output["GNN_score_bkg"] = bkg.bdt_GNN
-output["tau_mass"] = bkg.Slimmed_TauTo3Mu_fitted_mass
+output["tau_mass"] = bkg.Selected_TauTo3Mu_fitted_mass
 output["ISO_score_bkg"] = bkg.bdt_ISO
 
 output["fpr_GNN"] = fpr_GNN
@@ -628,7 +631,7 @@ plt.plot(fpr_GNN, tpr_GNN, label='test sample GNN', color='b')
 output = {}
 
 output["GNN_score_bkg"] = bkg.bdt_GNN
-output["tau_mass"] = bkg.Slimmed_TauTo3Mu_fitted_mass
+output["tau_mass"] = bkg.Selected_TauTo3Mu_fitted_mass
 output["ISO_score_bkg"] = bkg.bdt_ISO
 
 output["fpr_GNN"] = fpr_GNN
@@ -991,7 +994,7 @@ for mode in modes.keys():
 #####   CORRELATION MATRIX SIGNAL
 ##########################################################################################
     # Compute the correlation matrix for the signal
-    corr = sig[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass']].corr()
+    corr = sig[bdt_features + ['bdt_' + mode, f'{prefix}TauTo3Mu_fitted_mass']].corr()
     # Set up the matplotlib figure
     f, ax = plt.subplots(figsize=(11, 9))
 
@@ -1016,7 +1019,7 @@ for mode in modes.keys():
 #####   CORRELATION MATRIX BACKGROUND
 ##########################################################################################
     # Compute the correlation matrix for the signal
-    corr = bkg[bdt_features + ['bdt_' + mode, 'Slimmed_TauTo3Mu_fitted_mass']].corr()
+    corr = bkg[bdt_features + ['bdt_' + mode, f'{prefix}TauTo3Mu_fitted_mass']].corr()
 
     # Set up the matplotlib figure
     f, ax = plt.subplots(figsize=(11, 9))
