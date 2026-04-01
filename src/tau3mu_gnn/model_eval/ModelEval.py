@@ -509,7 +509,7 @@ if __name__ == "__main__":
             tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, view)
 
     elif plot_mode == "ROC_comp":
-        root_dir = "/work/kfuss/SVJ_GNN/output/"
+        root_dir = "/work/kfuss/SVJ_GNN/output/comparison_plots"
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
         plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
     
