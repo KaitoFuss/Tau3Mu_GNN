@@ -233,7 +233,7 @@ if tau_channel == "HF":
     features += [f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx']
     features.remove(f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]')
 
-    sig[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}auTo3Mu_vtx_Ndof**-1)'] = sig[f'{prefix}TauTo3Mu_vtx_chi2']/sig[f'{prefix}TauTo3Mu_vtx_Ndof']
+    sig[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)'] = sig[f'{prefix}TauTo3Mu_vtx_chi2']/sig[f'{prefix}TauTo3Mu_vtx_Ndof']
     bkg[f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)'] = bkg[f'{prefix}TauTo3Mu_vtx_chi2']/bkg[f'{prefix}TauTo3Mu_vtx_Ndof']
 
     features += [f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)']
