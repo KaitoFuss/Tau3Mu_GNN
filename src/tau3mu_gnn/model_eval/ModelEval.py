@@ -382,8 +382,8 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
 
 
     print("length of inferenced bkg data set is ", len(scores))
-    print("length of inferenced sig data set is ", len(scores_signal))
     if use_fpr:
+        print("length of inferenced sig data set is ", len(scores_signal))
         print("lenght of fpr list is:", len(fpr))
         fpr_cuts = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2]
         # fpr_cuts = [1e-2, 0.05, 0.1, 0.2]
@@ -514,7 +514,7 @@ if __name__ == "__main__":
         plot_roc_gnn_arch_comparison(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
     
     elif plot_mode == "ROC_comp_full":
-        root_dir = "/work/kfuss/SVJ_GNN/output/"
+        root_dir = "/work/kfuss/SVJ_GNN/output/comparison_plots"
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
         fprs, tprs, threshs = plot_roc_gnn_arch_comparison_full(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
         plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs)

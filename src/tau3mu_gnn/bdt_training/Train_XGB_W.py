@@ -198,7 +198,7 @@ for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, libra
         if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
             new_fields[branch] = ak.firsts(events[branch])
         else:
-            new_fields[branch] = ak.firsts(events[branch])
+            new_fields[branch] = events[branch]
 
     events_masked = ak.zip(new_fields)
     all_chunks_sig.append(events_masked)
@@ -223,7 +223,7 @@ for events in uproot.iterate(f"{backgrounds[0]}:Events", expressions=branches, l
         if arr.ndim > 1 and ak.any(ak.num(arr, axis=1) > 1):
             new_fields[branch] = ak.firsts(arr)
         else:
-            new_fields[branch] = ak.firsts(arr)
+            new_fields[branch] = arr
 
     events_masked = ak.zip(new_fields)
     df_chunk = ak.to_dataframe(events_masked)
