@@ -7,6 +7,7 @@ import awkward as ak
 import matplotlib.pyplot as plt
 import argparse
 from sklearn.metrics import roc_curve, auc
+import uproot
 
 class CPU_Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
@@ -124,9 +125,9 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
         gnn_sig_scores = gnn_sig_scores[~np.isnan(gnn_sig_scores)]
         gnn_bkg_scores = gnn_bkg_scores[~np.isnan(gnn_bkg_scores)]
 
-
-        # print(f"Size of signal dataset is {len(gnn_sig_scores)}.")
-        # print(f"Size of background dataset is {len(gnn_bkg_scores)}.")
+        print(gnn_data_loc)
+        print(f"Size of signal dataset is {len(gnn_sig_scores)}.")
+        print(f"Size of background dataset is {len(gnn_bkg_scores)}.")
 
         labels = np.concatenate([np.ones(len(gnn_sig_scores)), np.zeros(len(gnn_bkg_scores))])
         scores_all = np.concatenate([gnn_sig_scores, gnn_bkg_scores])
@@ -471,6 +472,105 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
 
     return
 
+
+def load_and_filter_root(model, channel, score_cut):
+    """
+    Load signal and background data for a given model and channel,
+    apply score cut and return filtered scores and masses.
+    
+    Args:
+        model: model name string
+        channel: 'W' or 'HF'
+        score_cut: minimum GNN score threshold
+    
+    Returns:
+        dict with scores and masses for signal and background
+    """
+    base = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data"
+    
+    if channel == 'W':
+        # Background
+        bkg_file = f"{base}/background_W/{model}/selected_data_skimmed_no_resonances_with_scores.root"
+        scores_bkg = uproot.open(bkg_file)["Events"]["GNN_score"].array(library="np")
+        mass_bkg = uproot.open(bkg_file)["Events"]["Selected_TauTo3Mu_fitted_mass"].array(library="ak")
+        
+        # Signal
+        sig_file = f"{base}/signal_W/{model}/selected_signal_skimmed_no_resonances_with_scores.root"
+        scores_sig = uproot.open(sig_file)["Events"]["GNN_score"].array(library="np")
+        mass_sig = uproot.open(sig_file)["Events"]["Selected_TauTo3Mu_fitted_mass"].array(library="ak")
+
+    elif channel == 'HF':
+        # Background (multiple parts)
+        bkg_files = [
+            f"{base}/background_HF/{model}/selected_data_skimmed_no_resonances_part{i}_with_scores.root"
+            for i in range(1, 5)
+        ]
+        scores_bkg = np.concatenate([uproot.open(f)["Events"]["GNN_score"].array(library="np") for f in bkg_files])
+        mass_bkg = ak.concatenate([uproot.open(f)["Events"]["Selected_TauTo3Mu_fitted_mass"].array(library="ak") for f in bkg_files])
+        
+        # Signal
+        sig_file = f"{base}/signal_HF/{model}/selected_ds_large_signal_skimmed_no_resonances_with_scores.root"
+        scores_sig = uproot.open(sig_file)["Events"]["GNN_score"].array(library="np")
+        mass_sig = uproot.open(sig_file)["Events"]["Selected_TauTo3Mu_fitted_mass"].array(library="ak")
+    
+    else:
+        raise ValueError(f"Unknown channel: {channel}. Use 'W' or 'HF'.")
+
+    print(f"Before cleaning: bkg={len(scores_bkg)}, sig={len(scores_sig)}")
+
+    # Clean: remove sentinel -1 and NaN
+    def clean_and_cut(scores, mass, cut, mode):
+        n_before = len(scores)
+        valid = (scores != -1) & ~np.isnan(scores)
+        scores = scores[valid]
+        mass = mass[valid]
+        print(f"Removed sentinel (-1): {mode}={n_before - len(scores)}")
+        print(f"Remaining: {mode}={len(scores_bkg)}")
+        mask = scores > cut
+        return scores[mask], mass[mask]
+
+    scores_sig, mass_sig = clean_and_cut(scores_sig, mass_sig, score_cut, "sig")
+    scores_bkg, mass_bkg = clean_and_cut(scores_bkg, mass_bkg, score_cut, "bkg")
+
+    print(f"[{channel} | {model} | cut={score_cut}]")
+    print(f"  Signal:     {len(scores_sig)} events")
+    print(f"  Background: {len(scores_bkg)} events")
+
+    return {
+        'scores_sig': scores_sig,
+        'scores_bkg': scores_bkg,
+        'mass_sig':   mass_sig,
+        'mass_bkg':   mass_bkg,
+    }
+
+def load_and_filter_npz(model, channel, score_cut):
+    base = "/work/kfuss/SVJ_GNN/output"
+    
+    sig_data = np.load(f"{base}/{model}/raw_scores_and_tau_mass_signal.npz")
+    bkg_data = np.load(f"{base}/{model}/raw_scores_and_tau_mass_background.npz")
+    
+    scores_sig = sig_data['scores']
+    scores_bkg = bkg_data['scores']
+    
+    # Clean and cut
+    def clean_and_cut(scores, cut):
+        valid = (scores != -1) & ~np.isnan(scores)
+        scores = scores[valid]
+        mask = scores > cut
+        return scores[mask]
+    
+    scores_sig = clean_and_cut(scores_sig, score_cut)
+    scores_bkg = clean_and_cut(scores_bkg, score_cut)
+
+    print(f"[{channel} | {model} | cut={score_cut}]")
+    print(f"  Signal:     {len(scores_sig)} events")
+    print(f"  Background: {len(scores_bkg)} events")
+
+    return {
+        'scores_sig': scores_sig,
+        'scores_bkg': scores_bkg,
+    }
+
 if __name__ == "__main__":
     # root_dir = '/work/kfuss/SVJ_GNN/output/knn_new_vs7'
     # data = load_pkl(root_dir, 'ROC_AUC.pkl')
@@ -487,6 +587,8 @@ if __name__ == "__main__":
     parser.add_argument("--lambdas", required=False, nargs='+')
     parser.add_argument("--archs", required=False, nargs='+')
     parser.add_argument("--view", default=None)
+    parser.add_argument("--cut", type=float)
+    parser.add_argument("--model", type=str)
 
     args = parser.parse_args()
     output_path = args.output_path
@@ -500,6 +602,8 @@ if __name__ == "__main__":
     lambdas = args.lambdas
     archs = args.archs
     view = args.view
+    cut = args.cut
+    model = args.model
 
     if plot_mode.startswith("tau_hist"):
         if view == "both":
@@ -518,3 +622,7 @@ if __name__ == "__main__":
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
         fprs, tprs, threshs = plot_roc_gnn_arch_comparison_full(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
         plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs)
+    
+    elif plot_mode == "score_cut":
+        data = load_and_filter_root(model, tau_channel, cut)
+        data = load_and_filter_npz(model, tau_channel, cut)
