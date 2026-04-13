@@ -71,8 +71,8 @@ def sample_new_config(registry, max_attempts=10_000):
 
         key = repr((fc_idx, fusion_idx))
         if key not in registry:
-            fc_params     = inject_dropout(fc_widths, 0.2)
-            fusion_params = inject_dropout(fusion_widths, 0.2)
+            fc_params     = inject_dropout(fc_widths, 0.2)      # dropout hard coded to 0.2
+            fusion_params = inject_dropout(fusion_widths, 0.2)  # dropout hard coded to 0.2
             return fc_params, fusion_params, key, [f"final_layer_{fc_idx}", f"scale_down_{fusion_idx}"]
 
     raise RuntimeError("Search space exhausted.")

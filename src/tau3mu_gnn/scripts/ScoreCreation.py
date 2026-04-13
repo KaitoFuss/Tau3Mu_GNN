@@ -1,19 +1,13 @@
-
 from tau3mu_gnn.gnn_training.ScoreProducer import ScoreProducer
 import torch
-import pickle
-from tau3mu_gnn.utils.PlotUtils import plot_histogram_root
+import json
 import os
 import numpy as np
 from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
 from tau3mu_gnn.architectures.TauMuNet import TauMuNet
 from tau3mu_gnn.gnn_training.TrainingUtils import get_model_parameters
-from tau3mu_gnn.architectures.TauMuNet import get_arch_configs
 
 import argparse
-import ROOT
-
-arch_configs = get_arch_configs()
 
 if __name__ == "__main__":
 
@@ -49,8 +43,9 @@ if __name__ == "__main__":
     models = []
     normalizers = []
     for i, model_name in enumerate(model_names):
-    
-        params = arch_configs[archs[i]]
+        model_direc = output_folder + model_name + "/"
+        with open(os.path.join(model_direc, "arch_config.json")) as f:
+            params = json.load(f)
 
         model =  TauMuNet(
             conv_params=params["conv_params"],
@@ -64,13 +59,13 @@ if __name__ == "__main__":
             scoring=True, 
             scale_down_params=params["fusion_scale_down_params"],
         )
-        model.load_state_dict(torch.load(output_folder + model_name + "/" + model_name + ".pt", map_location=device)['model_state_dict'])
+        model.load_state_dict(torch.load(model_direc + model_name + ".pt", map_location=device)['model_state_dict'])
         # Load the normalizer
-        normalizer = load_pkl(output_folder + model_name + "/", "Normalization.pkl")[0]
+        normalizer = load_pkl(model_direc, "Normalization.pkl")[0]
 
         models.append(model)
         normalizers.append(normalizer)
-        output_folders.append(output_folder + model_name + "/")
+        output_folders.append(model_direc)
 
 
     print("Starting the ScoreProducer")
