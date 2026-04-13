@@ -11,13 +11,14 @@ import argparse
 import os
 import pickle
 import numpy as np
+import json
 
 import tau3mu_gnn.gnn_training.EvaluationUtils as ueval
 import tau3mu_gnn.gnn_training.TrainingUtils as utrain
 
 # import linecache
 from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
-from tau3mu_gnn.architectures.TauMuNet import get_arch_configs
+from tau3mu_gnn.architectures.GNN_archs import get_arch_configs, get_arch_configs_random
 # import tracemalloc
 
 
@@ -527,11 +528,7 @@ if __name__ == "__main__":
         type=str,
         default="arch1",
         help="Choose model architecture"
-)
-
-
-    arch_configs = get_arch_configs()
-
+        )
     
     parser.add_argument(
         "--epochs",
@@ -621,10 +618,16 @@ if __name__ == "__main__":
         project_name=name,
         workspace="kaitofuss"
         )
-    
+    if arch == "random":
+        model_params, arch_descr = get_arch_configs_random(tau_channel)
+    else:
+        model_params, arch_descr = get_arch_configs(arch)
     # overwriting names (adding versionnumber) such that no old files get overwritten
-    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), gnn_mode, tau_channel)
-    utrain.output_directory(name)
+    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr)
+    output_path = utrain.output_directory(name)
+
+    with open(os.path.join(output_path, "arch_config.json"), "w") as f:
+        json.dump(model_params, f)
     
     #log hyperparameters in the experiment
     hyper_params = {
@@ -641,6 +644,5 @@ if __name__ == "__main__":
     experiment.log_parameters(hyper_params)
     experiment.set_name(name)
 
-    
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], tau_channel, gnn_mode)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode)
 
