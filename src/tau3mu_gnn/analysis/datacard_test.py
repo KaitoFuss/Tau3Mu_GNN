@@ -31,15 +31,17 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True)
 parser.add_argument("--channel", required=True)
+parser.add_argument("--cut", required=True)
 args = parser.parse_args()
 
 MODEL = args.model
 CHANNEL = args.channel
+CUT = args.cut
 
 SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores.root"
 BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores.root"
-SCORE_CUT = 10.1
-SIGNAL_WEIGHT = '0.0001364554'
+SCORE_CUT = CUT
+SIGNAL_WEIGHT = '0.000000019'
 MASS_BRANCH_NAME = f"Selected_TauTo3Mu_fitted_mass"
 
 mass_window = 0.060 # GeV
@@ -56,12 +58,12 @@ blinded = True # don't show (nor fit!) data in the signal mass window
 ##########################################################################################
 selection = f"GNN_score > {SCORE_CUT}" # no selection for this example, but leave it in place for ref
 signal_weight = SIGNAL_WEIGHT # arbitrary weight to scale the signal. Can be one of the branches of the tree
-blind_cut = f'abs({MASS_BRANCH_NAME}[0] - 1.78) > 0.06'  # blinding cut for sidebands only
+blind_cut = f'abs(mass - 1.78) > 0.06'  # blinding cut for sidebands only
 
 ##########################################################################################
 ##      Helper function: Apply selection and create filtered TTrees
 ##########################################################################################
-def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output_file, output_tree_name, weight_expr=None):
+def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output_file, output_tree_name, weight_expr=None, extra_filter=None):
     """
     Apply selection and weights using RDataFrame.
     
@@ -82,7 +84,10 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
     # Apply selection filter
     df_filtered = df.Filter(selection_expr)
 
-    df_filtered = df_filtered.Alias('mass', 'Selected_TauTo3Mu_fitted_mass')
+    df_filtered = df_filtered.Define('mass', 'Selected_TauTo3Mu_fitted_mass[0]')
+    if extra_filter:
+        print("Applying blinding cut: {}".format(extra_filter))
+        df_filtered = df_filtered.Filter(extra_filter)
     
     # Define a weight column if weight expression is not '1'
     if weight_expr:
@@ -122,18 +127,15 @@ print("Signal events after selection: {}".format(n_signal_events))
 
 # Process data
 print("Processing data with selection: {}".format(selection))
-if blinded:
-    print("Applying blinding cut: {}".format(blind_cut))
-    data_selection = '{} && {}'.format(selection, blind_cut)
-else:
-    data_selection = selection
+# if blinded:
+#     print("Applying blinding cut: {}".format(blind_cut))
+#     data_selection = '{} && {}'.format(selection, blind_cut)
+# else:
+#     data_selection = selection
     
 df_data = apply_selection_and_weight_rdf(
-    BKG_ROOT_FILE,
-    'Events',
-    data_selection,
-    temp_data_filename,
-    'Events',
+    BKG_ROOT_FILE, 'Events', selection, temp_data_filename, 'Events',
+    extra_filter=blind_cut if blinded else None
 )
 n_data_events = df_data.Count().GetValue()
 print("Data events after selection: {}".format(n_data_events))
@@ -194,8 +196,16 @@ print("Step 4: Creating RooDataSet from pre-selected trees")
 print("="*80)
 
 # Selection is '1' here because we already applied selection with RDataFrame
-fullmc   = ROOT.RooDataSet('mc'  , 'mc'  ,   mc_chain, thevars, '1', 'weight')
-fulldata = ROOT.RooDataSet('data', 'data', data_chain, thevars, '1', 'weight')
+fullmc = ROOT.RooDataSet('mc', 'mc', thevars,
+    ROOT.RooFit.Import(mc_chain),
+    ROOT.RooFit.Cut('1'),
+    ROOT.RooFit.WeightVar('weight')
+)
+fulldata = ROOT.RooDataSet('data', 'data', thevars,
+    ROOT.RooFit.Import(data_chain),
+    ROOT.RooFit.Cut('1'),
+    ROOT.RooFit.WeightVar('weight')
+)
 
 print("MC   dataset number of entries, sum weights: {},\t{}".format(fullmc  .numEntries(), fullmc  .sumEntries() ))
 print("Data dataset number of entries, sum weights: {},\t{}".format(fulldata.numEntries(), fulldata.sumEntries() ))
@@ -216,7 +226,7 @@ fullmc.plotOn(
     frame, 
     ROOT.RooFit.Binning(nbins), 
     ROOT.RooFit.DrawOption('B'), 
-    ROOT.RooFit.DataError(ROOT.RooAbsData.None_), 
+    # ROOT.RooFit.DataError(ROOT.RooAbsData.None), 
     ROOT.RooFit.XErrorSize(0), 
     ROOT.RooFit.LineWidth(2),
     ROOT.RooFit.FillColor(ROOT.kRed),
@@ -257,7 +267,10 @@ print("="*80)
 
 # create output file containing the unbinned dataset, after selection
 output = ROOT.TFile.Open('datacard.root', 'recreate')
-seldata = ROOT.RooDataSet('data', 'data', data_chain, thevars, '1')
+seldata = ROOT.RooDataSet('data', 'data', thevars,
+    ROOT.RooFit.Import(data_chain), 
+    ROOT.RooFit.Cut('1'),
+)
 
 print('Dumping data')
 data = ROOT.RooDataSet(
@@ -281,9 +294,7 @@ w.factory('sigma[%f]' % width.getVal())
 w.factory('RooGaussian::sig(mass, mean, sigma)')
 
 # in order to fix the shape, loop over the variables and fix mean and sigma 
-it = w.allVars().createIterator()
-all_vars = [it.Next() for _ in range(w.allVars().getSize())]
-for var in all_vars:
+for var in w.allVars():
     if var.GetName() in ['mean', 'sigma']:
         var.setConstant()
 
