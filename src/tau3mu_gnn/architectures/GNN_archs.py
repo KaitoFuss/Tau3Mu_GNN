@@ -73,12 +73,13 @@ def sample_new_config(registry, max_attempts=10_000):
         if key not in registry:
             fc_params     = inject_dropout(fc_widths, 0.2)      # dropout hard coded to 0.2
             fusion_params = inject_dropout(fusion_widths, 0.2)  # dropout hard coded to 0.2
-            return fc_params, fusion_params, key, [f"final_layer_{fc_idx}", f"scale_down_{fusion_idx}"]
+            return fc_params, fusion_params, key, [f"fl_{fc_idx}", f"sd_{fusion_idx}"]
 
     raise RuntimeError("Search space exhausted.")
 
-def get_arch_configs_random(tau_channel, registry_path=REGISTRY_PATH):
-    registry_path = registry_path + tau_channel + "_arch_registry.npz"
+def get_arch_configs_random(tau_channel, disco_reg, registry_path=REGISTRY_PATH):
+    disco_reg = str(disco_reg)
+    registry_path = registry_path + tau_channel + f"disco_{disco_reg}_arch_registry.npz"
     registry = load_registry(registry_path)
     fc, fusion, key, unique_ident = sample_new_config(registry)
 
@@ -95,8 +96,56 @@ def get_arch_configs_random(tau_channel, registry_path=REGISTRY_PATH):
     }
     return config, unique_ident
 
+def get_arch_configs(arch: str, tau_channel: str, disco_reg: int, registry_path: str = REGISTRY_PATH):
+    """
+    Deterministic config lookup by arch string, e.g. 'fl4_sd9'.
+    Checks registry and registers the config as tried.
+    
+    Returns: (config, unique_ident) matching the random variant's interface.
+    Raises:  ValueError on bad syntax or unknown indices.
+             RuntimeError if already in registry.
+    """
+    # Parse
+    try:
+        fc_part, sd_part = arch.lower().split("_")
+        assert fc_part.startswith("fl") and sd_part.startswith("sd")
+        fc_idx     = int(fc_part[2:])
+        fusion_idx = int(sd_part[2:])
+        disco_reg = str(disco_reg)
+    except Exception:
+        raise ValueError(f"Invalid arch string '{arch}'. Expected format: 'fl<N>_sd<M>', e.g. 'fl4_sd9'.")
 
-def get_arch_configs(arch):
+    if fc_idx not in FC_PARAMS_OPTIONS:
+        raise ValueError(f"fl index {fc_idx} not in FC_PARAMS_OPTIONS (valid: 1–{len(FC_PARAMS_OPTIONS)}).")
+    if fusion_idx not in SCALE_DOWN_PARAMS_OPTIONS:
+        raise ValueError(f"sd index {fusion_idx} not in SCALE_DOWN_PARAMS_OPTIONS (valid: 1–{len(SCALE_DOWN_PARAMS_OPTIONS)}).")
+
+    # Registry
+    reg_path = registry_path + tau_channel + f"disco_{disco_reg}_arch_registry.npz"
+    registry = load_registry(reg_path)
+    key      = repr((fc_idx, fusion_idx))
+
+    if key in registry:
+        raise RuntimeError(f"Arch '{arch}' (key {key}) already exists in registry for channel '{tau_channel}'.")
+
+    registry.add(key)
+    save_registry(reg_path, registry)
+
+    # Build config
+    fc_params     = inject_dropout(FC_PARAMS_OPTIONS[fc_idx],     0.2)
+    fusion_params = inject_dropout(SCALE_DOWN_PARAMS_OPTIONS[fusion_idx], 0.2)
+
+    config = {
+        "conv_params":            [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        "fc_params":              fc_params,
+        "use_fusion":             True,
+        "dropout":                0.2633831214702671,
+        "fusion_scale_down_params": fusion_params,
+    }
+    unique_ident = [f"fl_{fc_idx}", f"sd_{fusion_idx}"]
+    return config, unique_ident
+
+def get_arch_configs_old(arch):
     arch_configs = {
         "arch1": {
             "conv_params": [256, 128, 64, 32],
