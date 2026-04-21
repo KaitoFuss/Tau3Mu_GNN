@@ -79,7 +79,7 @@ def sample_new_config(registry, max_attempts=10_000):
 
 def get_arch_configs_random(tau_channel, disco_reg, registry_path=REGISTRY_PATH):
     disco_reg = str(disco_reg)
-    registry_path = registry_path + tau_channel + f"disco_{disco_reg}_arch_registry.npz"
+    registry_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry.npz"
     registry = load_registry(registry_path)
     fc, fusion, key, unique_ident = sample_new_config(registry)
 
