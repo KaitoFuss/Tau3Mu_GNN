@@ -21,12 +21,11 @@ from pdb import set_trace
 from array import array 
 import math
 import argparse
+import json
 
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(True)
 ROOT.TH1.SetDefaultSumw2()
-
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True)
@@ -41,7 +40,7 @@ CUT = args.cut
 SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores.root"
 BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores.root"
 SCORE_CUT = CUT
-SIGNAL_WEIGHT = '0.000000019'
+SIGNAL_WEIGHT = '0.000019'
 MASS_BRANCH_NAME = f"Selected_TauTo3Mu_fitted_mass"
 
 mass_window = 0.060 # GeV
@@ -176,12 +175,31 @@ width = ROOT.RooRealVar('width', 'width', 0.02,    0, 0.1)
 gaus  = ROOT.RooGaussian('sig_gaus', 'sig_gaus', mass, mean, width)
 
 # background PDF
-slope = ROOT.RooRealVar('slope', 'slope', -0.001, -1e6, 1e6)
-expo  = ROOT.RooExponential('bkg_expo', 'bkg_expo', mass, slope)
+# slope = ROOT.RooRealVar('slope', 'slope', -0.001, -1e6, 1e6)
+# expo  = ROOT.RooExponential('bkg_expo', 'bkg_expo', mass, slope)
+
+with open(f'/work/kfuss/SVJ_GNN/output/{MODEL}/shape_params.json') as f:
+    bkg_params = json.load(f)
+
+poly_order = bkg_params['poly_order']
+# if poly_order > 4:
+#     raise ValueError(f"Polynomial order {poly_order} not supported.")
+
+coeff_vars = []
+for i in range(1, poly_order + 1):
+    val = bkg_params[f'c{i}']
+    err = bkg_params[f'c{i}_err']
+    lo, hi = (val - 10*err, val + 10*err) if err > 0 else (-1, 1)
+    var = ROOT.RooRealVar(f'c{i}', f'c{i}', val, lo, hi)
+    var.setConstant()
+    coeff_vars.append(var)
+
+cheby = ROOT.RooChebychev('bkg_cheby', 'bkg_cheby', mass, ROOT.RooArgList(*coeff_vars))
 
 # number of background events
 nbkg = ROOT.RooRealVar('nbkg', 'nbkg', 1000, 0, 550000)
-expomodel = ROOT.RooAddPdf('bkg_extended_expo', 'bkg_extended_expo', ROOT.RooArgList(expo), ROOT.RooArgList(nbkg))
+# expomodel = ROOT.RooAddPdf('bkg_extended_expo', 'bkg_extended_expo', ROOT.RooArgList(expo), ROOT.RooArgList(nbkg))
+chebymodel = ROOT.RooAddPdf('bkg_extended_cheby', 'bkg_extended_cheby', ROOT.RooArgList(cheby), ROOT.RooArgList(nbkg))
 
 thevars = ROOT.RooArgSet()
 thevars.add(mass)
@@ -251,13 +269,13 @@ fulldata.plotOn(
 )
 
 # fit background with exponential model
-results_expo = expomodel.fitTo(fulldata, ROOT.RooFit.Range('left,right'), ROOT.RooFit.Save())
-expo.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlack))     # this is the fit in the entire mass range
-expomodel.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlue)) # sideband only fit
+results_expo = chebymodel.fitTo(fulldata, ROOT.RooFit.Range('left,right'), ROOT.RooFit.Save())
+# expo.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlack))     # this is the fit in the entire mass range
+chebymodel.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlue)) # sideband only fit
 
 frame.Draw()
 ROOT.gPad.SaveAs('mass.pdf')
-
+ROOT.gPad.SaveAs(f'/work/kfuss/SVJ_GNN/output/{MODEL}/mass_{CUT}.pdf')
 ##########################################################################################
 ##      Step 6: Create output workspace and datacard
 ##########################################################################################
@@ -284,9 +302,28 @@ data = ROOT.RooDataSet(
 print('Creating workspace')
 w = ROOT.RooWorkspace('w')
 
-# exponential
+# background
+def safe_range(var, n_sigma=10):
+    val = var.getVal()
+    err = var.getError()
+    if err <= 0:
+        return (-1, 1)
+    return (val - n_sigma * err, val + n_sigma * err)
+
+coeff_str = ', '.join(
+    'c{i}[{val}, {lo}, {hi}]'.format(
+        i   = i,
+        val = coeff_vars[i-1].getVal(),
+        lo  = safe_range(coeff_vars[i-1])[0],
+        hi  = safe_range(coeff_vars[i-1])[1],
+    )
+    for i in range(1, poly_order + 1)
+)
+
 w.factory('mass[%f, %f]' % (fit_range_lo, fit_range_hi))
-w.factory("Exponential::bkg(mass, slope[%f,%f,%f])" % (slope.getVal(), slope.getError(), slope.getError()))
+# w.factory("Exponential::bkg(mass, slope[%f,%f,%f])" % (slope.getVal(), slope.getError(), slope.getError()))
+w.factory(f'RooChebychev::bkg(mass, {{{coeff_str}}})')
+# w.factory("RooChebychev::bkg(mass, c2[%f,%f,%f])" % (c2.getVal(), c2.getError(), c2.getError()))
 
 # dump signal with fixed shape (the final fit will only vary the normalisation)
 w.factory('mean[%f]' % mean.getVal())
@@ -295,7 +332,7 @@ w.factory('RooGaussian::sig(mass, mean, sigma)')
 
 # in order to fix the shape, loop over the variables and fix mean and sigma 
 for var in w.allVars():
-    if var.GetName() in ['mean', 'sigma']:
+    if var.GetName() in ['mean', 'sigma'] or var.GetName().startswith('c'):
         var.setConstant()
 
 getattr(w, 'import')(data)
@@ -326,13 +363,12 @@ unc_1         lnN                       1.05                -
 unc_2         lnN                       1.2                 -   
 --------------------------------------------------------------------------------
 bkg        rateParam                 inclusive        background      1.
-slope      param   {slopeval:.4f} {slopeerr:.4f}
 '''.format(
         obs      = int(n_data_events) if not blinded else -1,
         signal   = fullmc.sumEntries(),
         bkg      = nbkg.getVal(),
-        slopeval = slope.getVal(), 
-        slopeerr = slope.getError(),
+        # slopeval = slope.getVal(), 
+        # slopeerr = slope.getError(),
     )
 )
 
