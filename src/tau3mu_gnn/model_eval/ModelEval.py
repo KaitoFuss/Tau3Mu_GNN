@@ -184,6 +184,10 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
 
         fpr_bench, tpr_bench, thresh_benchmark = roc_curve(ISO_labels, ISO_scores)
         auc_bench = auc(fpr_bench, tpr_bench)
+
+        fprs.append(fpr_bench)
+        tprs.append(tpr_bench)
+        threshs.append(thresh_benchmark)
         
         bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[-1]}, AUC: {auc_bdt:.3f}")
         bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {auc_bench:.3f}")
@@ -222,14 +226,18 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
     return fprs, tprs, threshs
 
 def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs):
+    bdt = True
     for i, (fpr, tpr, thresh) in enumerate(zip(fprs, tprs, threshs)):
         #calculate sic
         sic = np.zeros_like(tpr, dtype=float)
         np.divide(tpr, np.sqrt(fpr), out=sic, where=fpr != 0)
         if archs and i < len(archs):
             line, = plt.plot(tpr, sic, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}")
+        elif bdt:
+            line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[i]}")    
+            bdt = False
         else:
-            line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[i]}")
+            line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT ISO")    
         curve_color = line.get_color()
 
         # find maximum SIC and corresponding threshold
