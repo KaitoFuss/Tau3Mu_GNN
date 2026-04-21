@@ -431,7 +431,7 @@ for file in backgrounds:
     model_storage = os.path.join(storage_folder, model)
     os.makedirs(model_storage, exist_ok=True)
     root_path_sc_only = os.path.join(model_storage, f"{name_without_ext}_with_scores_only.root")
-    root_path = os.path.join(model_storage, f"{name_without_ext}_with_scores_bdt.root")
+    root_path = os.path.join(model_storage, f"{name_without_ext}_bdt.root")
 
     runs = []
     lumis = []

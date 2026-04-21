@@ -45,8 +45,8 @@ else:
 # Update nested structure
 if CHANNEL not in result:
     result[CHANNEL] = {}
-    if MODEL not in result[CHANNEL]:
-        result[CHANNEL][MODEL] = {}
+if MODEL not in result[CHANNEL]:
+    result[CHANNEL][MODEL] = {}
 result[CHANNEL][MODEL][CUT] = limits
 
 with open(json_path, "w") as f:
