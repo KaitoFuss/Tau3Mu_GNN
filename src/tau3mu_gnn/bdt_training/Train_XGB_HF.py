@@ -503,6 +503,14 @@ for mode in modes.keys():
     elif mode == "ISO":
         bdt_features = features + [f'max(Muon_tkRelIso_{prefix}TauTo3Mu_mu1_idx Muon_tkRelIso_{prefix}TauTo3Mu_mu2_idx Muon_tkRelIso_{prefix}TauTo3Mu_mu3_idx)']
     
+    # fix dtype mismatch bug for Muon_isGlobal branches
+    for col in bdt_features:
+        if train[col].dtype == object:
+            train[col] = train[col].astype(int)
+            test[col]  = test[col].astype(int)
+            sig[col] = sig[col].astype(int)
+            bkg[col] = bkg[col].astype(int)
+
     kfold = 6
     skf = StratifiedKFold(n_splits=kfold, random_state=1986, shuffle=True)
 

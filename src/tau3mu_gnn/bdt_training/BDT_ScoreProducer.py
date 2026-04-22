@@ -297,6 +297,11 @@ for mode in ["GNN", "ISO"]:
             bdt_features = features + ['relative_iso']
         classifiers = classifiers_iso
 
+    for col in bdt_features:
+        if sig[col].dtype == object:
+            sig[col] = sig[col].astype(int)
+            bkg[col] = bkg[col].astype(int)
+
     n_class = len(classifiers)
     bkg  ['bdt_' + mode] = np.zeros_like(bkg.Selected_TauTo3Mu_fitted_mass)
     sig  ['bdt_' + mode] = np.zeros_like(sig.Selected_TauTo3Mu_fitted_mass)
