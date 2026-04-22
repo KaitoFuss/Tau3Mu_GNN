@@ -71,15 +71,15 @@ def sample_new_config(registry, max_attempts=10_000):
 
         key = repr((fc_idx, fusion_idx))
         if key not in registry:
-            fc_params     = inject_dropout(fc_widths, 0.2)      # dropout hard coded to 0.2
-            fusion_params = inject_dropout(fusion_widths, 0.2)  # dropout hard coded to 0.2
+            fc_params     = inject_dropout(fc_widths, 0.8)      # dropout hard coded to 0.2
+            fusion_params = inject_dropout(fusion_widths, 0.8)  # dropout hard coded to 0.2
             return fc_params, fusion_params, key, [f"fl_{fc_idx}", f"sd_{fusion_idx}"]
 
     raise RuntimeError("Search space exhausted.")
 
 def get_arch_configs_random(tau_channel, disco_reg, registry_path=REGISTRY_PATH):
     disco_reg = str(disco_reg)
-    registry_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry.npz"
+    registry_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry_0.8_dropout.npz"
     registry = load_registry(registry_path)
     fc, fusion, key, unique_ident = sample_new_config(registry)
 
