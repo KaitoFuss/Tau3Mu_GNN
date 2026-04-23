@@ -622,7 +622,7 @@ if __name__ == "__main__":
     if arch == "random":
         model_params, arch_descr = get_arch_configs_random(tau_channel, disco_reg)
     else:
-        model_params, arch_descr = get_arch_configs(arch, tau_channel)
+        model_params, arch_descr = get_arch_configs(arch, tau_channel, disco_reg)
 
     # overwriting names (adding versionnumber) such that no old files get overwritten
     name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr)
