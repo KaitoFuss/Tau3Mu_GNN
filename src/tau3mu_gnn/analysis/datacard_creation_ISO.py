@@ -14,14 +14,7 @@ download pseudo data root trees from https://cernbox.cern.ch/s/NbNdJ3DmRHBOEUr
 '''
 
 import ROOT
-import os
-from math import pi, sqrt
-from glob import glob
-from pdb import set_trace
-from array import array 
-import math
 import argparse
-import json
 
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(True)
@@ -37,10 +30,28 @@ MODEL = args.model
 CHANNEL = args.channel
 CUT = args.cut
 
-SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores_bdt.root"
-BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores_bdt.root"
+if CHANNEL == "W":
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores_with_scores_bdt.root"
+    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores_with_scores_bdt.root"
+elif CHANNEL == "HF":
+    CHANNEL="W"
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_ds_large_signal_skimmed_no_resonances_with_scores_with_scores_bdt.root"
+    BKG_ROOT_FILE = [
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part1_with_scores_bdt.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part2_with_scores_bdt.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part3_with_scores_bdt.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part4_with_scores_bdt.root",
+                    ]
+    CHANNEL="HF"
+    
 SCORE_CUT = CUT
-SIGNAL_WEIGHT = '0.000019'
+
+if CHANNEL == "W":
+    SIGNAL_WEIGHT = '0.000019'
+elif CHANNEL == "HF":
+    # SIGNAL_WEIGHT = '0.000019'
+    SIGNAL_WEIGHT = '0.0000024'
+    
 MASS_BRANCH_NAME = f"Selected_TauTo3Mu_fitted_mass"
 
 mass_window = 0.060 # GeV
@@ -79,7 +90,7 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
     """
     # Create RDataFrame from input tree
     df = ROOT.RDataFrame(tree_name, input_file)
-    
+    print(f"number of signal events prior to cut: {df.Count().GetValue()}")
     # Apply selection filter
     df_filtered = df.Filter(selection_expr)
 
@@ -97,7 +108,7 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
     # Snapshot to create a new tree (pass filename string, not TFile object)
     cols = [c for c in df_filtered.GetColumnNames() if c != 'Selected_TauTo3Mu_fitted_mass']
     df_filtered.Snapshot(output_tree_name, output_file, cols)
-    
+    print(f"number of signal events prior to cut: {df_filtered.Count().GetValue}")
     return df_filtered
 
 ##########################################################################################
@@ -170,7 +181,7 @@ mass.setRange('left' , fit_range_lo  , mass_window_lo)
 mass.setRange('right', mass_window_hi, fit_range_hi  )
 
 # signal PDF
-mean  = ROOT.RooRealVar('mean' , 'mean' , 1.78, -1.7, 1.9)
+mean  = ROOT.RooRealVar('mean' , 'mean' , 1.78, 1.7, 1.9)
 width = ROOT.RooRealVar('width', 'width', 0.02,    0, 0.1)
 gaus  = ROOT.RooGaussian('sig_gaus', 'sig_gaus', mass, mean, width)
 

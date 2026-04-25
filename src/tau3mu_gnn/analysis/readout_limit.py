@@ -35,7 +35,7 @@ for i in range(tree.GetEntries()):
     if name == "median":
         limits = {"limit": tree.limit, "limitErr": tree.limitErr}
 
-json_path = "/work/kfuss/SVJ_GNN/output/limits.json"
+json_path = f"/work/kfuss/SVJ_GNN/output/{CHANNEL}_limits.json"
 if os.path.exists(json_path):
     with open(json_path, "r") as f:
         result = json.load(f)

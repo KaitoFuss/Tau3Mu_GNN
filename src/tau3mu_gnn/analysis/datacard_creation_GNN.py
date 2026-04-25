@@ -14,12 +14,6 @@ download pseudo data root trees from https://cernbox.cern.ch/s/NbNdJ3DmRHBOEUr
 '''
 
 import ROOT
-import os
-from math import pi, sqrt
-from glob import glob
-from pdb import set_trace
-from array import array 
-import math
 import argparse
 import json
 
@@ -37,10 +31,26 @@ MODEL = args.model
 CHANNEL = args.channel
 CUT = args.cut
 
-SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores.root"
-BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores.root"
+if CHANNEL == "W":
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores.root"
+    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores.root"
+elif CHANNEL == "HF":
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_ds_large_signal_skimmed_no_resonances_with_scores.root"
+    BKG_ROOT_FILE = [
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part1_with_scores.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part2_with_scores.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part3_with_scores.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part4_with_scores.root",
+                    ]
+
 SCORE_CUT = CUT
-SIGNAL_WEIGHT = '0.000019'
+
+if CHANNEL == "W":
+    SIGNAL_WEIGHT = '0.000019'
+elif CHANNEL == "HF":
+    # SIGNAL_WEIGHT = '0.000019'
+    SIGNAL_WEIGHT = '0.0000024'
+
 MASS_BRANCH_NAME = f"Selected_TauTo3Mu_fitted_mass"
 
 mass_window = 0.060 # GeV
@@ -170,7 +180,7 @@ mass.setRange('left' , fit_range_lo  , mass_window_lo)
 mass.setRange('right', mass_window_hi, fit_range_hi  )
 
 # signal PDF
-mean  = ROOT.RooRealVar('mean' , 'mean' , 1.78, -1.7, 1.9)
+mean  = ROOT.RooRealVar('mean' , 'mean' , 1.78, 1.7, 1.9)
 width = ROOT.RooRealVar('width', 'width', 0.02,    0, 0.1)
 gaus  = ROOT.RooGaussian('sig_gaus', 'sig_gaus', mass, mean, width)
 
