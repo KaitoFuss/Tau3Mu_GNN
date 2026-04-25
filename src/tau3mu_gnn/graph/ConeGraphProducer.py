@@ -80,7 +80,8 @@ class ConeGraphProducer(InMemoryDataset):
         graph_level_branches=[],
         slimmed=False,
         shuffle_bool=False,
-        use_displacement=False  
+        use_displacement=False,
+        use_muon_permutation=False,  
     ):
 
         self.root = root
@@ -108,6 +109,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
+        self.use_muon_permutation = use_muon_permutation
         self.edge_connection_methods = {
             "fully": self.connect_fully,
             "knn": self.connect_knn,
@@ -270,174 +272,192 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_charge_masked = pfcands_charge[cone_mask]
                 pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
-                if self.use_displacement:
-                    pfcands_d0_masked = event[f"{old_prefix}PFCands_d0"][cone_mask]
-                    pfcands_dz_masked = event[f"{old_prefix}PFCands_dz"][cone_mask]
-                else:
-                    pfcands_d0_masked, pfcands_dz_masked = None, None 
+                n_graphs = 5 if self.use_muon_permutation else 1
 
-                fitted_tau_idx = nt
+                for n_graph in range(n_graphs):
 
-                pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
-                pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
-                pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
-
-                if self.use_displacement:  
-                    pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
-                    pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
-                else:
-                    pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
-                    pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
-
-                if self.use_relative_angles:
-                    pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
-                    # Need care to account for circularity
-                    pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
-                
-                pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
-                # Clip masses to zero since for some reason sometimes they are slightly negative
-                pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
-                pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
-
-                num_nodes = len(pfcands_charge_masked)
-                pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
-
-                # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
-                if self.use_displacement: 
-                    features = torch.tensor(np.array([
-                        pfcands_pt_masked,
-                        pfcands_eta_masked,
-                        pfcands_phi_masked,
-                        pfcands_pdgId_masked,
-                        pfcands_mass_masked,
-                        pfcands_puppiWeight_masked,
-                        pfcands_d0_masked,   
-                        pfcands_dz_masked,
-                    ]).T, dtype=torch.float)
-                else:
-                    features = torch.tensor(np.array([
-                        pfcands_pt_masked,
-                        pfcands_eta_masked,
-                        pfcands_phi_masked,
-                        pfcands_pdgId_masked,
-                        pfcands_mass_masked, 
-                        pfcands_puppiWeight_masked
-                    ]).T, dtype=torch.float)
-                
-                # TODO do this calc outside loop and then just mask inside 
-                # Calculate edges and edge features
-                matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
-                matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
-                matrix_pt = np.repeat(pfcands_pt_masked, len(pfcands_pt_masked)).reshape((len(pfcands_pt_masked), -1))
-                matrix_mass = np.repeat(pfcands_mass_masked, len(pfcands_mass_masked)).reshape((len(pfcands_mass_masked), -1))
-                matrix_charge = np.repeat(pfcands_charge_masked, len(pfcands_charge_masked)).reshape((len(pfcands_charge_masked), -1))
-                matrix_delta_eta = matrix_eta - matrix_eta.T
-
-                # Calculate delta phi accounting for circularity
-                matrix_delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
-                matrix_delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
-                matrix_delta_phi = np.minimum(matrix_delta_phi_internal, matrix_delta_phi_external)
-                matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
-
-                # build graph connections according to specified mode
-                edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
-                
-                if self.save_edge_attributes:
-                    # Build pair-wise invariant masses
-                    lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
-                    pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
-                    
-                    # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
-                    R = 0.8
-                    d_ca = ((matrix_delta_R**2) / (R**2))
-                    d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
-                    if num_nodes < 200:
-                        # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
-                        np_edge_index = np.array(edge_index.t())
-                        pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
-                        pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
-                        d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
-                        d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
+                    if self.use_displacement:
+                        pfcands_d0_masked = event[f"{old_prefix}PFCands_d0"][cone_mask]
+                        pfcands_dz_masked = event[f"{old_prefix}PFCands_dz"][cone_mask]
                     else:
-                        pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
-                        pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
-                        d_ca = np.array([d_ca[i,j] for i,j in edge_index])
-                        d_kt = np.array([d_kt[i,j] for i,j in edge_index])
-                    
-                    # Only keep connected edges and take log to squeeze the distribution
-                    # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
+                        pfcands_d0_masked, pfcands_dz_masked = None, None 
 
-                    edge_features = torch.tensor(np.array([
-                        pair_masses,
-                        pair_charges,
-                        d_ca,
-                        d_kt,
-                    ]).T, dtype=torch.float)
+                    fitted_tau_idx = nt
 
-                    # Build the graph
-                    graph = Data(
-                            x=features,
-                            edge_index=edge_index.t().contiguous(),
-                            edge_attr=edge_features,
-                            num_nodes=int(features.shape[0]),
-                            num_node_features=int(features.shape[1]),
-                            num_edge_features=int(edge_features.shape[1]),
-                            pos=pos,
-                            y=torch.Tensor([self.label])
+                    pfcands_pt_masked = np.array(pfcands_pt_masked, dtype=np.float32)
+                    pfcands_eta_masked = np.array(pfcands_eta_masked, dtype=np.float32)
+                    pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
+
+                    if self.use_muon_permutation:
+                        pfcands_pt_masked = self.permute_muons(
+                            n_graph, 
+                            mu1_eta, 
+                            mu1_phi,
+                            mu2_eta,
+                            mu2_phi,
+                            mu3_eta,
+                            mu3_phi,
+                            pfcands_pt_masked,
+                            pfcands_eta_masked,
+                            pfcands_phi_masked
                         )
 
-                else:
-                    # Build the graph
-                    graph = Data(
-                            x=features,
-                            edge_index=edge_index.t().contiguous(),
-                            num_nodes=int(features.shape[0]),
-                            num_node_features=int(features.shape[1]),
-                            pos=pos,
-                            y=torch.Tensor([self.label])
-                        )
-                            
-                # Add the event weight
-                if self.weights == "xsec":
-                    if not self.max_events_to_process:
-                        graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
+                    if self.use_displacement:  
+                        pfcands_d0_masked = np.array(pfcands_d0_masked, dtype=np.float32)   
+                        pfcands_dz_masked = np.array(pfcands_dz_masked, dtype=np.float32)   
                     else:
-                        graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
-                elif self.weights is None:
-                    graph.w = 1.
-                elif self.weights == "npvs_rescale":
-                    graph.w = npvs_weights[event["PV_npvs"]]
+                        pfcands_d0_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
+                        pfcands_dz_masked = np.zeros(len(pfcands_pt_masked), dtype=np.float32)   
 
-                graph.tau_channel = self.tau_channel
-
-                if len(self.graph_level_branches) > 0:
-                    graph_level_features = torch.tensor(graph_level_features, dtype=torch.float)
-                    graph_level_features = graph_level_features.unsqueeze(0)
-                    graph.graph_level_features = graph_level_features
-                else:
-                    graph.graph_level_features = torch.tensor([])
-                
-                # Add the event number if requested
-                if self.save_event_number:
-                    graph.event_number = torch.tensor([i_ev], dtype=torch.long)
-
-                # Add tau index if requested
-                if self.save_fitted_tau_idx:
-                    graph.fitted_tau_index = torch.tensor([fitted_tau_idx], dtype=torch.int)
-
-                # Add fitted_tau_mass if requested
-                if self.save_fitted_tau_mass:
-                    graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
-
-                # Add previous isolation approach score if requested
-                if self.save_benchmark_score:
-                    abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
-                    rel_iso = -1 * abs_iso / fitted_tau_pt
-                    graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
+                    if self.use_relative_angles:
+                        pfcands_eta_masked = pfcands_eta_masked - fitted_tau_eta
+                        # Need care to account for circularity
+                        pfcands_phi_masked = (pfcands_phi_masked - fitted_tau_phi + np.pi) % (2*np.pi) - np.pi
                     
-                    # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
-                    # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
-                    # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
+                    pfcands_pdgId_masked = np.array(pfcands_pdgId_masked, dtype=np.int32)
+                    # Clip masses to zero since for some reason sometimes they are slightly negative
+                    pfcands_mass_masked = np.clip(np.array(pfcands_mass_masked), a_min=0., a_max=None, dtype=np.float32)
+                    pfcands_charge_masked = np.array(pfcands_charge_masked, dtype=np.int32) # is i64 fine for charge? Saw that it was saved as i32 in root
+
+                    num_nodes = len(pfcands_charge_masked)
+                    pos = [[e, p] for e, p in zip(pfcands_eta_masked, pfcands_phi_masked)]
+
+                    # Converting to np.array and subsequently to torch.tensor as suggested in torch docs for performance
+                    if self.use_displacement: 
+                        features = torch.tensor(np.array([
+                            pfcands_pt_masked,
+                            pfcands_eta_masked,
+                            pfcands_phi_masked,
+                            pfcands_pdgId_masked,
+                            pfcands_mass_masked,
+                            pfcands_puppiWeight_masked,
+                            pfcands_d0_masked,   
+                            pfcands_dz_masked,
+                        ]).T, dtype=torch.float)
+                    else:
+                        features = torch.tensor(np.array([
+                            pfcands_pt_masked,
+                            pfcands_eta_masked,
+                            pfcands_phi_masked,
+                            pfcands_pdgId_masked,
+                            pfcands_mass_masked, 
+                            pfcands_puppiWeight_masked
+                        ]).T, dtype=torch.float)
+                    
+                    # TODO do this calc outside loop and then just mask inside 
+                    # Calculate edges and edge features
+                    matrix_eta = np.repeat(pfcands_eta_masked, len(pfcands_eta_masked)).reshape((len(pfcands_eta_masked), -1))
+                    matrix_phi = np.repeat(pfcands_phi_masked, len(pfcands_phi_masked)).reshape((len(pfcands_phi_masked), -1))
+                    matrix_pt = np.repeat(pfcands_pt_masked, len(pfcands_pt_masked)).reshape((len(pfcands_pt_masked), -1))
+                    matrix_mass = np.repeat(pfcands_mass_masked, len(pfcands_mass_masked)).reshape((len(pfcands_mass_masked), -1))
+                    matrix_charge = np.repeat(pfcands_charge_masked, len(pfcands_charge_masked)).reshape((len(pfcands_charge_masked), -1))
+                    matrix_delta_eta = matrix_eta - matrix_eta.T
+
+                    # Calculate delta phi accounting for circularity
+                    matrix_delta_phi_internal = np.abs(matrix_phi - matrix_phi.T)
+                    matrix_delta_phi_external = 2*np.pi - np.abs(matrix_phi - matrix_phi.T)
+                    matrix_delta_phi = np.minimum(matrix_delta_phi_internal, matrix_delta_phi_external)
+                    matrix_delta_R = np.sqrt(matrix_delta_eta**2 + matrix_delta_phi**2)
+
+                    # build graph connections according to specified mode
+                    edge_index = self.edge_connection_methods[self.edge_connection_mode](matrix_delta_R)
+                    
+                    if self.save_edge_attributes:
+                        # Build pair-wise invariant masses
+                        lorentz_vectors = vector.array({"pt": matrix_pt, "eta": matrix_eta, "phi": matrix_phi, "mass": matrix_mass})
+                        pair_masses = (lorentz_vectors + lorentz_vectors.T).mass
+                        
+                        # Build Cambridge-Aachen and kt distances between constituents and other edge_atrributes 
+                        R = 0.8
+                        d_ca = ((matrix_delta_R**2) / (R**2))
+                        d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
+                        if num_nodes < 200:
+                            # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
+                            np_edge_index = np.array(edge_index.t())
+                            pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
+                            pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
+                            d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
+                            d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
+                        else:
+                            pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
+                            pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
+                            d_ca = np.array([d_ca[i,j] for i,j in edge_index])
+                            d_kt = np.array([d_kt[i,j] for i,j in edge_index])
+                        
+                        # Only keep connected edges and take log to squeeze the distribution
+                        # pair_masses = np.clip(np.nan_to_num(np.log(pair_masses)), a_max=1e5, a_min=-1e5)
+
+                        edge_features = torch.tensor(np.array([
+                            pair_masses,
+                            pair_charges,
+                            d_ca,
+                            d_kt,
+                        ]).T, dtype=torch.float)
+
+                        # Build the graph
+                        graph = Data(
+                                x=features,
+                                edge_index=edge_index.t().contiguous(),
+                                edge_attr=edge_features,
+                                num_nodes=int(features.shape[0]),
+                                num_node_features=int(features.shape[1]),
+                                num_edge_features=int(edge_features.shape[1]),
+                                pos=pos,
+                                y=torch.Tensor([self.label])
+                            )
+
+                    else:
+                        # Build the graph
+                        graph = Data(
+                                x=features,
+                                edge_index=edge_index.t().contiguous(),
+                                num_nodes=int(features.shape[0]),
+                                num_node_features=int(features.shape[1]),
+                                pos=pos,
+                                y=torch.Tensor([self.label])
+                            )
+                                
+                    # Add the event weight
+                    if self.weights == "xsec":
+                        if not self.max_events_to_process:
+                            graph.w = torch.tensor([xsec/gen_events_before_selection], dtype=torch.float)
+                        else:
+                            graph.w = torch.tensor([xsec/(gen_events_before_selection * events_to_process / total_events)], dtype=torch.float)
+                    elif self.weights is None:
+                        graph.w = 1.
+                    elif self.weights == "npvs_rescale":
+                        graph.w = npvs_weights[event["PV_npvs"]]
+
+                    graph.tau_channel = self.tau_channel
+
+                    if len(self.graph_level_branches) > 0:
+                        graph_level_features = torch.tensor(graph_level_features, dtype=torch.float)
+                        graph_level_features = graph_level_features.unsqueeze(0)
+                        graph.graph_level_features = graph_level_features
+                    else:
+                        graph.graph_level_features = torch.tensor([])
+                    
+                    # Add the event number if requested
+                    if self.save_event_number:
+                        graph.event_number = torch.tensor([i_ev], dtype=torch.long)
+
+                    # Add tau index if requested
+                    if self.save_fitted_tau_idx:
+                        graph.fitted_tau_index = torch.tensor([fitted_tau_idx], dtype=torch.int)
+
+                    # Add fitted_tau_mass if requested
+                    if self.save_fitted_tau_mass:
+                        graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
+
+                    # Add previous isolation approach score if requested
+                    if self.save_benchmark_score:
+                        abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
+                        rel_iso = -1 * abs_iso / fitted_tau_pt
+                        graph.benchmark_score = torch.tensor([rel_iso], dtype=torch.float)
+                        
+                        # abs_iso_pt05 = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons_pT05"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05"][tau_mask][nt])
+                        # rel_iso_pt05 = abs_iso_pt05 / fitted_tau_pt
+                        # graph.benchmark_score_pt05 = torch.tensor([rel_iso_pt05], dtype=torch.float)
 
                 graphs.append(graph)
 
@@ -642,3 +662,30 @@ class ConeGraphProducer(InMemoryDataset):
         delta_phi_external = 2*np.pi - np.abs(phi1 - phi2)
         delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
         return delta_phi
+
+    def permute_muons(self, n_graph, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi,
+                    pfcands_pt_masked, pfcands_eta_masked, pfcands_phi_masked):
+        PERMUTATIONS = [
+            (0, 2, 1),
+            (1, 0, 2),
+            (1, 2, 0),
+            (2, 0, 1),
+            (2, 1, 0),
+        ]
+        delta_R_sq_mu1 = self.calc_delta_R_sq(mu1_eta, mu1_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu2 = self.calc_delta_R_sq(mu2_eta, mu2_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu3 = self.calc_delta_R_sq(mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
+
+        idx_mu1 = np.argmin(delta_R_sq_mu1)
+        idx_mu2 = np.argmin(delta_R_sq_mu2)
+        idx_mu3 = np.argmin(delta_R_sq_mu3)
+
+        perm = PERMUTATIONS[n_graph]
+        mu_indices = [idx_mu1, idx_mu2, idx_mu3]
+
+        pfcands_pt_permuted = pfcands_pt_masked.copy()
+        pfcands_pt_permuted[idx_mu1] = pfcands_pt_masked[mu_indices[perm[0]]]
+        pfcands_pt_permuted[idx_mu2] = pfcands_pt_masked[mu_indices[perm[1]]]
+        pfcands_pt_permuted[idx_mu3] = pfcands_pt_masked[mu_indices[perm[2]]]
+
+        return pfcands_pt_permuted

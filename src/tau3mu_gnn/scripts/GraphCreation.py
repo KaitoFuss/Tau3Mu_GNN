@@ -14,6 +14,9 @@ save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
 cone_size = 0.5
+use_muon_permutation = True
+if use_muon_permutation:
+    max_events_to_process = max_events_to_process // 5
 
 def create_graph(
     root: str,
@@ -37,6 +40,8 @@ def create_graph(
         suffix += f"_{k_knn}"
     elif edge_connection_mode == "r_threshold":
         suffix += f"_{delta_r_threshold}"
+    if use_muon_permutation:
+        suffix += "_permuted"
 
     output_dataset_name = output_ident + suffix
 
@@ -63,6 +68,7 @@ def create_graph(
         slimmed=slimmed,
         shuffle_bool=shuffle,
         use_displacement=use_displacement,
+        use_muon_permutation=use_muon_permutation,
     )
                 
 
