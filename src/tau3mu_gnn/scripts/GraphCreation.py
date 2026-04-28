@@ -15,8 +15,8 @@ verbose = True
 use_displacement = True
 cone_size = 0.5
 use_muon_permutation = True
-if use_muon_permutation:
-    max_events_to_process = max_events_to_process // 5
+# if use_muon_permutation:
+#     max_events_to_process = max_events_to_process // 5
 
 def create_graph(
     root: str,
