@@ -291,7 +291,7 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_phi_masked = np.array(pfcands_phi_masked, dtype=np.float32)
 
                 if self.use_muon_permutation:
-                    pfcands_pt_masked, permuted_rescaled_3muon_mass = self.permute_muons(
+                    pfcands_pt_masked, permuted_rescaled_3muon_mass, permuted_rescaled_3muon_pT, permuted_rescaled_3muon_eta, permuted_rescaled_3muon_phi = self.permute_muons(
                         n_graph, 
                         mu1_eta, 
                         mu1_phi,
@@ -452,6 +452,14 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.fitted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
                 if self.use_muon_permutation:
                     graph.permuted_tau_mass = torch.tensor([permuted_rescaled_3muon_mass], dtype=torch.float)
+                    graph.permuted_tau_pT = torch.tensor([permuted_rescaled_3muon_pT], dtype=torch.float)
+                    graph.permuted_tau_eta = torch.tensor([permuted_rescaled_3muon_eta], dtype=torch.float)
+                    graph.permuted_tau_phi = torch.tensor([permuted_rescaled_3muon_phi], dtype=torch.float)
+                else:
+                    graph.non_permuted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
+                    graph.non_permuted_tau_pT = torch.tensor([fitted_tau_pt], dtype=torch.float)
+                    graph.non_permuted_tau_eta = torch.tensor([fitted_tau_eta], dtype=torch.float)
+                    graph.non_permuted_tau_phi = torch.tensor([fitted_tau_phi], dtype=torch.float)
 
                 # Add previous isolation approach score if requested
                 if self.save_benchmark_score:
@@ -667,9 +675,20 @@ class ConeGraphProducer(InMemoryDataset):
         delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
         return delta_phi
     
+    def _sum_vec(self, vecs):
+        return vecs[0] + vecs[1] + vecs[2]
+
     def invariant_mass(self, vecs):
-        total = vecs[0] + vecs[1] + vecs[2]
-        return total.M()
+        return self._sum_vec(vecs).M()
+
+    def pt(self, vecs):
+        return self._sum_vec(vecs).Pt()
+
+    def eta(self, vecs):
+        return self._sum_vec(vecs).Eta()
+
+    def phi(self, vecs):
+        return self._sum_vec(vecs).Phi()
 
     def permute_muons(self, n_graph, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi,
                   pfcands_pt_masked, pfcands_eta_masked, pfcands_phi_masked):
@@ -734,8 +753,11 @@ class ConeGraphProducer(InMemoryDataset):
                                     MUON_MASS)
             for i in range(3)
         ]
-        pt_rescale = (v_rescale[0] + v_rescale[1] + v_rescale[2]).Pt()
-        m_rescale = self.invariant_mass(v_rescale)
+        tau_rescale = self._sum_vec(v_rescale)
+        m_rescale   = tau_rescale.M()
+        pt_rescale  = tau_rescale.Pt()
+        eta_rescale = tau_rescale.Eta()
+        phi_rescale = tau_rescale.Phi()
         # print(f"Rescaled pT vector sum: {pt_rescale:.6f}, invariant mass: {m_rescale:.4f}")
 
-        return pfcands_pt_permuted, m_rescale
+        return pfcands_pt_permuted, m_rescale, pt_rescale, eta_rescale, phi_rescale
