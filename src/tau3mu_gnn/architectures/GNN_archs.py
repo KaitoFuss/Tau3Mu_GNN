@@ -121,7 +121,7 @@ def get_arch_configs(arch: str, tau_channel: str, disco_reg: int, registry_path:
         raise ValueError(f"sd index {fusion_idx} not in SCALE_DOWN_PARAMS_OPTIONS (valid: 1–{len(SCALE_DOWN_PARAMS_OPTIONS)}).")
 
     # Registry
-    reg_path = registry_path + tau_channel + f"disco_{disco_reg}_arch_registry.npz"
+    reg_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry_0.8_dropout.npz"
     registry = load_registry(reg_path)
     key      = repr((fc_idx, fusion_idx))
 
