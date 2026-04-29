@@ -125,11 +125,9 @@ def get_arch_configs(arch: str, tau_channel: str, disco_reg: int, registry_path:
     registry = load_registry(reg_path)
     key      = repr((fc_idx, fusion_idx))
 
-    if key in registry:
-        raise RuntimeError(f"Arch '{arch}' (key {key}) already exists in registry for channel '{tau_channel}'.")
-
-    registry.add(key)
-    save_registry(reg_path, registry)
+    if not key in registry:
+        registry.add(key)
+        save_registry(reg_path, registry)
 
     # Build config
     fc_params     = inject_dropout(FC_PARAMS_OPTIONS[fc_idx],     0.2)
