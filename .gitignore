@@ -188,3 +188,6 @@ tests/
 notebooks/
 
 HiggsAnalysis/
+
+# Ignore jobs folder with bash files
+jobs/
