@@ -2,6 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
+import argparse
 
 
 def extract_data_from_pickled_dict(pickled_data):
@@ -20,7 +21,7 @@ def extract_data_from_pickled_dict(pickled_data):
 def plot_data(losses, discos, disco_params, output_path, channel):
     """Plot loss vs disco with color representing disco_param"""
     plt.figure()
-    scatter = plt.scatter(losses, discos, c=disco_params, cmap='viridis', s=50, vmin=0, vmax=3)
+    scatter = plt.scatter(losses, discos, c=disco_params, cmap='viridis', s=50, vmin=0, vmax=100)
     plt.colorbar(scatter, label="Disco Param")
     plt.xlabel('Validation Loss')
     plt.ylabel('Disco')
@@ -33,9 +34,18 @@ def plot_data(losses, discos, disco_params, output_path, channel):
     
 
 if __name__ == "__main__":
-        
+    parser = argparse.ArgumentParser(description="Process tau channel results")
+    parser.add_argument(
+        "--channel",
+        type=str,
+        required=True,
+        help="Tau channel (W or HF)"
+    )
+
+    args = parser.parse_args()
+    channel = args.channel
+
     root_directory = "/work/kfuss/SVJ_GNN/output/" 
-    channel = "HF"
 
     subdirs = [os.path.join(root_directory, name) for name in os.listdir(root_directory)
            if os.path.isdir(os.path.join(root_directory, name)) and "new_dropout" in name and channel in name]
