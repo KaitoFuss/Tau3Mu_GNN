@@ -41,14 +41,21 @@ if __name__ == "__main__":
         required=True,
         help="Tau channel (W or HF)"
     )
+    parser.add_argument(
+        "--model_arch",
+        type=str,
+        default="fl_8_sd_4",
+        help="eg. fl_8_sd_4"
+    )
 
     args = parser.parse_args()
     channel = args.channel
+    model_arch = args.model_arch
 
     root_directory = "/work/kfuss/SVJ_GNN/output/" 
 
     subdirs = [os.path.join(root_directory, name) for name in os.listdir(root_directory)
-           if os.path.isdir(os.path.join(root_directory, name)) and "new_dropout" in name and channel in name]
+           if os.path.isdir(os.path.join(root_directory, name)) and "new_dropout" in name and channel in name and "fl_8_sd_4" in name]
     pickled_data = []
     for subdir in subdirs:
         pickled_data += load_pkl(subdir, "disco_loss.pkl")
