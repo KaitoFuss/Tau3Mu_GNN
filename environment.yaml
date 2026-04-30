@@ -27,7 +27,7 @@ dependencies:
   - ninja
 
   # do additionally 
-  # conda install pyg -c pyg
+  # conda install pyg=2.5.2 -c pyg
   # conda install root
   # pip install comet_ml
   # pip install seaborn
