@@ -33,4 +33,4 @@ dependencies:
   # pip install seaborn
   # pip install xgboost
   # pip install scikit-learn
-  # pip install -e
+  # pip install -e .
