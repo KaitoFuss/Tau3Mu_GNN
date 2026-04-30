@@ -4,7 +4,7 @@ import random
 import torch
 import torch.nn as nn
 
-from torch_geometric.nn.conv import GINEConv
+from torch_geometric.nn.conv import GINEConv, GATConv, TransformerConv
 from torch_geometric.nn import global_mean_pool
 
 class TauMuNet(nn.Module):
@@ -22,6 +22,8 @@ class TauMuNet(nn.Module):
             scoring=False,
             num_classes = 1,
             scale_down_params=[],
+            conv_type="GINE",   
+            num_heads=4, 
             ):
         super(TauMuNet, self).__init__()
 
@@ -39,6 +41,8 @@ class TauMuNet(nn.Module):
         self.scoring = scoring
         self.scale_down = True if scale_down_params else False
         self.scale_down_params = scale_down_params
+        self.conv_type = conv_type
+        self.num_heads = num_heads
 
         self.input_dims = num_node_features
 
@@ -55,33 +59,12 @@ class TauMuNet(nn.Module):
         self.edge_convs = nn.ModuleList()
 
         # First layer: from input_dims to conv_params[0]
-        nns = nn.Sequential(
-            nn.Linear(self.input_dims, conv_params[0]),
-            nn.BatchNorm1d(conv_params[0]),
-            nn.Dropout(self.dropout),
-            nn.ReLU(),
-            nn.Linear(conv_params[0], conv_params[0]),
-            nn.ReLU(),
-            nn.BatchNorm1d(conv_params[0]),
-            nn.Dropout(self.dropout),
-        )
-        self.edge_convs.append(GINEConv(nn=nns, edge_dim=num_edge_features))
+        self.edge_convs.append(self._build_conv(self.input_dims, conv_params[0]))
 
-        # Remaining layers
         for in_feat, out_feat in zip(conv_params[:-1], conv_params[1:]):
             if self.embed_every_layer:
                 in_feat += self.num_graph_level_features
-            nns = nn.Sequential(
-                nn.Linear(in_feat, out_feat),
-                nn.BatchNorm1d(out_feat),
-                nn.Dropout(self.dropout),
-                nn.ReLU(),
-                nn.Linear(out_feat, out_feat),
-                nn.ReLU(),
-                nn.BatchNorm1d(out_feat),
-                nn.Dropout(self.dropout),
-            )
-            self.edge_convs.append(GINEConv(nn=nns, edge_dim=num_edge_features))
+            self.edge_convs.append(self._build_conv(in_feat, out_feat))
 
         if self.use_fusion:
             in_chn = sum(x for x in conv_params)
@@ -130,6 +113,45 @@ class TauMuNet(nn.Module):
 
         self.fc = nn.Sequential(*fcs)
 
+    def _build_conv(self, in_feat, out_feat):
+        if self.conv_type == "GINE":
+            nns = nn.Sequential(
+                nn.Linear(in_feat, out_feat),
+                nn.BatchNorm1d(out_feat),
+                nn.Dropout(self.dropout),
+                nn.ReLU(),
+                nn.Linear(out_feat, out_feat),
+                nn.ReLU(),
+                nn.BatchNorm1d(out_feat),
+                nn.Dropout(self.dropout),
+            )
+            return GINEConv(nn=nns, edge_dim=self.num_edge_features)
+
+        elif self.conv_type == "GAT":
+            # concat=False → output dim stays out_feat (not out_feat * num_heads)
+            return GATConv(
+                in_channels=in_feat,
+                out_channels=out_feat,
+                heads=self.num_heads,
+                edge_dim=self.num_edge_features,
+                dropout=self.dropout,
+                concat=False,
+                residual=True,
+            )
+
+        elif self.conv_type == "Transformer":
+            # concat=False → output dim stays out_feat (not out_feat * num_heads)
+            return TransformerConv(
+                in_channels=in_feat,
+                out_channels=out_feat,
+                heads=self.num_heads,
+                edge_dim=self.num_edge_features,
+                dropout=self.dropout,
+                concat=False,
+            )
+        else:
+            raise ValueError(f"Unknown conv_type: {self.conv_type}")
+    
     def forward(self, data):
     
         x, edge_index, edge_attr, graph_feat = data.x, data.edge_index, data.edge_attr, data.graph_level_features

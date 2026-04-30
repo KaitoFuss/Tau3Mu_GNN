@@ -42,7 +42,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, data_base):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, conv_type, data_base):
     """Train the model and evaluate it.
 
     Args:
@@ -56,6 +56,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         include_puppi : whether we include puppi weights or not
         tau_channel(str): tau channel (W or HF)
         gnn_mode(str): mode of GNN. Can be BDT, embed, final_layer
+        conv_type(str: type of convolution in GNN (GINE, GAT, Transformer support)
         data_base(str): path to pt graphs, default is T3: /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data
     Returns: -
         
@@ -259,6 +260,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         use_fusion=params["use_fusion"],
         gnn_mode=gnn_mode,
         scale_down_params=params["fusion_scale_down_params"],
+        conv_type=conv_type,
     )
 
     # Define the optimizer
@@ -579,11 +581,18 @@ if __name__ == "__main__":
         )
     
     parser.add_argument(
+        "--conv_type",
+        default="GINE",
+        type=str,
+        help="GNN convolutional layer specification"
+        )
+    
+    parser.add_argument(
         "--data_base",
         default="/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data",
         type=str,
         help="Base directory for signal and background graphs"
-    )
+        )
     
 
     args = parser.parse_args()
@@ -598,9 +607,11 @@ if __name__ == "__main__":
     tau_channel = args.tau_channel
     gnn_mode = args.gnn_mode
     remark = args.remark
+    conv_type = args.conv_type
 
     assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
     assert gnn_mode in ["BDT", "embed_once", "embed_always", "final_layer"]
+    assert conv_type in ["GINE", "GAT", "Transformer"]
 
 
     print("==> Running TauMuNet ")
@@ -632,11 +643,12 @@ if __name__ == "__main__":
         "Model" : model_type,
         "tau_channel" : tau_channel,
         "gnn_mode": gnn_mode,
+        "conv_type": conv_type,
         "remark": remark,
     }
 
     experiment.log_parameters(hyper_params)
     experiment.set_name(name)
 
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, args.data_base)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, conv_type, args.data_base)
 
