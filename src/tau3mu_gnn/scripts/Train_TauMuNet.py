@@ -42,7 +42,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, data_base):
     """Train the model and evaluate it.
 
     Args:
@@ -56,6 +56,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         include_puppi : whether we include puppi weights or not
         tau_channel(str): tau channel (W or HF)
         gnn_mode(str): mode of GNN. Can be BDT, embed, final_layer
+        data_base(str): path to pt graphs, default is T3: /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data
     Returns: -
         
     """
@@ -68,29 +69,13 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     output_path = utrain.output_directory(name)
 
     # Directory for the graphs
-    if tau_channel == "W":
-        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/"
-        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/"
+    base_directory_signal = os.path.join(data_base, f"signal_{tau_channel}/")
+    base_directory_bkg    = os.path.join(data_base, f"background_{tau_channel}/")
 
-        datasets_signal = [
-            [base_directory_signal, f"W_decay_signal_{model_type}"],
-        ]
+    prefix = "W_decay" if tau_channel == "W" else "HF_decay"
 
-        datasets_bkg = [
-            [base_directory_bkg, f"W_decay_background_{model_type}"],
-        ]
-
-    elif tau_channel == "HF":
-        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/"
-        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/"
-
-        datasets_signal = [
-            [base_directory_signal, f"HF_decay_signal_{model_type}"],
-        ]
-
-        datasets_bkg = [
-            [base_directory_bkg, f"HF_decay_background_{model_type}"],
-        ]
+    datasets_signal = [[base_directory_signal, f"{prefix}_signal_{model_type}"]]
+    datasets_bkg    = [[base_directory_bkg,    f"{prefix}_background_{model_type}"]]
 
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
 
@@ -593,6 +578,13 @@ if __name__ == "__main__":
         help="additional info for particular training"
         )
     
+    parser.add_argument(
+        "--data_base",
+        default="/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data",
+        type=str,
+        help="Base directory for signal and background graphs"
+    )
+    
 
     args = parser.parse_args()
 
@@ -646,5 +638,5 @@ if __name__ == "__main__":
     experiment.log_parameters(hyper_params)
     experiment.set_name(name)
 
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, args.data_base)
 
