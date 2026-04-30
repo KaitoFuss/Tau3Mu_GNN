@@ -32,4 +32,4 @@ dependencies:
   # pip install comet_ml
   # pip install seaborn
   # pip install xgboost
-  # pip install -e
+  # pip install -e .
