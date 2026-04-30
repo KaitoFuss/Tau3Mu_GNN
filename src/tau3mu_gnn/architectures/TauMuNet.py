@@ -136,7 +136,6 @@ class TauMuNet(nn.Module):
                 edge_dim=self.num_edge_features,
                 dropout=self.dropout,
                 concat=False,
-                residual=True,
             )
 
         elif self.conv_type == "Transformer":
