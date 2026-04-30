@@ -46,7 +46,15 @@ SCALE_DOWN_PARAMS_OPTIONS = {
     16: [256, 128, 64, 16],    
 }
 
-REGISTRY_PATH = "/work/kfuss/SVJ_GNN/output/"
+def _detect_registry_path():
+    if os.path.exists("/eos/user/k/kfuss/"):
+        return "/eos/user/k/kfuss/SVJ_GNN/output/"
+    elif os.path.exists("/work/kfuss/"):
+        return "/work/kfuss/SVJ_GNN/output/"
+    else:
+        raise RuntimeError("Unknown cluster — cannot determine REGISTRY_PATH")
+
+REGISTRY_PATH = _detect_registry_path()
 
 def load_registry(path):
     if not os.path.exists(path):
