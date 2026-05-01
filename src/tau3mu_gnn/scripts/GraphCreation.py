@@ -5,7 +5,7 @@ import os
 
 
 # default values
-max_events_to_process = 300000
+max_events_to_process = 600000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # )
 
     prefix = "Selected_"
-    graph_file_ident = "skimmed_300k"
+    graph_file_ident = "skimmed_600k"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
