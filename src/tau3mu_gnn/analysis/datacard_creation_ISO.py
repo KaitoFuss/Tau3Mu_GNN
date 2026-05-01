@@ -49,8 +49,7 @@ SCORE_CUT = CUT
 if CHANNEL == "W":
     SIGNAL_WEIGHT = '0.000019'
 elif CHANNEL == "HF":
-    # SIGNAL_WEIGHT = '0.000019'
-    SIGNAL_WEIGHT = '0.0000024'
+    SIGNAL_WEIGHT = '0.000152'
     
 MASS_BRANCH_NAME = f"Selected_TauTo3Mu_fitted_mass"
 
