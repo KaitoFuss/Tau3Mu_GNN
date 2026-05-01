@@ -628,7 +628,7 @@ if __name__ == "__main__":
         model_params, arch_descr = get_arch_configs(arch, tau_channel, disco_reg)
 
     # overwriting names (adding versionnumber) such that no old files get overwritten
-    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr)
+    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr, conv_type)
     output_path = utrain.output_directory(name)
 
     with open(os.path.join(output_path, "arch_config.json"), "w") as f:

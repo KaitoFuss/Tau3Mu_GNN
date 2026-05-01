@@ -206,19 +206,21 @@ def save_loss(training_losses, validation_losses, name):
  
 
 
-def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_ident):
+def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_ident, conv_type="GINE"):
     """Generate the name with a version number so that I don't overwrite stuff.
     Args:
         base_name (str): Name of the experiment
         directory (str): current working directory
         tau_channel (str): tau channel identifier
         unique_ident (list[str]): list of identifier strings to include in name
+        conv_type (str): name of Conv layer type
     Returns:
         unique_name (str): base_name with version number
     """
     ident_str = "_".join(unique_ident) if unique_ident else ""
     prefix = f"{base_name}_{tau_channel}"
     unique_name_base = f"{prefix}_{ident_str}" if ident_str else prefix
+    unique_name_base = f"{unique_name_base}_{conv_type}"
     version = 1
     unique_name = f"{unique_name_base}_vs{version}"
     while os.path.exists(os.path.join(directory, "output", unique_name)):
