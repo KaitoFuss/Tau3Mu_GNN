@@ -225,7 +225,7 @@ def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_i
     unique_name = f"{unique_name_base}_vs{version}"
     while os.path.exists(os.path.join(directory, "output", unique_name)):
         version += 1
-        unique_name = f"{base_name}_{tau_channel}_{ident_str}_vs{version}"
+        unique_name = f"{unique_name_base}_vs{version}"
     return unique_name
 
 
