@@ -22,6 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, default="skimmed_dzd0_cone_size_0.5_knn_10", help="Which model to train/ which graph construction was used")
     parser.add_argument('--storage_folder', type=str, required=True, help="Output to store the root files with the scores")
     parser.add_argument('--max_events_to_process', type=int, default=None, help="max_events_to_process")
+    parser.add_argument('--conv_types', type=str, required=True, help="Conv layer types", nargs='+')
 
     args = parser.parse_args()
 
@@ -34,10 +35,11 @@ if __name__ == "__main__":
     model_type = args.model
     storage_folder = args.storage_folder
     max_events_to_process = args.max_events_to_process
+    conv_types = args.conv_types
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    assert len(model_names) == len(archs), f"Number of model names ({len(model_names)}) must match number of architectures ({len(archs)}). Got model_names={model_names}, archs={archs}"
+    assert len(model_names) == len(archs) == len(conv_types), f"Number of model names ({len(model_names)}) must match number of architectures ({len(archs)}). Got model_names={model_names}, archs={archs}"
     
     output_folders = []
     models = []
@@ -58,6 +60,7 @@ if __name__ == "__main__":
             gnn_mode=gnn_mode,
             scoring=True, 
             scale_down_params=params["fusion_scale_down_params"],
+            conv_type=conv_types[i],
         )
         model.load_state_dict(torch.load(model_direc + model_name + ".pt", map_location=device)['model_state_dict'])
         # Load the normalizer
