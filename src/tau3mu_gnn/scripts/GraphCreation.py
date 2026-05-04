@@ -3,6 +3,14 @@ import logging
 import argparse
 import os
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
+parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
+parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
+parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
+parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None")
+# parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
+args = parser.parse_args()
 
 # default values
 max_events_to_process = 600000
@@ -14,7 +22,7 @@ save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
 cone_size = 0.5
-use_muon_permutation = True
+unsculpting_mode = args.unsculpting_mode
 # if use_muon_permutation:
 #     max_events_to_process = max_events_to_process // 5
 
@@ -40,10 +48,13 @@ def create_graph(
         suffix += f"_{k_knn}"
     elif edge_connection_mode == "r_threshold":
         suffix += f"_{delta_r_threshold}"
-    if use_muon_permutation:
-        suffix += "_permuted"
-
+    if unsculpting_mode:
+        suffix += f"_{unsculpting_mode}"
+    else:
+        suffix += f"_testing"
     output_dataset_name = output_ident + suffix
+
+    print(output_dataset_name)
 
     ConeGraphProducer(
         root,
@@ -68,20 +79,12 @@ def create_graph(
         slimmed=slimmed,
         shuffle_bool=shuffle,
         use_displacement=use_displacement,
-        use_muon_permutation=use_muon_permutation,
+        unsculpting_mode=unsculpting_mode,
     )
                 
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
-    parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
-    parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
-    parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
-    # parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
-    args = parser.parse_args()
-
     model_type = args.graph_type
     k = args.k
     delta_r = args.delta_r
@@ -123,8 +126,8 @@ if __name__ == "__main__":
     graph_file_ident = "skimmed_600k"
 
     if tau_channel == "W":
-        base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
-        # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
+        # base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
+        base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
             [base_direc_W_signal, graph_file_ident],
         ]
@@ -168,8 +171,8 @@ if __name__ == "__main__":
                 save_benchmark_score=True
             )
         
-        base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
-        # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
+        # base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
+        base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
             [base_direc_W_bkg, graph_file_ident]
@@ -194,8 +197,8 @@ if __name__ == "__main__":
             )
     
     elif tau_channel == "HF":
-        # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
-        base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
+        base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
+        # base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
 
         root_HF_signals_skimmed = [
             [base_direc_HF_signal, graph_file_ident],
@@ -241,8 +244,8 @@ if __name__ == "__main__":
                 save_benchmark_score=False
             )
 
-        # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
-        base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
+        base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
+        # base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
         root_bkgs_skimmed = [
             [base_direc_HF_bkg, graph_file_ident]
         ]

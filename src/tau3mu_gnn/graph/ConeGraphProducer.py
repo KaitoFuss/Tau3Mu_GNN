@@ -82,7 +82,7 @@ class ConeGraphProducer(InMemoryDataset):
         slimmed=False,
         shuffle_bool=False,
         use_displacement=False,
-        use_muon_permutation=False,  
+        unsculpting_mode=None,  
     ):
 
         self.root = root
@@ -110,7 +110,7 @@ class ConeGraphProducer(InMemoryDataset):
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
-        self.use_muon_permutation = use_muon_permutation
+        self.unsculpting_mode = unsculpting_mode
         self.edge_connection_methods = {
             "fully": self.connect_fully,
             "knn": self.connect_knn,
@@ -122,6 +122,19 @@ class ConeGraphProducer(InMemoryDataset):
         assert self.edge_connection_mode in self.edge_connection_methods, f"Unsupported edge_connection_mode: {self.edge_connection_mode}"
 
         assert self.tau_channel in ["W", "HF"], "Unsupported tau_channel. Please choose either 'W' or 'HF'"
+
+        assert self.unsculpting_mode in ["permutation", "split_pt_uniformly", "delete_muons", None], "Unsupported unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None"
+        
+        self.use_muon_permutation = False
+        self.use_split_pt_uniformly = False
+        self.delete_muons = False
+
+        if self.unsculpting_mode == "permutation":
+            self.use_muon_permutation = True
+        elif self.unsculpting_mode == "split_pt_uniformly":
+            self.use_split_pt_uniformly = True
+        elif self.unsculpting_mode == "delete_muons":
+            self.delete_muons = True
 
         if self.edge_connection_mode == "fully":
             if self.delta_r_threshold is not None:
@@ -201,7 +214,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_pdgId = event[f"{old_prefix}PFCands_pdgId"]
             pfcands_mass = event[f"{old_prefix}PFCands_mass"]
             pfcands_charge = event[f"{old_prefix}PFCands_charge"]
-            pfcands_pupppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
+            pfcands_puppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -271,7 +284,12 @@ class ConeGraphProducer(InMemoryDataset):
                 pfcands_pdgId_masked = pfcands_pdgId[cone_mask]
                 pfcands_mass_masked = pfcands_mass[cone_mask]
                 pfcands_charge_masked = pfcands_charge[cone_mask]
-                pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
+                pfcands_puppiWeight_masked = pfcands_puppiWeight[cone_mask]
+                
+                # print(f"Event {i_ev}, tau {nt}: n_pfcands_in_cone={ak.sum(cone_mask)}, delete_muons={self.delete_muons}")
+                if len(pfcands_pt_masked) <= 1:
+                    logging.warning(f"Empty graph for tau candidate {nt} in event {i_ev}, skipping.")
+                    continue
 
                 n_graphs = 5 if self.use_muon_permutation else 1
 
@@ -293,6 +311,19 @@ class ConeGraphProducer(InMemoryDataset):
                 if self.use_muon_permutation:
                     pfcands_pt_masked, permuted_rescaled_3muon_mass, permuted_rescaled_3muon_pT, permuted_rescaled_3muon_eta, permuted_rescaled_3muon_phi = self.permute_muons(
                         n_graph, 
+                        mu1_eta, 
+                        mu1_phi,
+                        mu2_eta,
+                        mu2_phi,
+                        mu3_eta,
+                        mu3_phi,
+                        pfcands_pt_masked,
+                        pfcands_eta_masked,
+                        pfcands_phi_masked
+                    )
+
+                if self.use_split_pt_uniformly:
+                    pfcands_pt_masked, split_rescaled_3muon_mass, split_rescaled_3muon_pT, split_rescaled_3muon_eta, split_rescaled_3muon_phi = self.split_pt_uniformly(
                         mu1_eta, 
                         mu1_phi,
                         mu2_eta,
@@ -455,6 +486,11 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.permuted_tau_pT = torch.tensor([permuted_rescaled_3muon_pT], dtype=torch.float)
                     graph.permuted_tau_eta = torch.tensor([permuted_rescaled_3muon_eta], dtype=torch.float)
                     graph.permuted_tau_phi = torch.tensor([permuted_rescaled_3muon_phi], dtype=torch.float)
+                elif self.use_split_pt_uniformly:
+                    graph.permuted_tau_mass = torch.tensor([split_rescaled_3muon_mass], dtype=torch.float)
+                    graph.permuted_tau_pT = torch.tensor([split_rescaled_3muon_pT], dtype=torch.float)
+                    graph.permuted_tau_eta = torch.tensor([split_rescaled_3muon_eta], dtype=torch.float)
+                    graph.permuted_tau_phi = torch.tensor([split_rescaled_3muon_phi], dtype=torch.float)
                 else:
                     graph.non_permuted_tau_mass = torch.tensor([fitted_tau_mass], dtype=torch.float)
                     graph.non_permuted_tau_pT = torch.tensor([fitted_tau_pt], dtype=torch.float)
@@ -656,9 +692,18 @@ class ConeGraphProducer(InMemoryDataset):
         else:
             cone_size_sq = self.cone_size ** 2
 
-        cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
-        
-        # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
+        if self.delete_muons:
+            mu_indices = self.get_muon_idx(mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta, pfcands_phi)
+            n = len(pfcands_eta)
+            mu_mask = np.zeros(n, dtype=bool)
+            mu_mask[mu_indices[0]] = True
+            mu_mask[mu_indices[1]] = True
+            mu_mask[mu_indices[2]] = True
+
+            non_mu_mask = ak.Array(~mu_mask)
+            cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) & non_mu_mask
+        else:
+            cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
 
         return cone_mask
     
@@ -690,6 +735,18 @@ class ConeGraphProducer(InMemoryDataset):
     def phi(self, vecs):
         return self._sum_vec(vecs).Phi()
 
+    def get_muon_idx(self, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked):
+        delta_R_sq_mu1 = self.calc_delta_R_sq(mu1_eta, mu1_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu2 = self.calc_delta_R_sq(mu2_eta, mu2_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu3 = self.calc_delta_R_sq(mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
+
+        idx_mu1 = np.argmin(delta_R_sq_mu1)
+        idx_mu2 = np.argmin(delta_R_sq_mu2)
+        idx_mu3 = np.argmin(delta_R_sq_mu3)
+
+        mu_indices = [idx_mu1, idx_mu2, idx_mu3]
+        return mu_indices
+
     def permute_muons(self, n_graph, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi,
                   pfcands_pt_masked, pfcands_eta_masked, pfcands_phi_masked):
         PERMUTATIONS = [
@@ -701,15 +758,7 @@ class ConeGraphProducer(InMemoryDataset):
         ]
         MUON_MASS = 0.10566
 
-        delta_R_sq_mu1 = self.calc_delta_R_sq(mu1_eta, mu1_phi, pfcands_eta_masked, pfcands_phi_masked)
-        delta_R_sq_mu2 = self.calc_delta_R_sq(mu2_eta, mu2_phi, pfcands_eta_masked, pfcands_phi_masked)
-        delta_R_sq_mu3 = self.calc_delta_R_sq(mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
-
-        idx_mu1 = np.argmin(delta_R_sq_mu1)
-        idx_mu2 = np.argmin(delta_R_sq_mu2)
-        idx_mu3 = np.argmin(delta_R_sq_mu3)
-
-        mu_indices = [idx_mu1, idx_mu2, idx_mu3]
+        mu_indices = self.get_muon_idx(mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
         perm = PERMUTATIONS[n_graph]
 
         # Original vector sum pT
@@ -725,9 +774,9 @@ class ConeGraphProducer(InMemoryDataset):
         # print(f"Original pT vector sum: {pt_orig:.6f}, invariant mass: {m_orig:.4f}")
         # Apply permutation
         pfcands_pt_permuted = pfcands_pt_masked.copy()
-        pfcands_pt_permuted[idx_mu1] = pfcands_pt_masked[mu_indices[perm[0]]]
-        pfcands_pt_permuted[idx_mu2] = pfcands_pt_masked[mu_indices[perm[1]]]
-        pfcands_pt_permuted[idx_mu3] = pfcands_pt_masked[mu_indices[perm[2]]]
+        pfcands_pt_permuted[mu_indices[0]] = pfcands_pt_masked[mu_indices[perm[0]]]
+        pfcands_pt_permuted[mu_indices[1]] = pfcands_pt_masked[mu_indices[perm[1]]]
+        pfcands_pt_permuted[mu_indices[2]] = pfcands_pt_masked[mu_indices[perm[2]]]
 
         # Rescale to restore original vector sum pT
         v_perm = [
@@ -742,9 +791,9 @@ class ConeGraphProducer(InMemoryDataset):
         m_perm = self.invariant_mass(v_perm)
         # print(f"Unscaled pT vector sum: {pt_perm:.6f}, invariant mass: {m_perm:.4f}")
         # print(f"Resulting scale factor: {scale}")
-        pfcands_pt_permuted[idx_mu1] *= scale
-        pfcands_pt_permuted[idx_mu2] *= scale
-        pfcands_pt_permuted[idx_mu3] *= scale
+        pfcands_pt_permuted[mu_indices[0]] *= scale
+        pfcands_pt_permuted[mu_indices[1]] *= scale
+        pfcands_pt_permuted[mu_indices[2]] *= scale
                 
         v_rescale = [
             ROOT.Math.PtEtaPhiMVector(pfcands_pt_permuted[mu_indices[i]],
@@ -759,5 +808,62 @@ class ConeGraphProducer(InMemoryDataset):
         eta_rescale = tau_rescale.Eta()
         phi_rescale = tau_rescale.Phi()
         # print(f"Rescaled pT vector sum: {pt_rescale:.6f}, invariant mass: {m_rescale:.4f}")
+
+        return pfcands_pt_permuted, m_rescale, pt_rescale, eta_rescale, phi_rescale
+
+    def split_pt_uniformly(self, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi,
+                  pfcands_pt_masked, pfcands_eta_masked, pfcands_phi_masked):
+        MUON_MASS = 0.10566
+
+        mu_indices = self.get_muon_idx(mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
+
+        # Original vector sum pT
+        v_orig = [
+            ROOT.Math.PtEtaPhiMVector(pfcands_pt_masked[mu_indices[i]],
+                                    pfcands_eta_masked[mu_indices[i]],
+                                    pfcands_phi_masked[mu_indices[i]],
+                                    MUON_MASS)
+            for i in range(3)
+        ]
+        pt_orig = (v_orig[0] + v_orig[1] + v_orig[2]).Pt()
+        m_orig = self.invariant_mass(v_orig)
+        pt_new = pt_orig / 3
+        print(f"Original pT vector sum: {pt_orig:.6f}, invariant mass: {m_orig:.4f}")
+        # Apply permutation
+        pfcands_pt_permuted = pfcands_pt_masked.copy()
+        pfcands_pt_permuted[mu_indices[0]] = pt_new
+        pfcands_pt_permuted[mu_indices[1]] = pt_new
+        pfcands_pt_permuted[mu_indices[2]] = pt_new
+
+        # Rescale to restore original vector sum pT
+        v_perm = [
+            ROOT.Math.PtEtaPhiMVector(pfcands_pt_permuted[mu_indices[i]],
+                                    pfcands_eta_masked[mu_indices[i]],
+                                    pfcands_phi_masked[mu_indices[i]],
+                                    MUON_MASS)
+            for i in range(3)
+        ]
+        pt_new_sum = (v_perm[0] + v_perm[1] + v_perm[2]).Pt()
+        scale = pt_orig / pt_new_sum
+        m_perm = self.invariant_mass(v_perm)
+        print(f"Unscaled pT vector sum: {pt_new_sum:.6f}, invariant mass: {m_perm:.4f}")
+        print(f"Resulting scale factor: {scale}")
+        pfcands_pt_permuted[mu_indices[0]] *= scale
+        pfcands_pt_permuted[mu_indices[1]] *= scale
+        pfcands_pt_permuted[mu_indices[2]] *= scale
+
+        v_rescale = [
+            ROOT.Math.PtEtaPhiMVector(pfcands_pt_permuted[mu_indices[i]],
+                                    pfcands_eta_masked[mu_indices[i]],
+                                    pfcands_phi_masked[mu_indices[i]],
+                                    MUON_MASS)
+            for i in range(3)
+        ]
+        tau_rescale = self._sum_vec(v_rescale)
+        m_rescale   = tau_rescale.M()
+        pt_rescale  = tau_rescale.Pt()
+        eta_rescale = tau_rescale.Eta()
+        phi_rescale = tau_rescale.Phi()
+        print(f"Rescaled pT vector sum: {pt_rescale:.6f}, invariant mass: {m_rescale:.4f}")
 
         return pfcands_pt_permuted, m_rescale, pt_rescale, eta_rescale, phi_rescale
