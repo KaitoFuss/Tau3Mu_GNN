@@ -126,8 +126,8 @@ if __name__ == "__main__":
     graph_file_ident = "skimmed_600k"
 
     if tau_channel == "W":
-        # base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
-        base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
+        base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
+        # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
             [base_direc_W_signal, graph_file_ident],
         ]
@@ -171,8 +171,8 @@ if __name__ == "__main__":
                 save_benchmark_score=True
             )
         
-        # base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
-        base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
+        base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
+        # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
             [base_direc_W_bkg, graph_file_ident]
@@ -197,8 +197,8 @@ if __name__ == "__main__":
             )
     
     elif tau_channel == "HF":
-        base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
-        # base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
+        # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
+        base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
 
         root_HF_signals_skimmed = [
             [base_direc_HF_signal, graph_file_ident],
@@ -244,8 +244,8 @@ if __name__ == "__main__":
                 save_benchmark_score=False
             )
 
-        base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
-        # base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
+        # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
+        base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
         root_bkgs_skimmed = [
             [base_direc_HF_bkg, graph_file_ident]
         ]
