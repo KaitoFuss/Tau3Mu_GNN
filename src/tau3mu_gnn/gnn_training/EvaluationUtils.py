@@ -65,6 +65,10 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     test_scores_bkg = [] 
     tau_mass_bkg = []
     benchmark_bkg = []
+    permuted_exists = False
+    if "permuted" in dataset[1] or "split" in dataset[1]:
+        permuted_exists = True
+        permuted_tau_mass_bkg = []
     
     with torch.no_grad():
         for dataset in datasets_bkg:
@@ -80,6 +84,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
             for graphs in dataloader_bkg:
                 weights_bkg.append(graphs.w.detach().numpy())
                 tau_mass_bkg.append(graphs.fitted_tau_mass.detach())
+                if permuted_exists:
+                    permuted_tau_mass_bkg.append(graphs.permuted_tau_mass.detach())
                 if tau_channel == "W":
                     benchmark_bkg.append(graphs.benchmark_score.detach().numpy())
                 graphs = graphs.to(device)
@@ -96,6 +102,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
     # tau_mass_bkg = np.concatenate(tau_mass_bkg)
     tau_mass_bkg = torch.cat(tau_mass_bkg)
     test_scores_bkg = torch.cat(test_scores_bkg)
+    if permuted_exists:
+        permuted_tau_mass_bkg = torch.cat(permuted_tau_mass_bkg)
     target_labels_bkg = np.concatenate(target_labels_bkg)
     if tau_channel == "W":
         benchmark_bkg = np.concatenate(benchmark_bkg)
@@ -174,6 +182,8 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                     'disco': disco,
                     'benchmark': benchmark,
                     'lambda': disco_reg,
+                    'tau_mass_bkg': tau_mass_bkg.numpy(),
+                    'scores_bkg': test_scores_bkg.numpy(),
                     # 'benchmark_pt05': benchmark_pt05,
                 }
                 
@@ -185,10 +195,13 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                     'tau_mass': tau_mass.numpy(),
                     'disco': disco,
                     'lambda': disco_reg,
+                    'tau_mass_bkg': tau_mass_bkg.numpy(),
+                    'scores_bg': test_scores_bkg.numpy(),
                     # 'benchmark': benchmark,
                     # 'benchmark_pt05': benchmark_pt05,
                 }
-    
+            if permuted_exists:
+                evaluation_dict[dataset[1]]["permuted_tau_mass"] = permuted_tau_mass_bkg.numpy()
     
     return evaluation_dict
 
@@ -445,6 +458,76 @@ def plot_roc(roc, auc, name, suffix = "_eval"):
 
     return
 
+def plot_sculpting(evaluation_dict, name, use_sigmoid=True):
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+
+    tau_mass_bkg = evaluation_dict["tau_mass_bkg"]
+    scores_bkg = evaluation_dict["scores_bkg"]
+
+    if use_sigmoid:
+        scores_bkg = sigmoid(scores_bkg)
+
+    permuted_exists = False
+    if "permuted" in name or "split" in name:
+        permuted_exists = True
+        permuted_tau_mass_bkg = evaluation_dict["permuted_tau_mass"]
+
+    score_cuts = [0.95, 0.97, 0.98, 0.99] if use_sigmoid else [5, 7, 9, 11]  # example logits
+
+    bins = np.linspace(1.4, 2.5, 80)
+
+    plt.figure()
+    for cut in score_cuts:
+        mask = scores_bkg > cut
+        filtered = tau_mass_bkg[mask]
+
+        plt.hist(
+            filtered,
+            bins=bins,
+            histtype="step",
+            label=f"score > {cut:.2f}" if use_sigmoid else f"logit > {cut:.1f}"
+        )
+
+    plt.xlabel(r"$m_{\tau}$ [GeV]")
+    plt.ylabel("Counts")
+    plt.title(f"{name} Sculpting (mass)")
+    plt.legend()
+    plt.grid()
+
+    output_path = output_directory(name)
+    suffix = "_sigmoid" if use_sigmoid else "_logits"
+    outname = name + suffix + "_sculpt_mass.png"
+
+    plt.savefig(os.path.join(output_path, outname), dpi=400)
+    plt.close()
+    print(f"{outname} has been saved.")
+
+    if permuted_exists:
+        plt.figure()
+        for cut in score_cuts:
+            mask = scores_bkg > cut
+            filtered = permuted_tau_mass_bkg[mask]
+
+            plt.hist(
+                filtered,
+                bins=bins,
+                histtype="step",
+                label=f"score > {cut:.2f}" if use_sigmoid else f"logit > {cut:.1f}"
+            )
+
+        plt.xlabel(r"$m_{\tau}$ [GeV]")
+        plt.ylabel("Counts")
+        plt.title(f"{name} Sculpting (permuted mass)")
+        plt.legend()
+        plt.grid()
+
+        outname = name + suffix + "_sculpt_permuted.png"
+
+        plt.savefig(os.path.join(output_path, outname), dpi=400)
+        plt.close()
+        print(f"{outname} has been saved.")
+    return
 
 def plot_auc_simple(auc, name, suffix = "_eval"):
     """Plot AUC scores

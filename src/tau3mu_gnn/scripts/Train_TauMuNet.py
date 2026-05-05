@@ -307,6 +307,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     # ueval.plot_sic_small(roc,name)
     # ueval.plot_dnn(evaluation_dict,name)
     # ueval.plot_dnn_2(evaluation_dict, name)
+    ueval.plot_sculpting(evaluation_dict, name)
 
     print(f"==> Evaluation completed in {time.time()-start_eva:.2f} seconds")
 

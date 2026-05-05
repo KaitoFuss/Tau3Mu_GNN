@@ -55,7 +55,7 @@ if __name__ == "__main__":
     root_directory = "/work/kfuss/SVJ_GNN/output/" 
 
     subdirs = [os.path.join(root_directory, name) for name in os.listdir(root_directory)
-           if os.path.isdir(os.path.join(root_directory, name)) and "new_dropout" in name and channel in name and "fl_8_sd_4" in name]
+           if os.path.isdir(os.path.join(root_directory, name)) and "new_dropout" in name and channel in name and "fl_8_sd_4" in name and not ("GAT" in name or "transformer" in name)]
     pickled_data = []
     for subdir in subdirs:
         pickled_data += load_pkl(subdir, "disco_loss.pkl")
