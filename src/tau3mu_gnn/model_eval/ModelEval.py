@@ -119,7 +119,11 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
         gnn_bkg_scores = gnn_bkg["scores"]
         
         tau_mass = gnn_bkg["tau_mass"]
-        sideband_mask = np.abs(tau_mass - 1.78) > 0.08
+        sideband_mask = (
+            (np.abs(tau_mass - 1.78) > 0.08)
+            & (np.abs(tau_mass) > 1.6)
+            & (np.abs(tau_mass) < 2.0)
+        )
         gnn_bkg_scores = gnn_bkg_scores[sideband_mask]
         
         gnn_sig_scores = gnn_sig_scores[~np.isnan(gnn_sig_scores)]
