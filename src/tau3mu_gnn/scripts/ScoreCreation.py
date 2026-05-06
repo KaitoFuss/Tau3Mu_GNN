@@ -23,6 +23,7 @@ if __name__ == "__main__":
     parser.add_argument('--storage_folder', type=str, required=True, help="Output to store the root files with the scores")
     parser.add_argument('--max_events_to_process', type=int, default=None, help="max_events_to_process")
     parser.add_argument('--conv_types', type=str, required=True, help="Conv layer types", nargs='+')
+    parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None")
 
     args = parser.parse_args()
 
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     storage_folder = args.storage_folder
     max_events_to_process = args.max_events_to_process
     conv_types = args.conv_types
+    unsculpting_mode = args.unsculpting_mode
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,5 +98,6 @@ if __name__ == "__main__":
                 normalizers=normalizers,
                 output_folders=output_folders,
                 storage_folder=storage_folder,
-                model_names=model_names
+                model_names=model_names,
+                unsculpting_mode=unsculpting_mode
             )
