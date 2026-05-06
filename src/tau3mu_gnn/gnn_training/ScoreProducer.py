@@ -336,6 +336,7 @@ class ScoreProducer:
         slimmed=False,
         shuffle_bool=False,
         use_displacement=False,
+        unsculpting_mode=None,
         models=None,
         device=None,
         normalizers=None,
@@ -373,6 +374,7 @@ class ScoreProducer:
         self.output_folders = output_folders
         self.storage_folder = storage_folder
         self.model_names = model_names
+        self.unsculpting_mode = unsculpting_mode
         self.edge_connection_methods = {
             "fully": self.connect_fully,
             "knn": self.connect_knn,
@@ -387,6 +389,19 @@ class ScoreProducer:
                 os.makedirs(output_folder, exist_ok=True)
 
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
+
+        assert self.unsculpting_mode in ["permutation", "split_pt_uniformly", "delete_muons", None], "Unsupported unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None"
+
+        self.use_muon_permutation = False
+        self.use_split_pt_uniformly = False
+        self.delete_muons = False
+
+        if self.unsculpting_mode == "permutation":
+            self.use_muon_permutation = True
+        elif self.unsculpting_mode == "split_pt_uniformly":
+            self.use_split_pt_uniformly = True
+        elif self.unsculpting_mode == "delete_muons":
+            self.delete_muons = True
 
         # Assert that no incompatible flags are used
         prefix = "Selected_" if self.slimmed else ""
@@ -1082,9 +1097,18 @@ class ScoreProducer:
         else:
             cone_size_sq = self.cone_size ** 2
 
-        cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
-        
-        # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
+        if self.delete_muons:
+            mu_indices = self.get_muon_idx(mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta, pfcands_phi)
+            n = len(pfcands_eta)
+            mu_mask = np.zeros(n, dtype=bool)
+            mu_mask[mu_indices[0]] = True
+            mu_mask[mu_indices[1]] = True
+            mu_mask[mu_indices[2]] = True
+
+            non_mu_mask = ak.Array(~mu_mask)
+            cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) & non_mu_mask
+        else:
+            cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
 
         return cone_mask
     
@@ -1102,3 +1126,14 @@ class ScoreProducer:
         delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
         return delta_phi
         
+    def get_muon_idx(self, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked):
+        delta_R_sq_mu1 = self.calc_delta_R_sq(mu1_eta, mu1_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu2 = self.calc_delta_R_sq(mu2_eta, mu2_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu3 = self.calc_delta_R_sq(mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
+
+        idx_mu1 = np.argmin(delta_R_sq_mu1)
+        idx_mu2 = np.argmin(delta_R_sq_mu2)
+        idx_mu3 = np.argmin(delta_R_sq_mu3)
+
+        mu_indices = [idx_mu1, idx_mu2, idx_mu3]
+        return mu_indices
