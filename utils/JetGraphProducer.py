@@ -1,8 +1,9 @@
+import collections
 import os
 import numpy as np
 import uproot
 import torch
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Dataset, Data
 import awkward as ak
 from tqdm import tqdm
 import vector
@@ -10,7 +11,7 @@ import logging
 from utils.LundTreeUtilities import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
 
 
-class JetGraphProducer(InMemoryDataset):
+class JetGraphProducer(Dataset):
 
     """
     Produces graphs from a root file containing jet constituents.
@@ -57,6 +58,16 @@ class JetGraphProducer(InMemoryDataset):
         input_format (str): Format of the input root files ["PFNanoAOD", "TreeMaker2"]
         jet_collection (str): Name of the jet collection in the root file (default: "FatJet")
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
+        chunk_size (int): Number of graphs to store per chunk file on disk (default: 1000).
+            Larger values reduce the number of files but increase per-chunk memory use.
+        n_cached_chunks (int): Number of chunk files to keep in memory at once (default: 2).
+            Increase for random-access workloads; decrease to save RAM.
+
+    Note:
+        Processed datasets are stored as a metadata file ``{name}_meta.pt`` and a set of
+        chunk files ``{name}_chunk_{i}.pt`` inside the ``processed/`` sub-directory.
+        Datasets processed with the old ``InMemoryDataset``-based format (a single
+        ``{name}.pt`` file) must be re-processed before they can be used with this class.
     """
 
     def __init__(
@@ -93,7 +104,9 @@ class JetGraphProducer(InMemoryDataset):
         verbose=False,
         input_format="PFNanoAOD",
         jet_collection="FatJet",
-        use_displacement=False  
+        use_displacement=False,
+        chunk_size=1000,
+        n_cached_chunks=2,
     ):
 
         self.root = root
@@ -126,7 +139,11 @@ class JetGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.input_format = input_format
         self.jet_collection = jet_collection
-        self.use_displacement = use_displacement  
+        self.use_displacement = use_displacement
+        self.chunk_size = chunk_size
+        self._n_cached_chunks = n_cached_chunks
+        # OrderedDict used as a bounded LRU cache: key = chunk index, value = list of graphs
+        self._chunk_cache: collections.OrderedDict = collections.OrderedDict()
 
         assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
 
@@ -147,7 +164,41 @@ class JetGraphProducer(InMemoryDataset):
 
         super().__init__(root, transform, pre_transform, pre_filter)
 
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        # Load lightweight metadata from disk (weights, jet indices, total count).
+        # No graph tensors are loaded here — those are fetched on-demand in get().
+        meta_path = os.path.join(self.processed_dir, f"{self.output_dataset_name}_meta.pt")
+        meta = torch.load(meta_path)
+        self._n_graphs: int = meta["n_graphs"]
+        self._w: torch.Tensor = meta["w"]
+        self._jet_idx_all: torch.Tensor = meta.get("jet_idx")
+
+    # ------------------------------------------------------------------
+    # Properties that return per-sample values respecting the current
+    # index view (set by Dataset.index_select / slicing / permutation).
+    # ------------------------------------------------------------------
+
+    @property
+    def w(self) -> torch.Tensor:
+        """Event weights for the graphs in the current dataset view."""
+        if self._indices is None:
+            return self._w
+        return self._w[self._indices]
+
+    @property
+    def jet_idx(self) -> torch.Tensor:
+        """Jet indices for the graphs in the current dataset view."""
+        if self._jet_idx_all is None:
+            raise AttributeError("jet_idx was not saved during processing (save_jet_idx=False)")
+        if self._indices is None:
+            return self._jet_idx_all
+        return self._jet_idx_all[self._indices]
+
+    # ------------------------------------------------------------------
+    # torch_geometric.data.Dataset interface
+    # ------------------------------------------------------------------
+
+    def len(self) -> int:
+        return self._n_graphs
 
     @property
     def raw_file_names(self):
@@ -155,7 +206,10 @@ class JetGraphProducer(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return [self.output_dataset_name+".pt"]
+        # Only the metadata file is used to determine whether processing has been done.
+        # The chunk files are written alongside it during process() and are discovered
+        # at load time via get().
+        return [f"{self.output_dataset_name}_meta.pt"]
     
     def get_total_initial_events(self):
         if self.input_format == "PFNanoAOD":
@@ -518,13 +572,232 @@ class JetGraphProducer(InMemoryDataset):
 
         return graphDataset
 
+    def _iter_graphs_from_file(self, file_name):
+        """Generator that yields processed :obj:`Data` objects from a single
+        ROOT file, streaming events in batches of ``chunk_size`` to keep
+        memory usage bounded during dataset creation.
+
+        Unlike :meth:`get_graphs`, this method never loads the full event
+        array into RAM.  ``pre_filter`` and ``pre_transform`` are applied
+        to each graph before it is yielded.
+        """
+        if self.input_format == "PFNanoAOD":
+            xsec = 1.
+            gen_events_before_selection = None
+
+            if self.weights == "xsec":
+                with uproot.open(file_name) as meta_file:
+                    if "Metadata" not in meta_file:
+                        raise ValueError("No Metadata tree found in file")
+                    if "GenCrossSection" not in meta_file["Metadata"].keys():
+                        raise ValueError("No GenCrossSection found in Metadata")
+                    xsec = meta_file["Metadata"]["GenCrossSection"].array()[0]
+                    gen_events_before_selection = self.get_total_initial_events()
+
+            branches_to_load = [
+                "PFCands_pt",
+                "PFCands_eta",
+                "PFCands_phi",
+                "PFCands_pdgId",
+                "PFCands_mass",
+                "FatJetPFCands_jetIdx",
+                "FatJetPFCands_pFCandsIdx",
+                "nFatJet",
+                "FatJet_eta",
+                "FatJet_phi",
+                "FatJet_pt",
+            ] + self.extra_obs_to_load
+
+            if self.use_displacement:
+                branches_to_load += ["PFCands_d0", "PFCands_dz"]
+
+            for obs in self.extra_obs_to_save_per_event:
+                if obs not in branches_to_load:
+                    branches_to_load.append(obs)
+            for obs in self.extra_obs_to_save_per_jet:
+                if obs not in branches_to_load:
+                    branches_to_load.append(obs)
+
+            # Get the total number of entries without loading any event data
+            with uproot.open(f"{file_name}:Events") as tree:
+                total_events = tree.num_entries
+
+            if gen_events_before_selection is None:
+                gen_events_before_selection = total_events
+
+            events_to_process = (
+                min(self.max_events_to_process, total_events)
+                if self.max_events_to_process else total_events
+            )
+
+            cumulative_offset = 0
+            for events_batch in uproot.iterate(
+                f"{file_name}:Events",
+                branches_to_load,
+                step_size=self.chunk_size,
+                entry_stop=events_to_process,
+                library="ak",
+            ):
+                graphs = self.process_event(
+                    0,
+                    len(events_batch),
+                    events_batch,
+                    xsec,
+                    gen_events_before_selection,
+                    total_events,
+                    events_to_process,
+                )
+                if self.save_event_number:
+                    for g in graphs:
+                        g.event_number = g.event_number + cumulative_offset
+                cumulative_offset += len(events_batch)
+                if self.pre_transform is not None:
+                    graphs = [self.pre_transform(g) for g in graphs]
+                for g in graphs:
+                    if self.pre_filter is None or self.pre_filter(g):
+                        yield g
+
+        elif self.input_format == "TreeMaker2":
+            branches_to_load = [
+                "JetsConstituents/JetsConstituents.fCoordinates.fPt",
+                "JetsConstituents/JetsConstituents.fCoordinates.fEta",
+                "JetsConstituents/JetsConstituents.fCoordinates.fPhi",
+                "JetsConstituents/JetsConstituents.fCoordinates.fE",
+                "JetsConstituents_PdgId",
+                f"{self.jet_collection}_constituentsIndex",
+                f"{self.jet_collection}_constituentsIndexCounts",
+                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt",
+                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fEta",
+                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPhi",
+                f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fE",
+                "Weight",
+            ] + self.extra_obs_to_load
+
+            for obs in self.extra_obs_to_save_per_event:
+                if obs not in branches_to_load:
+                    branches_to_load.append(obs)
+            for obs in self.extra_obs_to_save_per_jet:
+                if obs not in branches_to_load:
+                    branches_to_load.append(obs)
+
+            with uproot.open(f"{file_name}:TreeMaker2/PreSelection") as tree:
+                total_events = tree.num_entries
+
+            events_to_process = (
+                min(self.max_events_to_process, total_events)
+                if self.max_events_to_process else total_events
+            )
+
+            cumulative_offset = 0
+            for events_batch in uproot.iterate(
+                f"{file_name}:TreeMaker2/PreSelection",
+                branches_to_load,
+                step_size=self.chunk_size,
+                entry_stop=events_to_process,
+                library="ak",
+            ):
+                if self.mask:
+                    events_batch = ak.mask(
+                        events_batch,
+                        ak.num(events_batch[f"{self.jet_collection}/{self.jet_collection}.fCoordinates.fPt"], axis=1) > 1,
+                    )
+                graphs = self.process_event(
+                    0,
+                    len(events_batch),
+                    events_batch,
+                    None,
+                    None,
+                    total_events,
+                    events_to_process,
+                )
+                if self.save_event_number:
+                    for g in graphs:
+                        g.event_number = g.event_number + cumulative_offset
+                cumulative_offset += len(events_batch)
+                if self.pre_transform is not None:
+                    graphs = [self.pre_transform(g) for g in graphs]
+                for g in graphs:
+                    if self.pre_filter is None or self.pre_filter(g):
+                        yield g
+
+    def get(self, idx: int) -> Data:
+        """Load and return the graph at global position *idx*.
+
+        Graphs are stored on disk in fixed-size chunk files.  The relevant
+        chunk is loaded into a small in-memory LRU cache so that sequential
+        and batch-level access patterns reuse already-loaded chunks without
+        keeping the entire dataset in RAM.
+        """
+        chunk_idx = idx // self.chunk_size
+        pos = idx % self.chunk_size
+
+        if chunk_idx not in self._chunk_cache:
+            chunk_path = os.path.join(
+                self.processed_dir,
+                f"{self.output_dataset_name}_chunk_{chunk_idx}.pt",
+            )
+            chunk = torch.load(chunk_path)
+            # Evict the oldest entry when the cache is full
+            if len(self._chunk_cache) >= self._n_cached_chunks:
+                self._chunk_cache.popitem(last=False)
+            self._chunk_cache[chunk_idx] = chunk
+        else:
+            # Move to the end to mark as most-recently used
+            self._chunk_cache.move_to_end(chunk_idx)
+
+        # Return a clone so that in-place transforms applied by __getitem__
+        # (e.g. OnTheFlyNormalizer) do not corrupt the cached graph objects.
+        # Without this, the second access of the same graph would receive an
+        # already-transformed tensor and produce inf/nan values.
+        return self._chunk_cache[chunk_idx][pos].clone()
+
     def process(self):
-        # Read data into huge `Data` list.
-        graphs = []
+        # Stream graphs from every input file and write them to disk in
+        # chunk files as they are produced, so that the peak RAM usage
+        # during processing is proportional to chunk_size, not to the
+        # total dataset size.
+        buffer = []
+        chunk_idx = 0
+        n_graphs = 0
+        w_list = []
+        jet_idx_list = [] if self.save_jet_idx else None
+        default_weight = torch.tensor([1.0])
+
+        def _flush_chunk(data, idx):
+            chunk_path = os.path.join(
+                self.processed_dir,
+                f"{self.output_dataset_name}_chunk_{idx}.pt",
+            )
+            torch.save(data, chunk_path)
+
         for file in self.raw_file_names:
             print(f"Processing {file}")
-            graphs += self.get_graphs(file)
-        
-        data, slices = self.collate(graphs)
-        torch.save((data, slices), self.processed_paths[-1])
-        
+            for g in self._iter_graphs_from_file(file):
+                buffer.append(g)
+                w_list.append(g.w if hasattr(g, "w") else default_weight)
+                if jet_idx_list is not None:
+                    jet_idx_list.append(g.jet_idx)
+                n_graphs += 1
+
+                if len(buffer) == self.chunk_size:
+                    _flush_chunk(buffer, chunk_idx)
+                    buffer = []
+                    chunk_idx += 1
+
+        # Flush any graphs that didn't fill a complete chunk
+        if buffer:
+            _flush_chunk(buffer, chunk_idx)
+            chunk_idx += 1
+
+        meta = {
+            "n_graphs": n_graphs,
+            "n_chunks": chunk_idx,
+            "chunk_size": self.chunk_size,
+            "w": torch.cat(w_list),
+            "jet_idx": torch.cat(jet_idx_list) if jet_idx_list is not None else None,
+        }
+        torch.save(
+            meta,
+            os.path.join(self.processed_dir, f"{self.output_dataset_name}_meta.pt"),
+        )
+
