@@ -465,7 +465,7 @@ def plot_sculpting(evaluation_dict, name, use_sigmoid=False):
 
         score_cuts = [0.90, 0.95, 0.97, 0.99]  # example logits
 
-        bins = np.linspace(1.4, 2.5, 80)
+        bins = np.linspace(1.4, 2.5, int(55*0.75))
 
         plt.figure()
         for cut in score_cuts:
@@ -476,7 +476,8 @@ def plot_sculpting(evaluation_dict, name, use_sigmoid=False):
                 filtered,
                 bins=bins,
                 histtype="step",
-                label=f"score > {cut:.2f}" if use_sigmoid else f"logit > {cut:.2f}"
+                alpha=0.6,
+                label=f"score > {cut:.2f}"
             )
 
         plt.xlabel(r"$m_{\tau}$ [GeV]")
@@ -486,8 +487,7 @@ def plot_sculpting(evaluation_dict, name, use_sigmoid=False):
         plt.grid()
 
         output_path = output_directory(name)
-        suffix = "_sigmoid" if use_sigmoid else "_logits"
-        outname = name + suffix + "_sculpt_mass.png"
+        outname = name + "_sculpt_mass.png"
 
         plt.savefig(os.path.join(output_path, outname), dpi=400)
         plt.close()
@@ -502,8 +502,9 @@ def plot_sculpting(evaluation_dict, name, use_sigmoid=False):
                 plt.hist(
                     filtered,
                     bins=bins,
+                    alpha=0.6,
                     histtype="step",
-                    label=f"score > {cut:.2f}" if use_sigmoid else f"logit > {cut:.1f}"
+                    label=f"score > {cut:.2f}"
                 )
 
             plt.xlabel(r"$m_{\tau}$ [GeV]")
@@ -512,7 +513,7 @@ def plot_sculpting(evaluation_dict, name, use_sigmoid=False):
             plt.legend()
             plt.grid()
 
-            outname = name + suffix + "_sculpt_permuted.png"
+            outname = name + "_sculpt_permuted.png"
 
             plt.savefig(os.path.join(output_path, outname), dpi=400)
             plt.close()
