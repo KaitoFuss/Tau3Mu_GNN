@@ -564,6 +564,10 @@ class ScoreProducer:
             pfcands_charge_masked = pfcands_charge[cone_mask]
             pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
+            if len(pfcands_pt_masked) <= 1:
+                    logging.warning(f"Empty graph for tau candidate {nt} in event {i_ev}, skipping.")
+                    continue
+
             if self.use_displacement:
                 pfcands_d0_masked = event[f"{old_prefix}PFCands_d0"][cone_mask]
                 pfcands_dz_masked = event[f"{old_prefix}PFCands_dz"][cone_mask]
