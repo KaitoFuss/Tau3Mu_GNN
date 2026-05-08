@@ -1,8 +1,9 @@
+import collections
 import os
 import numpy as np
 import uproot
 import torch
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Dataset, Data
 import awkward as ak
 from tqdm import tqdm
 import vector
@@ -10,7 +11,7 @@ import logging
 from utils.LundTreeUtilities import tensor_to_tree, prune_tree, tree_to_tensor, get_lund_decomp
 
 
-class JetGraphProducer(InMemoryDataset):
+class JetGraphProducer(Dataset):
 
     """
     Produces graphs from a root file containing jet constituents.
@@ -57,6 +58,16 @@ class JetGraphProducer(InMemoryDataset):
         input_format (str): Format of the input root files ["PFNanoAOD", "TreeMaker2"]
         jet_collection (str): Name of the jet collection in the root file (default: "FatJet")
         use_displacement (bool): Whether to use the displacement features (d0, dz) in the Lund decomposition (Scouting Data has no displacement information)
+        chunk_size (int): Number of graphs to store per chunk file on disk (default: 1000).
+            Larger values reduce the number of files but increase per-chunk memory use.
+        n_cached_chunks (int): Number of chunk files to keep in memory at once (default: 2).
+            Increase for random-access workloads; decrease to save RAM.
+
+    Note:
+        Processed datasets are stored as a metadata file ``{name}_meta.pt`` and a set of
+        chunk files ``{name}_chunk_{i}.pt`` inside the ``processed/`` sub-directory.
+        Datasets processed with the old ``InMemoryDataset``-based format (a single
+        ``{name}.pt`` file) must be re-processed before they can be used with this class.
     """
 
     def __init__(
@@ -93,7 +104,9 @@ class JetGraphProducer(InMemoryDataset):
         verbose=False,
         input_format="PFNanoAOD",
         jet_collection="FatJet",
-        use_displacement=False  
+        use_displacement=False,
+        chunk_size=1000,
+        n_cached_chunks=2,
     ):
 
         self.root = root
@@ -126,7 +139,11 @@ class JetGraphProducer(InMemoryDataset):
         self.verbose = verbose
         self.input_format = input_format
         self.jet_collection = jet_collection
-        self.use_displacement = use_displacement  
+        self.use_displacement = use_displacement
+        self.chunk_size = chunk_size
+        self._n_cached_chunks = n_cached_chunks
+        # OrderedDict used as a bounded LRU cache: key = chunk index, value = list of graphs
+        self._chunk_cache: collections.OrderedDict = collections.OrderedDict()
 
         assert self.weights in ["xsec", None], "Only xsec and None are supported for the weights argument (more to be added later)"
 
@@ -147,7 +164,41 @@ class JetGraphProducer(InMemoryDataset):
 
         super().__init__(root, transform, pre_transform, pre_filter)
 
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        # Load lightweight metadata from disk (weights, jet indices, total count).
+        # No graph tensors are loaded here — those are fetched on-demand in get().
+        meta_path = os.path.join(self.processed_dir, f"{self.output_dataset_name}_meta.pt")
+        meta = torch.load(meta_path)
+        self._n_graphs: int = meta["n_graphs"]
+        self._w: torch.Tensor = meta["w"]
+        self._jet_idx_all: torch.Tensor = meta.get("jet_idx")
+
+    # ------------------------------------------------------------------
+    # Properties that return per-sample values respecting the current
+    # index view (set by Dataset.index_select / slicing / permutation).
+    # ------------------------------------------------------------------
+
+    @property
+    def w(self) -> torch.Tensor:
+        """Event weights for the graphs in the current dataset view."""
+        if self._indices is None:
+            return self._w
+        return self._w[self._indices]
+
+    @property
+    def jet_idx(self) -> torch.Tensor:
+        """Jet indices for the graphs in the current dataset view."""
+        if self._jet_idx_all is None:
+            raise AttributeError("jet_idx was not saved during processing (save_jet_idx=False)")
+        if self._indices is None:
+            return self._jet_idx_all
+        return self._jet_idx_all[self._indices]
+
+    # ------------------------------------------------------------------
+    # torch_geometric.data.Dataset interface
+    # ------------------------------------------------------------------
+
+    def len(self) -> int:
+        return self._n_graphs
 
     @property
     def raw_file_names(self):
@@ -155,7 +206,10 @@ class JetGraphProducer(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return [self.output_dataset_name+".pt"]
+        # Only the metadata file is used to determine whether processing has been done.
+        # The chunk files are written alongside it during process() and are discovered
+        # at load time via get().
+        return [f"{self.output_dataset_name}_meta.pt"]
     
     def get_total_initial_events(self):
         if self.input_format == "PFNanoAOD":
@@ -518,13 +572,73 @@ class JetGraphProducer(InMemoryDataset):
 
         return graphDataset
 
+    def get(self, idx: int) -> Data:
+        """Load and return the graph at global position *idx*.
+
+        Graphs are stored on disk in fixed-size chunk files.  The relevant
+        chunk is loaded into a small in-memory LRU cache so that sequential
+        and batch-level access patterns reuse already-loaded chunks without
+        keeping the entire dataset in RAM.
+        """
+        chunk_idx = idx // self.chunk_size
+        pos = idx % self.chunk_size
+
+        if chunk_idx not in self._chunk_cache:
+            chunk_path = os.path.join(
+                self.processed_dir,
+                f"{self.output_dataset_name}_chunk_{chunk_idx}.pt",
+            )
+            chunk = torch.load(chunk_path)
+            # Evict the oldest entry when the cache is full
+            if len(self._chunk_cache) >= self._n_cached_chunks:
+                self._chunk_cache.popitem(last=False)
+            self._chunk_cache[chunk_idx] = chunk
+        else:
+            # Move to the end to mark as most-recently used
+            self._chunk_cache.move_to_end(chunk_idx)
+
+        return self._chunk_cache[chunk_idx][pos]
+
     def process(self):
-        # Read data into huge `Data` list.
+        # Accumulate all graphs from every input file, then write them to
+        # disk in chunk files plus a small metadata file.
         graphs = []
         for file in self.raw_file_names:
             print(f"Processing {file}")
             graphs += self.get_graphs(file)
-        
-        data, slices = self.collate(graphs)
-        torch.save((data, slices), self.processed_paths[-1])
-        
+
+        n_graphs = len(graphs)
+        n_chunks = (n_graphs + self.chunk_size - 1) // self.chunk_size
+
+        # Collect per-graph metadata tensors
+        w_list = []
+        jet_idx_list = [] if self.save_jet_idx else None
+        default_weight = torch.tensor([1.0])
+
+        for i, chunk_start in enumerate(range(0, n_graphs, self.chunk_size)):
+            chunk = graphs[chunk_start : chunk_start + self.chunk_size]
+            chunk_path = os.path.join(
+                self.processed_dir,
+                f"{self.output_dataset_name}_chunk_{i}.pt",
+            )
+            torch.save(chunk, chunk_path)
+
+            for g in chunk:
+                # Always store a weight; default to 1.0 if not computed
+                w_list.append(g.w if hasattr(g, "w") else default_weight)
+                if jet_idx_list is not None:
+                    jet_idx_list.append(g.jet_idx)
+
+        meta = {
+            "n_graphs": n_graphs,
+            "n_chunks": n_chunks,
+            "chunk_size": self.chunk_size,
+            "w": torch.cat(w_list),
+            "jet_idx": torch.cat(jet_idx_list) if jet_idx_list is not None else None,
+        }
+        meta_path = os.path.join(
+            self.processed_dir,
+            f"{self.output_dataset_name}_meta.pt",
+        )
+        torch.save(meta, meta_path)
+
