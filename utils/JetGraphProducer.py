@@ -745,7 +745,11 @@ class JetGraphProducer(Dataset):
             # Move to the end to mark as most-recently used
             self._chunk_cache.move_to_end(chunk_idx)
 
-        return self._chunk_cache[chunk_idx][pos]
+        # Return a clone so that in-place transforms applied by __getitem__
+        # (e.g. OnTheFlyNormalizer) do not corrupt the cached graph objects.
+        # Without this, the second access of the same graph would receive an
+        # already-transformed tensor and produce inf/nan values.
+        return self._chunk_cache[chunk_idx][pos].clone()
 
     def process(self):
         # Stream graphs from every input file and write them to disk in
