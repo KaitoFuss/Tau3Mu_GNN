@@ -1,4 +1,5 @@
-from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+# from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer
 import logging
 import argparse
 import os
@@ -13,7 +14,8 @@ parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculti
 args = parser.parse_args()
 
 # default values
-max_events_to_process = 600000
+# max_events_to_process = None
+max_events_to_process = 1500000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -123,7 +125,7 @@ if __name__ == "__main__":
     # )
 
     prefix = "Selected_"
-    graph_file_ident = "skimmed_600k"
+    graph_file_ident = "skimmed_all"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
@@ -259,7 +261,7 @@ if __name__ == "__main__":
                 label=0., 
                 mask=True, 
                 edge_connection_mode=model_type,
-                max_events_to_process=max_events_to_process//4,
+                max_events_to_process=max_events_to_process//4 if max_events_to_process is not None else max_events_to_process,
                 k_knn=k, 
                 delta_r_threshold=delta_r,
                 slimmed=True,

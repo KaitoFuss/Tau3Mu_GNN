@@ -1,4 +1,4 @@
-from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer
 from torch_geometric.loader import DataLoader
 from typing import Optional, List
 from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer

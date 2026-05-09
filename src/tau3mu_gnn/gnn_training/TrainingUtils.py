@@ -1,4 +1,4 @@
-from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer
 import torch
 import os
 import matplotlib.pyplot as plt

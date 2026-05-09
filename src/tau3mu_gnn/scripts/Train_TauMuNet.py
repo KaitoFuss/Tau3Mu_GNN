@@ -17,7 +17,6 @@ import tau3mu_gnn.gnn_training.EvaluationUtils as ueval
 import tau3mu_gnn.gnn_training.TrainingUtils as utrain
 
 # import linecache
-from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 from tau3mu_gnn.architectures.GNN_archs import get_arch_configs, get_arch_configs_random
 # import tracemalloc
 
