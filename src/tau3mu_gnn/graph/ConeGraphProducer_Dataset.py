@@ -94,7 +94,7 @@ class ConeGraphProducer(Dataset):
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,
-        chunk_size=1000,
+        chunk_size=10000,
         n_cached_chunks=2,
     ):
 
