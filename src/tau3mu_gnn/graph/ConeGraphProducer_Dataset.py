@@ -895,7 +895,7 @@ class ConeGraphProducer_Dataset(Dataset):
         pt_orig = (v_orig[0] + v_orig[1] + v_orig[2]).Pt()
         m_orig = self.invariant_mass(v_orig)
         pt_new = pt_orig / 3
-        print(f"Original pT vector sum: {pt_orig:.6f}, invariant mass: {m_orig:.4f}")
+        # print(f"Original pT vector sum: {pt_orig:.6f}, invariant mass: {m_orig:.4f}")
 
         pfcands_pt_permuted = pfcands_pt_masked.copy()
         pfcands_pt_permuted[mu_indices[0]] = pt_new
