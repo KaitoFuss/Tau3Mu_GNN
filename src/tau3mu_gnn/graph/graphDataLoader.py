@@ -1,4 +1,4 @@
-from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
 from torch_geometric.loader import DataLoader
 from typing import Optional, List
 from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
@@ -99,7 +99,7 @@ class GraphDataLoader(DataLoader):
                         )
             # Pass the normalizer as a per-graph transform so it is applied
             # lazily at access time instead of requiring all data in RAM.
-            data = ConeGraphProducer(path, output_dataset_name=name, transform=normalizer)
+            data = ConeGraphProducer_Dataset(path, output_dataset_name=name, transform=normalizer)
             
             if self.device is not None:
                 data.data.to(self.device)

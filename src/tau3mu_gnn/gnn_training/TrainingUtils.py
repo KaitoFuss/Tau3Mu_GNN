@@ -1,4 +1,4 @@
-from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
 import torch
 import os
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ def Normalize(datasets, model_type, tau_channel):
     graph_dict = {}
     for directory, key in datasets:
         print(directory, key)
-        graph_dict[key] = ConeGraphProducer(directory, key)
+        graph_dict[key] = ConeGraphProducer_Dataset(directory, key)
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
 

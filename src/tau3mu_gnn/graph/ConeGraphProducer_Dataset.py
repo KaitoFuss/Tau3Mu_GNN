@@ -12,7 +12,7 @@ import numba as nb
 import ROOT
 
 
-class ConeGraphProducer(Dataset):
+class ConeGraphProducer_Dataset(Dataset):
 
     """
     Produces graphs from a root file containing jet constituents.
@@ -94,8 +94,8 @@ class ConeGraphProducer(Dataset):
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,
-        chunk_size=10000,
-        n_cached_chunks=2,
+        chunk_size=100000,
+        n_cached_chunks=5,
     ):
 
         self.root = root
@@ -913,8 +913,8 @@ class ConeGraphProducer(Dataset):
         pt_new_sum = (v_perm[0] + v_perm[1] + v_perm[2]).Pt()
         scale = pt_orig / pt_new_sum
         m_perm = self.invariant_mass(v_perm)
-        print(f"Unscaled pT vector sum: {pt_new_sum:.6f}, invariant mass: {m_perm:.4f}")
-        print(f"Resulting scale factor: {scale}")
+        # print(f"Unscaled pT vector sum: {pt_new_sum:.6f}, invariant mass: {m_perm:.4f}")
+        # print(f"Resulting scale factor: {scale}")
         pfcands_pt_permuted[mu_indices[0]] *= scale
         pfcands_pt_permuted[mu_indices[1]] *= scale
         pfcands_pt_permuted[mu_indices[2]] *= scale
@@ -931,6 +931,6 @@ class ConeGraphProducer(Dataset):
         pt_rescale = tau_rescale.Pt()
         eta_rescale = tau_rescale.Eta()
         phi_rescale = tau_rescale.Phi()
-        print(f"Rescaled pT vector sum: {pt_rescale:.6f}, invariant mass: {m_rescale:.4f}")
+        # print(f"Rescaled pT vector sum: {pt_rescale:.6f}, invariant mass: {m_rescale:.4f}")
 
         return pfcands_pt_permuted, m_rescale, pt_rescale, eta_rescale, phi_rescale

@@ -1,5 +1,5 @@
 # from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
-from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer
+from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
 import logging
 import argparse
 import os
@@ -58,7 +58,7 @@ def create_graph(
 
     print(output_dataset_name)
 
-    ConeGraphProducer(
+    ConeGraphProducer_Dataset(
         root,
         output_dataset_name,
         cone_size,
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     # )
 
     prefix = "Selected_"
-    graph_file_ident = "skimmed_all"
+    graph_file_ident = "skimmed_all_100k_per_chunk"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
