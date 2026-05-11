@@ -145,7 +145,8 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
             tprs.append(tpr)
             threshs.append(thresh_model)
         else:
-            line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN for BDT $\lambda$ = {lambdas[i]}, AUC: {auc_full:.3f}")
+            continue
+            # line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN for BDT $\lambda$ = {lambdas[i]}, AUC: {auc_full:.3f}")
         curve_color = line.get_color()
 
         for k, fpr_cut in enumerate(fpr_targets):
@@ -193,10 +194,10 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
         tprs.append(tpr_bench)
         threshs.append(thresh_benchmark)
         
-        bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[-1]}, AUC: {auc_bdt:.3f}")
+        # bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[-1]}, AUC: {auc_bdt:.3f}")
         bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {auc_bench:.3f}")
 
-        bdt_color = bdt_line.get_color()
+        # bdt_color = bdt_line.get_color()
         bench_color = bench_line.get_color()
 
         for i, _ in enumerate(fpr_targets):
@@ -205,8 +206,8 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
             thresh_idx_model = min(range(len(tpr_bdt)), key=lambda j: abs(tpr_bdt[j] - tpr_target))
             x_model, y_model = fpr_bdt[thresh_idx_model], tpr_bdt[thresh_idx_model]
                 
-            plt.scatter(x_model, y_model, s=20, color=bdt_color)
-            plt.text(x_model * 1.1, y_model, f"{thresh_bdt[thresh_idx_model]:.5f}", fontsize=6, color=bdt_color)
+            # plt.scatter(x_model, y_model, s=20, color=bdt_color)
+            # plt.text(x_model * 1.1, y_model, f"{thresh_bdt[thresh_idx_model]:.5f}", fontsize=6, color=bdt_color)
 
             thresh_idx_model = min(range(len(tpr_bench)), key=lambda j: abs(tpr_bench[j] - tpr_target))
             x_model, y_model = fpr_bench[thresh_idx_model], tpr_bench[thresh_idx_model]
@@ -220,7 +221,7 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
     plt.ylabel("True Positive Rate")
     plt.xscale('log')
     plt.xlim(1e-5, 1)
-    plt.title(f"ROC Curves: different GNN archs vs BDT with GNN score for {tau_channel} channel")
+    plt.title(f"ROC Curves: different GNN archs vs BDT with for {tau_channel} channel")
 
     output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}_full.png"
     print(f"{output_plot_name} has been saved.")
@@ -238,8 +239,9 @@ def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lam
         if archs and i < len(archs):
             line, = plt.plot(tpr, sic, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}")
         elif bdt:
-            line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[i]}")    
+            # line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[i]}")    
             bdt = False
+            continue
         else:
             line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT ISO")    
         curve_color = line.get_color()
