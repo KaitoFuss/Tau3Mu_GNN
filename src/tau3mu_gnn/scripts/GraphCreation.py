@@ -1,5 +1,5 @@
-# from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
-from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+# from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
 import logging
 import argparse
 import os
@@ -58,7 +58,7 @@ def create_graph(
 
     print(output_dataset_name)
 
-    ConeGraphProducer_Dataset(
+    ConeGraphProducer(
         root,
         output_dataset_name,
         cone_size,

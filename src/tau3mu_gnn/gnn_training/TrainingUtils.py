@@ -1,4 +1,4 @@
-from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
+from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 import torch
 import os
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ def Normalize(datasets, model_type, tau_channel):
     graph_dict = {}
     for directory, key in datasets:
         print(directory, key)
-        graph_dict[key] = ConeGraphProducer_Dataset(directory, key)
+        graph_dict[key] = ConeGraphProducer(directory, key)
 
     num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
 
@@ -206,7 +206,7 @@ def save_loss(training_losses, validation_losses, name):
  
 
 
-def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_ident, conv_type="GINE"):
+def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_ident, unsculpting_mode, conv_type="GINE"):
     """Generate the name with a version number so that I don't overwrite stuff.
     Args:
         base_name (str): Name of the experiment
@@ -221,6 +221,7 @@ def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_i
     prefix = f"{base_name}_{tau_channel}"
     unique_name_base = f"{prefix}_{ident_str}" if ident_str else prefix
     unique_name_base = f"{unique_name_base}_{conv_type}"
+    unique_name_base = f"{unique_name_base}_{unsculpting_mode}" if unsculpting_mode else unique_name_base
     version = 1
     unique_name = f"{unique_name_base}_vs{version}"
     while os.path.exists(os.path.join(directory, "output", unique_name)):

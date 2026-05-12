@@ -1,7 +1,7 @@
 from comet_ml import Experiment
 
 from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
-from tau3mu_gnn.graph.graphDataLoader_chunk_sampler import GraphDataLoader
+from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
 from tau3mu_gnn.architectures.TauMuNet import TauMuNet
 from tqdm import tqdm 
 
@@ -588,6 +588,13 @@ if __name__ == "__main__":
         )
     
     parser.add_argument(
+        "--unsculpting_mode",
+        default="",
+        type=str,
+        help="Type of unsculpting mode"
+        )
+    
+    parser.add_argument(
         "--data_base",
         default="/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data",
         type=str,
@@ -608,10 +615,12 @@ if __name__ == "__main__":
     gnn_mode = args.gnn_mode
     remark = args.remark
     conv_type = args.conv_type
+    unsculpting_mode = args.unsculpting_mode
 
     assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
     assert gnn_mode in ["BDT", "embed_once", "embed_always", "final_layer"]
     assert conv_type in ["GINE", "GAT", "Transformer"]
+    assert unsculpting_mode in ["", "delete_muons", "permutation", "split_pt"]
 
 
     print("==> Running TauMuNet ")
@@ -628,7 +637,7 @@ if __name__ == "__main__":
         model_params, arch_descr = get_arch_configs(arch, tau_channel, disco_reg)
 
     # overwriting names (adding versionnumber) such that no old files get overwritten
-    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr, conv_type)
+    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr, unsculpting_mode, conv_type)
     output_path = utrain.output_directory(name)
 
     with open(os.path.join(output_path, "arch_config.json"), "w") as f:
@@ -644,6 +653,7 @@ if __name__ == "__main__":
         "tau_channel" : tau_channel,
         "gnn_mode": gnn_mode,
         "conv_type": conv_type,
+        "unsculpting_mode": unsculpting_mode,
         "remark": remark,
     }
 
