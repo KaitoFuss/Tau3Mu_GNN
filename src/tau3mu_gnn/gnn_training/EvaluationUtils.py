@@ -1,6 +1,6 @@
 from sklearn.metrics import roc_curve, roc_auc_score
 import numpy as np
-from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
+from tau3mu_gnn.graph.graphDataLoader_chunk_sampler import GraphDataLoader
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np

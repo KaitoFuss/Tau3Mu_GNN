@@ -1,7 +1,7 @@
 from comet_ml import Experiment
 
 from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
-from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
+from tau3mu_gnn.graph.graphDataLoader_chunk_sampler import GraphDataLoader
 from tau3mu_gnn.architectures.TauMuNet import TauMuNet
 from tqdm import tqdm 
 

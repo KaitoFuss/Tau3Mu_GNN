@@ -96,7 +96,8 @@ def get_arch_configs_random(tau_channel, disco_reg, registry_path=REGISTRY_PATH)
     save_registry(registry_path, registry)
 
     config = {
-        "conv_params": [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        # "conv_params": [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        "conv_params": [1004, int(1004/2**2), int(1004/2**4)],
         "fc_params": fc,
         "use_fusion": True,
         "dropout": 0.2633831214702671,
@@ -138,11 +139,12 @@ def get_arch_configs(arch: str, tau_channel: str, disco_reg: int, registry_path:
         save_registry(reg_path, registry)
 
     # Build config
-    fc_params     = inject_dropout(FC_PARAMS_OPTIONS[fc_idx],     0.2)
-    fusion_params = inject_dropout(SCALE_DOWN_PARAMS_OPTIONS[fusion_idx], 0.2)
+    fc_params     = inject_dropout(FC_PARAMS_OPTIONS[fc_idx],     0.8)
+    fusion_params = inject_dropout(SCALE_DOWN_PARAMS_OPTIONS[fusion_idx], 0.8)
 
     config = {
-        "conv_params":            [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        # "conv_params":            [1004, int(1004/2), int(1004/2**2), int(1004/2**3), int(1004/2**4)],
+        "conv_params":            [1004, int(1004/2**2), int(1004/2**4)],
         "fc_params":              fc_params,
         "use_fusion":             True,
         "dropout":                0.2633831214702671,
