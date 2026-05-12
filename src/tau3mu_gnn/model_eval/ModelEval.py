@@ -169,7 +169,12 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
 
     if bdt_data_loc is not None:
         data = load_pkl(bdt_data_loc, "tau_score_corr.pkl")[0]
-        # print(data)
+        tau_mass = data["tau_mass"]
+        sideband_mask = (
+            (np.abs(tau_mass - 1.78) > 0.08)
+            & (np.abs(tau_mass) > 1.6)
+            & (np.abs(tau_mass) < 2.0)
+        )
         GNN_bkg = data["GNN_score_bkg"]
         GNN_sig = data["GNN_score_sig"]
         GNN_scores = np.concatenate([GNN_sig, GNN_bkg])
@@ -182,7 +187,7 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
         tprs.append(tpr_bdt)
         threshs.append(thresh_bdt)
 
-        ISO_bkg = data["ISO_score_bkg"]
+        ISO_bkg = data["ISO_score_bkg"][sideband_mask]
         ISO_sig = data["ISO_score_sig"]
         ISO_scores = np.concatenate([ISO_sig, ISO_bkg])
         ISO_labels = np.concatenate([np.ones(len(ISO_sig)), np.zeros(len(ISO_bkg))])
