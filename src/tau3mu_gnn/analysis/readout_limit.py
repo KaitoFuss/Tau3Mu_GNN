@@ -49,6 +49,10 @@ if MODEL not in result[CHANNEL]:
     result[CHANNEL][MODEL] = {}
 result[CHANNEL][MODEL][CUT] = limits
 
+for ch in result:
+    for model in result[ch]:
+        result[ch][model] = dict(sorted(result[ch][model].items(), key=lambda x: float(x[0])))
+
 with open(json_path, "w") as f:
     json.dump(result, f, indent=3)
 
