@@ -53,6 +53,16 @@ for ch in result:
     for model in result[ch]:
         result[ch][model] = dict(sorted(result[ch][model].items(), key=lambda x: float(x[0])))
 
+    def model_sort_key(model_name):
+        is_benchmark = 0 if "benchmark" in model_name.lower() else 1
+        best_limit = min(
+            (v.get("limit", float("inf")) for v in result[ch][model_name].values()),
+            default=float("inf")
+        )
+        return (is_benchmark, best_limit)
+
+    result[ch] = dict(sorted(result[ch].items(), key=lambda x: model_sort_key(x[0])))
+
 with open(json_path, "w") as f:
     json.dump(result, f, indent=3)
 
