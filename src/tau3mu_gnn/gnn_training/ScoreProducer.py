@@ -342,7 +342,8 @@ class ScoreProducer:
         normalizers=None,
         output_folders=None,
         storage_folder=None,
-        model_names=None
+        model_names=None,
+        bdt_preselection_cut=None
     ):
 
         self.root = root
@@ -380,6 +381,7 @@ class ScoreProducer:
             "knn": self.connect_knn,
             "r_threshold": self.connect_r_threshold,
         } 
+        self.bdt_preselection_cut = bdt_preselection_cut
 
         if not (len(self.models) == len(self.normalizers) == len(self.output_folders)):
             raise ValueError(f"models ({len(self.models)}), normalizers ({len(self.normalizers)}) and output_folders ({len(self.output_folders)}) must all have the same length")
@@ -484,6 +486,11 @@ class ScoreProducer:
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
+            
+            if self.bdt_preselection_cut is not None:
+                bdt_iso = event["bdt_ISO"]
+                if bdt_iso == -1:
+                    continue
 
             pfcands_pt = event[f"{old_prefix}PFCands_pt"]
             pfcands_eta = event[f"{old_prefix}PFCands_eta"]
@@ -507,6 +514,20 @@ class ScoreProducer:
             fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
             fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
             
+            if self.bdt_preselection_cut is not None and bdt_iso < self.bdt_preselection_cut:
+                score_model_dict_bdt = {}
+
+                for i, model in enumerate(self.models):
+                    score_model_dict_bdt[self.model_names[i]] = 0.
+                for name in self.model_names:
+                    if key in score_dict_for_root[name]:
+                        print(f"WARNING: overwriting score in {name} for {key}")
+                    score_dict_for_root[name][key] = score_model_dict_bdt[name]
+
+                    scores_dict_all_models[name].append(score_model_dict_bdt[name])
+                tau_masses.append(fitted_tau_mass)
+                continue
+
             graph_level_features = []
 
             for branch_name in self.graph_level_branches:
@@ -813,6 +834,9 @@ class ScoreProducer:
             "luminosityBlock",
             "event",   
         ]
+
+        if self.bdt_preselection_cut is not None:
+            branches_to_load += [f"bdt_ISO"] 
 
         branches_to_load += self.graph_level_branches
 
