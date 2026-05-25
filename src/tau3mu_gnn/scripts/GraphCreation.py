@@ -10,12 +10,13 @@ parser.add_argument("--k", type=int, default=None, help="Number of nearest neigh
 parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
 parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
 parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None")
+parser.add_argument("--bdt_preselection_cut", type=float, default=None, help="BDT preselection score cut")
 # parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
 args = parser.parse_args()
 
 # default values
 # max_events_to_process = None
-max_events_to_process = 1500000
+max_events_to_process = 600000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -43,6 +44,7 @@ def create_graph(
     tau_channel: str = "W",
     graph_level_branches: list = [],
     save_benchmark_score: bool = False,
+    bdt_preselection_cut: str = None,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -82,6 +84,7 @@ def create_graph(
         shuffle_bool=shuffle,
         use_displacement=use_displacement,
         unsculpting_mode=unsculpting_mode,
+        bdt_preselection_cut=bdt_preselection_cut,
     )
                 
 
@@ -91,6 +94,7 @@ if __name__ == "__main__":
     k = args.k
     delta_r = args.delta_r
     tau_channel = args.tau_channel
+    bdt_preselection_cut = args.bdt_preselection_cut
     # max_events_to_process = args.nevents
 
     if model_type == "knn" and k is None:
@@ -125,10 +129,14 @@ if __name__ == "__main__":
     # )
 
     prefix = "Selected_"
-    graph_file_ident = "skimmed_all_100k_per_chunk"
+    graph_file_ident = "skimmed"
+    if bdt_preselection_cut is not None:
+        graph_file_ident += f"_BDT_cut_{bdt_preselection_cut}"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
+        if bdt_preselection_cut is not None:
+            base_direc_W_signal += "/bdt_full"
         # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
             [base_direc_W_signal, graph_file_ident],
@@ -170,10 +178,13 @@ if __name__ == "__main__":
                 tau_channel=tau_channel,
                 graph_level_branches=W_graph_level_branches,
                 weights="npvs_rescale",
-                save_benchmark_score=True
+                save_benchmark_score=True,
+                bdt_preselection_cut=bdt_preselection_cut
             )
         
         base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
+        if bdt_preselection_cut is not None:
+            base_direc_W_bkg += "/bdt_full"
         # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
@@ -195,12 +206,15 @@ if __name__ == "__main__":
                 shuffle = True,
                 tau_channel=tau_channel,
                 graph_level_branches=W_graph_level_branches,
-                save_benchmark_score=True
+                save_benchmark_score=True,
+                bdt_preselection_cut=bdt_preselection_cut
             )
     
     elif tau_channel == "HF":
         # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
         base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
+        if bdt_preselection_cut is not None:
+            base_direc_HF_signal += "/bdt_full"
 
         root_HF_signals_skimmed = [
             [base_direc_HF_signal, graph_file_ident],
@@ -243,11 +257,16 @@ if __name__ == "__main__":
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
                 weights="npvs_rescale",
-                save_benchmark_score=False
+                save_benchmark_score=False,
+                bdt_preselection_cut=bdt_preselection_cut
             )
 
         # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
         base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
+
+        if bdt_preselection_cut is not None:
+            base_direc_HF_bkg += "/bdt_full"
+
         root_bkgs_skimmed = [
             [base_direc_HF_bkg, graph_file_ident]
         ]
@@ -268,7 +287,8 @@ if __name__ == "__main__":
                 shuffle=True,
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
-                save_benchmark_score=False
+                save_benchmark_score=False,
+                bdt_preselection_cut=bdt_preselection_cut
             )
 
     # root_W_signals = [

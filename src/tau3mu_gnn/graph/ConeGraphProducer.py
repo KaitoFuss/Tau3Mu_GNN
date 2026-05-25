@@ -83,6 +83,7 @@ class ConeGraphProducer(InMemoryDataset):
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,  
+        bdt_preselection_cut=None,
     ):
 
         self.root = root
@@ -116,6 +117,7 @@ class ConeGraphProducer(InMemoryDataset):
             "knn": self.connect_knn,
             "r_threshold": self.connect_r_threshold,
         } 
+        self.bdt_preselection_cut = bdt_preselection_cut
 
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
@@ -207,6 +209,15 @@ class ConeGraphProducer(InMemoryDataset):
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
+
+            if self.bdt_preselection_cut is not None:
+                raw_tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(
+                    event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool
+                )
+                n_tau = int(ak.sum(raw_tau_mask))
+                n_tau = min(n_tau, 1)
+            if n_tau == 0:
+                continue
 
             pfcands_pt = event[f"{old_prefix}PFCands_pt"]
             pfcands_eta = event[f"{old_prefix}PFCands_eta"]
@@ -574,6 +585,9 @@ class ConeGraphProducer(InMemoryDataset):
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
+        if self.bdt_preselection_cut is not None:
+            branches_to_load += [f"bdt_ISO"]  # adjust branch name to whatever it's called in your ROOT files
+
         # self.graph_level_branches = [f"{prefix}{b}" for b in self.graph_level_features]
         branches_to_load += self.graph_level_branches
 
@@ -595,6 +609,12 @@ class ConeGraphProducer(InMemoryDataset):
             all_chunks.append(events)
 
         events = ak.concatenate(all_chunks)
+        print(f"bdt preselection cut: {self.bdt_preselection_cut}")
+        if self.bdt_preselection_cut is not None:
+            prev_event_num = len(events)
+            bdt_cut_mask = events[f"bdt_ISO"] > self.bdt_preselection_cut
+            events = events[bdt_cut_mask]
+            print(f"  BDT preselection > {self.bdt_preselection_cut}: {len(events):,} events out of {prev_event_num:,} remaining")
         
         bkg_mask = None
         total_events = len(events)
