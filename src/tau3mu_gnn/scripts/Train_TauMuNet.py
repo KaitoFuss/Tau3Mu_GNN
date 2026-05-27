@@ -381,6 +381,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     validation_discos = []
     validation_full_losses = []
 
+    prefix = "FT " if finetune else ""
 
     # initalize early stopping class
     if not finetune:
@@ -446,9 +447,9 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_bce = bce_per_batch/batch_counter
         epoch_disco = disco_per_batch/batch_counter
         training_losses.append(epoch_loss_training)
-        experiment.log_metric("Full training loss", epoch_loss_training, epoch=epoch)
-        experiment.log_metric("BCE training loss", epoch_bce, epoch=epoch)
-        experiment.log_metric("Disco training", epoch_disco, epoch=epoch)
+        experiment.log_metric(f"{prefix}Full training loss", epoch_loss_training, epoch=epoch)
+        experiment.log_metric(f"{prefix}BCE training loss", epoch_bce, epoch=epoch)
+        experiment.log_metric(f"{prefix}Disco training", epoch_disco, epoch=epoch)
 
 
         # validation
@@ -499,15 +500,15 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         # calculate loss per epoch and log it
         epoch_bce_loss_validation = bce_per_batch/batch_counter
         validation_losses.append(epoch_bce_loss_validation)
-        experiment.log_metric("BCE validation loss", epoch_bce_loss_validation, epoch=epoch)
+        experiment.log_metric(f"{prefix}BCE validation loss", epoch_bce_loss_validation, epoch=epoch)
 
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
-        experiment.log_metric("Disco validation", epoch_disco_validation, epoch=epoch)
+        experiment.log_metric(f"{prefix}Disco validation", epoch_disco_validation, epoch=epoch)
 
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_full_losses.append(epoch_loss_validation)
-        experiment.log_metric("Full validation validation", epoch_loss_validation, epoch=epoch)
+        experiment.log_metric(f"{prefix}Full validation validation", epoch_loss_validation, epoch=epoch)
 
         if scheduler is not None:
             scheduler.step(epoch_loss_validation)
@@ -517,7 +518,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         if early_stop.early_stop:
             break
         ## log the average loss as well
-        experiment.log_metric("Average full validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
+        experiment.log_metric(f"{prefix}Average full validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
 
 
 
