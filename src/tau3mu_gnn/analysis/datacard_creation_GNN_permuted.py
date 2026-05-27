@@ -25,22 +25,24 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True)
 parser.add_argument("--channel", required=True)
 parser.add_argument("--cut", required=True)
+parser.add_argument("--file_suffix", default="_with_scores")
 args = parser.parse_args()
 
+FILE_SUFFIX = args.file_suffix
 MODEL = args.model
 CHANNEL = args.channel
 CUT = args.cut
 
 if CHANNEL == "W":
-    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores.root"
-    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores.root"
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances{FILE_SUFFIX}.root"
+    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances{FILE_SUFFIX}.root"
 elif CHANNEL == "HF":
-    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_ds_large_signal_skimmed_no_resonances_with_scores.root"
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_ds_large_signal_skimmed_no_resonances{FILE_SUFFIX}.root"
     BKG_ROOT_FILE = [
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part1_with_scores.root",
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part2_with_scores.root",
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part3_with_scores.root",
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part4_with_scores.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part1{FILE_SUFFIX}.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part2{FILE_SUFFIX}.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part3{FILE_SUFFIX}.root",
+                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part4{FILE_SUFFIX}.root",
                     ]
 
 SCORE_CUT = CUT
