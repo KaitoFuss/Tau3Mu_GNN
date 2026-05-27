@@ -125,8 +125,8 @@ branches = features + [
 all_chunks_sig = []
 print("Going to load signal events")
 for events in uproot.iterate(f"{signals[0]}:Events", expressions=branches, library="ak", step_size="100 MB"):
-    score_mask = events["GNN_score"] != -1
-    events = events[score_mask]
+    # score_mask = events["GNN_score"] != -1
+    # events = events[score_mask]
     new_fields = {}
     for branch in events.fields:
         if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
@@ -149,8 +149,9 @@ for i in range(len(backgrounds)):
     for events in uproot.iterate(f"{backgrounds[i]}:Events", expressions=branches, library="ak", step_size="100 MB"):
         # bkg_mask = abs(events["Slimmed_TauTo3Mu_fitted_mass"] - 1.78) >= 0.00
         # events = events[ak.any(bkg_mask, axis=1)]
-        score_mask = events["GNN_score"] != -1
-        events_masked = events[score_mask]
+        # score_mask = events["GNN_score"] != -1
+        # events_masked = events[score_mask]
+        events_masked = events
 
         new_fields = {}
         for branch in events_masked.fields:
@@ -336,7 +337,7 @@ for file in signals:
     model_storage = os.path.join(storage_folder, model)
     os.makedirs(model_storage, exist_ok=True)
     root_path_sc_only = os.path.join(model_storage, f"{name_without_ext}_with_scores_only.root")
-    root_path = os.path.join(model_storage, f"{name_without_ext}_with_scores_bdt.root")
+    root_path = os.path.join(model_storage, f"{name_without_ext}_bdt_full.root")
 
     runs = []
     lumis = []
@@ -378,6 +379,7 @@ for file in signals:
 
     fin = ROOT.TFile.Open(file)
     t1 = fin.Get("Events")
+    t1.SetBranchStatus("GNN_score", 0)
 
     friend_file = ROOT.TFile.Open(root_path_sc_only)
     t2 = friend_file.Get("Events")
@@ -387,6 +389,7 @@ for file in signals:
     # Write merged tree
     fout = ROOT.TFile.Open(root_path, "RECREATE")
     t_merged = t1.CloneTree(0) # empty tree
+    t1.SetBranchStatus("GNN_score", 1)
 
     # Prepare buffer for GNN_score
     gnn_score = array('f', [0.])
@@ -436,7 +439,7 @@ for file in backgrounds:
     model_storage = os.path.join(storage_folder, model)
     os.makedirs(model_storage, exist_ok=True)
     root_path_sc_only = os.path.join(model_storage, f"{name_without_ext}_with_scores_only.root")
-    root_path = os.path.join(model_storage, f"{name_without_ext}_bdt.root")
+    root_path = os.path.join(model_storage, f"{name_without_ext}_bdt_full.root")
 
     runs = []
     lumis = []
@@ -478,6 +481,7 @@ for file in backgrounds:
 
     fin = ROOT.TFile.Open(file)
     t1 = fin.Get("Events")
+    t1.SetBranchStatus("GNN_score", 0)
 
     friend_file = ROOT.TFile.Open(root_path_sc_only)
     t2 = friend_file.Get("Events")
@@ -487,6 +491,7 @@ for file in backgrounds:
     # Write merged tree
     fout = ROOT.TFile.Open(root_path, "RECREATE")
     t_merged = t1.CloneTree(0) # empty tree
+    t1.SetBranchStatus("GNN_score", 1)
 
     # Prepare buffer for GNN_score
     gnn_score = array('f', [0.])
