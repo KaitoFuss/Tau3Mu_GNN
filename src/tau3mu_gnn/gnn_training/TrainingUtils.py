@@ -158,7 +158,7 @@ def output_directory(name):
     
     return output_path
 
-def save_loss(training_losses, validation_losses, name):
+def save_loss(training_losses, validation_losses, name, finetune=False):
     """Save Losses in root file and make plots of it.
 
     Args:
@@ -174,11 +174,13 @@ def save_loss(training_losses, validation_losses, name):
         "Training_loss": np.array(training_losses),
         "Validation_loss": np.array(validation_losses),
     }
-
+    suffix = ""
+    if finetune:
+        suffix = "_finetune"
     output_path = output_directory(name)
 
     # take output and convert each column to a list and safe it in a root file
-    output_file_path = output_path + f"/{name}_loss.root"
+    output_file_path = output_path + f"/{name}_loss{suffix}.root"
     file = uproot.recreate(output_file_path)
     df = pd.DataFrame(output_dict,columns=output_dict.keys())
     file["Output"] = df
@@ -198,7 +200,7 @@ def save_loss(training_losses, validation_losses, name):
     plt.legend()
 
     output_path = output_directory(name)
-    outout_plot_name = name + "_loss.png"
+    outout_plot_name = name + f"_loss{suffix}.png"
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi = 200)
     plt.close()
     print(f"{outout_plot_name} has been saved.")
