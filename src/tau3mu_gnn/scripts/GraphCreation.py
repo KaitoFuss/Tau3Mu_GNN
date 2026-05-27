@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 # default values
 # max_events_to_process = None
-max_events_to_process = 600000
+max_events_to_process = 300000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     prefix = "Selected_"
     graph_file_ident = "skimmed"
     if bdt_preselection_cut:
-        graph_file_ident += f"_with_bdt_iso"
+        graph_file_ident += f"_small_with_bdt_iso"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
