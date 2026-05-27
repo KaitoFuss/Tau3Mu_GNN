@@ -487,10 +487,8 @@ class ScoreProducer:
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
             
-            if self.bdt_preselection_cut is not None:
-                bdt_iso = event["bdt_ISO"]
-                if bdt_iso == -1:
-                    continue
+            if self.bdt_preselection_cut is not None and event["bdt_ISO"] < self.bdt_preselection_cut:
+                continue
 
             pfcands_pt = event[f"{old_prefix}PFCands_pt"]
             pfcands_eta = event[f"{old_prefix}PFCands_eta"]
@@ -507,26 +505,13 @@ class ScoreProducer:
                 # print("Skipping event as all TauCands have not been selected")
                 continue
             nt = np.argmax(event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask])
-            
+            if n_tau > 1:
+                print(f"WARNING: using {nt}-th tau cand")
             # Read data for fitted tau from event
             fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
             fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
             fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
             fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
-            
-            if self.bdt_preselection_cut is not None and bdt_iso < self.bdt_preselection_cut:
-                score_model_dict_bdt = {}
-
-                for i, model in enumerate(self.models):
-                    score_model_dict_bdt[self.model_names[i]] = 0.
-                for name in self.model_names:
-                    if key in score_dict_for_root[name]:
-                        print(f"WARNING: overwriting score in {name} for {key}")
-                    score_dict_for_root[name][key] = score_model_dict_bdt[name]
-
-                    scores_dict_all_models[name].append(score_model_dict_bdt[name])
-                tau_masses.append(fitted_tau_mass)
-                continue
 
             graph_level_features = []
 
