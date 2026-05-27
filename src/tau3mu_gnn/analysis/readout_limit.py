@@ -7,12 +7,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True)
 parser.add_argument("--channel", required=True)
 parser.add_argument("--cut", required=True)
+parser.add_argument("--path", required=True)
+parser.add_argument("--fine_tune", default="")
 args = parser.parse_args()
 
 MODEL = args.model
 CHANNEL = args.channel
 CUT = args.cut
+PATH = args.path
+FINE_TUNE = args.fine_tune
 
+if FINE_TUNE:
+    MODEL = f"{MODEL}_{FINE_TUNE}"
 quantile_names = {
     # -1.0: "observed",
     0.025: "minus2sigma",
@@ -22,9 +28,9 @@ quantile_names = {
     0.975: "plus2sigma",
 }
 
-path = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/datacard_tests/{MODEL}/{CUT}/"
+path = PATH
 
-file = ROOT.TFile(path + "higgsCombineTest.AsymptoticLimits.mH120.root")
+file = ROOT.TFile(path + "/higgsCombineTest.AsymptoticLimits.mH120.root")
 tree = file.Get("limit")
 
 limits = {}
