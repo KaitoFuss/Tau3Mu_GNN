@@ -11,7 +11,7 @@ python -m tau3mu_gnn.scripts.Train_TauMuNet \
     --epochs 1000 \
     --batch 128 \
     --name new_dropout_disco2 \
-    --model skimmed_300k_dzd0_cone_size_0.5_knn_10_permuted \
+    --model skimmed_600k_dzd0_cone_size_0.5_knn_10_permuted \
     --lr 0.0016 \
     --disco 2.0 \
     --arch fl8_sd4 \

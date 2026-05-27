@@ -5,7 +5,7 @@ error       = /afs/cern.ch/user/k/kfuss/condor_logs/train_W.$(ClusterId).$(ProcI
 log         = /afs/cern.ch/user/k/kfuss/condor_logs/train_W.$(ClusterId).log
 
 request_CPUs   = 5
-request_memory = 64000
+request_memory = 128000
 request_GPUs   = 1
 +WantGPUSlot   = True
 +JobFlavour    = "tomorrow"

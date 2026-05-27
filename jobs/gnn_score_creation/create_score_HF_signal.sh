@@ -29,6 +29,7 @@ echo "Using scratch: $JOB_SCRATCH"
 CHANNEL=HF
 GNN_MODE=final_layer
 MAX_EVENTS_TO_PROCESS=""
+UNSCULPTING_MODE=delete_muons
 
 # build the optional argument
 if [ -n "$MAX_EVENTS_TO_PROCESS" ]; then
@@ -39,9 +40,12 @@ fi
 
 # Add multiple models here
 MODELS=(
-    "new_dropout_disco4_HF_fl_10_sd_3_vs1"
-    "new_dropout_disco4_HF_fl_11_sd_1_vs1"
-    "new_dropout_disco4_HF_fl_12_sd_9_vs1"
+    "600k_disco0.5_permuted_HF_fl_8_sd_4_GINE_vs1"
+    # "new_dropout_disco0_permuted_HF_fl_8_sd_4_vs1"
+    # "new_dropout_disco2_permuted_HF_fl_12_sd_15_vs1"
+    # "new_dropout_disco4_HF_fl_10_sd_3_vs1"
+    # "new_dropout_disco4_HF_fl_11_sd_1_vs1"
+    # "new_dropout_disco4_HF_fl_12_sd_9_vs1"
     # "scale_down_disco4_HF_${GNN_MODE}_vs4"
     # "scale_down_disco4_HF_${GNN_MODE}_vs5"
     # "scale_down_disco4_HF_${GNN_MODE}_vs6"
@@ -53,8 +57,8 @@ MODELS=(
 )
 ARCHS=(
     "random"
-    "random"
-    "random"
+    # "random"
+    # "random"
     # "scale_down4"
     # "scale_down5"
     # "scale_down6"
@@ -64,16 +68,25 @@ ARCHS=(
     # "final_layer3"
     # "$ARCH"  # one per model
 )
+CONV_TYPE=(
+  "GINE"
+  # "Transformer"
+  # "GAT"
+)
 
 # Build --model_names and --archs arguments
 MODEL_NAMES_ARGS=""
 ARCHS_ARGS=""
+CONV_TYPES_ARGS=""
 for MODEL in "${MODELS[@]}"; do
     MODEL_NAMES_ARGS="$MODEL_NAMES_ARGS $MODEL"
     mkdir -p "$JOB_SCRATCH/$MODEL"
 done
 for ARCH_ENTRY in "${ARCHS[@]}"; do
     ARCHS_ARGS="$ARCHS_ARGS $ARCH_ENTRY"
+done
+for CONV_TYPE_ENTRY in "${CONV_TYPE[@]}"; do
+    CONV_TYPES_ARGS="$CONV_TYPES_ARGS $CONV_TYPE_ENTRY"
 done
 
 # SCRATCH_OUTPUT="$JOB_SCRATCH"/"$MODEL"
@@ -88,6 +101,8 @@ STORAGE_OUTPUT=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/
   --tau_channel $CHANNEL \
   --gnn_mode $GNN_MODE \
   --storage_folder $JOB_SCRATCH \
+  --conv_types $CONV_TYPES_ARGS \
+  --unsculpting_mode $UNSCULPTING_MODE \
   $MAX_EVENTS_ARG
 
 echo "Copying results to /storage..."

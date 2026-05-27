@@ -1,9 +1,10 @@
 #!/bin/bash
 # 
+#SBATCH -p long
 #SBATCH --account=t3
 #SBATCH --job-name=Graph_HF
-#SBATCH --mem=128000M     
-#SBATCH --time 03:00:00
+#SBATCH --mem=256000M     
+#SBATCH --time 2-00:00:00
 #SBATCH -o /work/kfuss/SVJ_GNN/logs/%x-%j.out    # replace default slurm-SLURM_JOB_ID.out; %x is a job-name (or script name when there is no job-name)
 #SBATCH -e /work/kfuss/SVJ_GNN/logs/%x-%j.err    # replace default slurm-SLURM_JOB_ID.err 
 
@@ -12,10 +13,10 @@ mkdir -p /scratch/$USER/${SLURM_JOB_ID}
 export TMPDIR=/scratch/$USER/${SLURM_JOB_ID}
 
 # python program script.py should use CUDA_VISIBLE_DEVICES variable (*NOT* hardcoded GPU's numbers)
-source /work/kfuss/miniforge3/etc/profile.d/conda.sh
-conda activate Tau3Mu
+source /work/kfuss/miniforge3/bin/activate Tau3Mu
 
-python -m tau3mu_gnn.scripts.GraphCreation --graph_type knn --k 10 --tau_channel HF
+python -m tau3mu_gnn.scripts.GraphCreation --graph_type knn --k 10 --tau_channel HF --unsculpting_mode split_pt_uniformly
+# python -m tau3mu_gnn.scripts.GraphCreation --graph_type knn --k 10 --tau_channel HF --unsculpting_mode split_pt_uniformly --bdt_preselection_cut 0.8
 
 # cleaning of temporal working dir when job was completed:
 rm  -rf /scratch/$USER/${SLURM_JOB_ID}

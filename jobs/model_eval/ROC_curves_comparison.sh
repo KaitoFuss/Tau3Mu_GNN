@@ -18,29 +18,37 @@ set -e
 # one model vs BDT
 
 CHANNEL=W
-SCULPT_DEGREE=limit_disco4_1
+SCULPT_DEGREE=new_hope_3
 PLOT_MODE=ROC_comp_full
 
-ARCH1=fl_1_sd_16_vs1
-GNN_FINAL_LAYER1=/work/kfuss/SVJ_GNN/output/new_dropout_disco4_"$CHANNEL"_$ARCH1/
-LAM_FINALY_LAYER1=4.0
+ARCH1=fl_8_sd_4_GINE_delete_muons_vs2
+GNN_FINAL_LAYER1=/work/kfuss/SVJ_GNN/output/new_hope_"$CHANNEL"_$ARCH1/
+LAM_FINALY_LAYER1="0.0,BDT_cut_0.8"
 
-ARCH2=fl_6_sd_3_vs1
-GNN_FINAL_LAYER2=/work/kfuss/SVJ_GNN/output/new_dropout_disco4_"$CHANNEL"_$ARCH2/
-LAM_FINALY_LAYER2=4.0
+ARCH2=fl_8_sd_4_GINE_permutation_disco1_vs4
+GNN_FINAL_LAYER2=/work/kfuss/SVJ_GNN/output/new_hope_"$CHANNEL"_$ARCH2/
+LAM_FINALY_LAYER2="1.0,BDT_cut_0.8"
 
-ARCH3=fl_7_sd_5_vs1
-GNN_FINAL_LAYER3=/work/kfuss/SVJ_GNN/output/new_dropout_disco4_"$CHANNEL"_$ARCH3/
-LAM_FINALY_LAYER3=4.0
+ARCH3=fl_8_sd_4_GINE_delete_muons_BDT_cut_0.7_vs1
+GNN_FINAL_LAYER3=/work/kfuss/SVJ_GNN/output/new_hope_"$CHANNEL"_$ARCH3/
+LAM_FINALY_LAYER3="0.0,BDT_cut_0.7"
 
-ARCH4=fl_7_sd_16_vs1
-GNN_FINAL_LAYER4=/work/kfuss/SVJ_GNN/output/new_dropout_disco4_"$CHANNEL"_$ARCH4/
-LAM_FINALY_LAYER4=4.0
+# ARCH4=fl_8_sd_4_vs1
+# GNN_FINAL_LAYER4=/work/kfuss/SVJ_GNN/output/new_dropout_disco1_permuted_"$CHANNEL"_$ARCH4/
+# LAM_FINALY_LAYER4="1.0,permuted,small"
+
+ARCH4=fl_8_sd_4_GINE_delete_muons_vs1
+GNN_FINAL_LAYER4=/work/kfuss/SVJ_GNN/output/new_hope_"$CHANNEL"_$ARCH4/
+LAM_FINALY_LAYER4="0.0"
+
+ARCH5=fl_8_sd_4_GINE_permutation_disco1_vs3
+GNN_FINAL_LAYER5=/work/kfuss/SVJ_GNN/output/new_hope_"$CHANNEL"_$ARCH5/
+LAM_FINALY_LAYER5="1.0"
 
 BDT_LOCATION=/work/kfuss/SVJ_GNN/output/benchmark_"$CHANNEL"_BDT_vs1/
 LAM_BDT=5.0
 
-/work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.model_eval.ModelEval --plot_mode $PLOT_MODE --sculpt_degree "$SCULPT_DEGREE" --gnn_archs_location $GNN_FINAL_LAYER1 $GNN_FINAL_LAYER2 $GNN_FINAL_LAYER3 $GNN_FINAL_LAYER4 $BDT_LOCATION --tau_channel $CHANNEL --lambdas $LAM_FINALY_LAYER1 $LAM_FINALY_LAYER2 $LAM_FINALY_LAYER3 $LAM_FINALY_LAYER4 $LAM_BDT  --bdt_location $BDT_LOCATION --archs $ARCH1 $ARCH2 $ARCH3 $ARCH4
+# /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.model_eval.ModelEval --plot_mode $PLOT_MODE --sculpt_degree "$SCULPT_DEGREE" --gnn_archs_location $GNN_FINAL_LAYER1 $GNN_FINAL_LAYER2 $GNN_FINAL_LAYER3 $GNN_FINAL_LAYER4 $BDT_LOCATION --tau_channel $CHANNEL --lambdas $LAM_FINALY_LAYER1 $LAM_FINALY_LAYER2 $LAM_FINALY_LAYER3 $LAM_FINALY_LAYER4 $LAM_BDT  --bdt_location $BDT_LOCATION --archs $ARCH1 $ARCH2 $ARCH3 $ARCH4
 # /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.model_eval.ModelEval --plot_mode $PLOT_MODE --sculpt_degree "$SCULPT_DEGREE" --gnn_archs_location $GNN_FINAL_LAYER1 $GNN_FINAL_LAYER2 $GNN_FINAL_LAYER3 --tau_channel $CHANNEL --lambdas $LAM_FINALY_LAYER1 $LAM_FINALY_LAYER2 $LAM_FINALY_LAYER3 --archs $ARCH1 $ARCH2 $ARCH3
-# /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.model_eval.ModelEval --plot_mode $PLOT_MODE --sculpt_degree "$SCULPT_DEGREE" --gnn_archs_location $GNN_FINAL_LAYER1 $BDT_LOCATION --tau_channel $CHANNEL --lambdas $LAM_FINALY_LAYER1 $LAM_BDT  --archs $ARCH1 
+/work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.model_eval.ModelEval --plot_mode $PLOT_MODE --sculpt_degree "$SCULPT_DEGREE" --gnn_archs_location $GNN_FINAL_LAYER1 $GNN_FINAL_LAYER2 $GNN_FINAL_LAYER3 $GNN_FINAL_LAYER4 $GNN_FINAL_LAYER5 $BDT_LOCATION --tau_channel $CHANNEL --lambdas $LAM_FINALY_LAYER1 $LAM_FINALY_LAYER2 $LAM_FINALY_LAYER3 $LAM_FINALY_LAYER4 $LAM_FINALY_LAYER5 $LAM_BDT  --archs $ARCH1 $ARCH2 $ARCH3 $ARCH4 $ARCH5 --bdt_location $BDT_LOCATION
 # /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.model_eval.ModelEval --plot_mode $PLOT_MODE --sculpt_degree "$SCULPT_DEGREE" --gnn_archs_location $BDT_LOCATION --tau_channel $CHANNEL --lambdas $LAM_BDT  --bdt_location $BDT_LOCATION

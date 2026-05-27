@@ -30,6 +30,17 @@ CHANNEL=W
 # GNN_MODE=final_layer
 GNN_MODE=final_layer
 MAX_EVENTS_TO_PROCESS=""
+UNSCULPTING_MODE=delete_muons
+BDT_PRESELECTION_CUT_ENABLED=true
+BDT_PRESELECTION_CUT_VALUE="0.7"
+
+if [ "$BDT_PRESELECTION_CUT_ENABLED" = true ] && [ -n "$BDT_PRESELECTION_CUT_VALUE" ]; then
+    BDT_PRESELECTION_ARG="--bdt_preselection_cut $BDT_PRESELECTION_CUT_VALUE"
+    ROOT_DIR=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/bdt_full
+else
+    BDT_PRESELECTION_ARG=""
+    ROOT_DIR=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W
+fi
 
 # build the optional argument
 if [ -n "$MAX_EVENTS_TO_PROCESS" ]; then
@@ -40,10 +51,18 @@ fi
 
 # Add multiple models here
 MODELS=(
-    "new_dropout_disco4_W_fl_1_sd_16_vs1"
-    "new_dropout_disco4_W_fl_6_sd_3_vs1"
-    "new_dropout_disco4_W_fl_7_sd_5_vs1"
-    "new_dropout_disco4_W_fl_7_sd_16_vs1"
+    # "600k_disco0_permuted_W_fl_8_sd_4_GINE_vs1"
+    # "new_hope_W_fl_8_sd_4_GINE_permutation_disco1_vs4"
+    # "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
+    "new_hope_W_fl_8_sd_4_GINE_delete_muons_BDT_cut_0.7_vs1"
+    # "new_dropout_disco0_permuted_W_fl_8_sd_4_vs1"
+    # "new_dropout_disco10_W_fl_8_sd_4_vs1"
+    # "new_dropout_disco1_permuted_W_fl_8_sd_4_vs1"
+    # "new_dropout_disco0_permuted_transformer_W_fl_8_sd_4_vs1"
+    # "new_dropout_disco0_permuted_GAT_W_fl_8_sd_4_vs1"
+    # "new_dropout_disco4_W_fl_6_sd_3_vs1"
+    # "new_dropout_disco4_W_fl_7_sd_5_vs1"
+    # "new_dropout_disco4_W_fl_7_sd_16_vs1"
     # "new_dropout_disco1_W_fl_11_sd_12_vs1"
     # "limit_disco1_W_fl_7_sd_6_vs1"
     # "new_dropout_disco1_W_fl_1_sd_8_vs1"
@@ -64,9 +83,11 @@ MODELS=(
 )
 ARCHS=(
     "random"
-    "random"
-    "random"
-    "random"
+    # "random"
+    # "random"
+    # "random"
+    # "random"
+    # "random"
     # "random"
     # "random"
     # "arch_optuna"
@@ -79,10 +100,16 @@ ARCHS=(
     # "final_layer5"
     # "$ARCH"  # one per model
 )
+CONV_TYPE=(
+  "GINE"
+  # "Transformer"
+  # "GAT"
+)
 
 # Build --model_names and --archs arguments
 MODEL_NAMES_ARGS=""
 ARCHS_ARGS=""
+CONV_TYPES_ARGS=""
 for MODEL in "${MODELS[@]}"; do
     MODEL_NAMES_ARGS="$MODEL_NAMES_ARGS $MODEL"
     mkdir -p "$JOB_SCRATCH/$MODEL"
@@ -90,21 +117,26 @@ done
 for ARCH_ENTRY in "${ARCHS[@]}"; do
     ARCHS_ARGS="$ARCHS_ARGS $ARCH_ENTRY"
 done
-
+for CONV_TYPE_ENTRY in "${CONV_TYPE[@]}"; do
+    CONV_TYPES_ARGS="$CONV_TYPES_ARGS $CONV_TYPE_ENTRY"
+done
 
 # SCRATCH_OUTPUT="$JOB_SCRATCH"/"$MODEL"
 STORAGE_OUTPUT=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/
 
 # python program script.py should use CUDA_VISIBLE_DEVICES variable (*NOT* hardcoded GPU's numbers)
 /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.scripts.ScoreCreation \
-  --root /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W \
+  --root $ROOT_DIR \
   --output_folder /work/kfuss/SVJ_GNN/output/ \
   --model_names $MODEL_NAMES_ARGS \
   --archs $ARCHS_ARGS \
-  --tau_channel $CHANNEL  \
+  --tau_channel $CHANNEL \
   --gnn_mode $GNN_MODE \
   --storage_folder $JOB_SCRATCH \
-  $MAX_EVENTS_ARG
+  --conv_types $CONV_TYPES_ARGS \
+  --unsculpting_mode $UNSCULPTING_MODE \
+  $MAX_EVENTS_ARG \
+  $BDT_PRESELECTION_ARG
 
 
 echo "Copying results to /storage..."

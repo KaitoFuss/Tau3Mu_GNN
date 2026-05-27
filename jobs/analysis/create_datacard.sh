@@ -20,9 +20,9 @@ source /work/kfuss/miniforge3/bin/activate Tau3Mu
 # Config
 #############################################
 
-CHANNEL=W
-MODEL="new_dropout_disco4_${CHANNEL}_fl_1_sd_16_vs1"
-CUT=10.0
+CHANNEL=HF
+MODEL="new_dropout_disco2_permuted_${CHANNEL}_fl_12_sd_15_vs1"
+CUT=8.0
 
 OUTPUT=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/datacard_tests/${MODEL}/${CUT}
 
