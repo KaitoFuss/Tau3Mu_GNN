@@ -41,7 +41,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, conv_type, data_base):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, conv_type, data_base, finetune=False, finetune_lr=1e-4, finetune_epochs=10, bdt_threshold=0.8):
     """Train the model and evaluate it.
 
     Args:
@@ -288,7 +288,52 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     
     print("Traininig finished")
 
-     ###--------- Evaluate the model -----------------------------------------------------------
+    ###--------- Fine-tune the network -----------------------------------------------------------
+
+    if finetune:
+        start_ft = time.time()
+        print("==> Fine-tuning on BDT-selected events...")
+
+        import shutil
+        shutil.copy(
+            os.path.join(output_path, name + ".pt"),
+            os.path.join(output_path, name + "_pretrained.pt")
+        )
+        print("==> Saved pre-trained checkpoint as _pretrained.pt")
+        
+        dataloader_finetune = GraphDataLoader(
+            datasets,
+            window_to_load=[[0., 0.6] for _ in range(len(datasets))],
+            dataset_fraction=df,
+            batch_size=batch_size,
+            normalizer=normalizer,
+            drop_last=True,
+            score_threshold=bdt_threshold,
+        )
+
+        # count surviving events before committing
+        n_bkg = sum(1 for d in dataloader_finetune.dataset if d.y == 0)
+        n_sig = sum(1 for d in dataloader_finetune.dataset if d.y == 1)
+        print(f"Fine-tune sample: {n_sig} signal, {n_bkg} background")
+
+        # reload best model checkpoint (early stopping may have saved it)
+        checkpoint = torch.load(os.path.join(output_path, name + ".pt"))
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        optimizer_ft = torch.optim.Adam(model.parameters(), lr=finetune_lr)
+        # no scheduler for fine-tuning — too few epochs for plateau detection to be meaningful
+
+        training_losses, validation_losses = train_and_validate(
+            model, finetune_epochs, dataloader_finetune, dataloader_validation,
+            loss_criterion, device, optimizer_ft, disco_reg, name, 
+            scheduler=None, tau_channel=tau_channel, gnn_mode=gnn_mode, finetune=finetune
+        )
+        print(f"==> Fine-tune completed in {time.time()-start_ft:.2f} seconds")
+
+        print("==> Saving losses...")
+        utrain.save_loss(training_losses, validation_losses, name, finetune=finetune)
+
+    ###--------- Evaluate the model -----------------------------------------------------------
 
     print("==> Evaluate Model...")
     start_eva = time.time()
@@ -312,7 +357,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
 
     return auc
 
-def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode):
+def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode, finetune=False):
     """Train and validate model.
 
     Args:
@@ -338,7 +383,10 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
 
     # initalize early stopping class
-    early_stop = utrain.early_stop()
+    if not finetune:
+        early_stop = utrain.early_stop()
+    else:
+        early_stop = utrain.early_stop(patience=20)
 
     # get output_path
     output_path = utrain.output_directory(name)
@@ -351,8 +399,11 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         disco_per_batch = 0
         loss_per_batch = 0
         
-        warmup = 20  # 30
-        lambda_eff = disco_reg * min(1.0, epoch / warmup) # we keep lambda for the first warmup epoch so we do in the beginnng large steps into the right directions
+        if finetune:
+            lambda_eff = disco_reg
+        else:
+            warmup = 20
+            lambda_eff = disco_reg * min(1.0, epoch / warmup) # we keep lambda for the first warmup epoch so we do in the beginnng large steps into the right directions
 
 
 
@@ -458,7 +509,8 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         validation_full_losses.append(epoch_loss_validation)
         experiment.log_metric("Full validation validation", epoch_loss_validation, epoch=epoch)
 
-        scheduler.step(epoch_loss_validation)
+        if scheduler is not None:
+            scheduler.step(epoch_loss_validation)
 
         ## check for early stop
         early_stop(epoch_loss_validation,model,epoch,output_path,name)
@@ -499,8 +551,11 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         }
 
     print("Model saved to ", output_path + "/" + name + ".pt")
-
-    with open(os.path.join(output_path, name + "_disco_loss.pkl"), "wb") as f:
+    
+    suffix = ""
+    if finetune:
+        suffix = "_finetune"
+    with open(os.path.join(output_path, name + f"_disco_loss{suffix}.pkl"), "wb") as f:
         pickle.dump(val_disco_loss, f)
 
        
@@ -601,6 +656,30 @@ if __name__ == "__main__":
         help="Base directory for signal and background graphs"
         )
     
+    parser.add_argument(
+        "--finetune", 
+        action="store_true", 
+        help="Enable fine-tuning phase"
+    )
+
+    parser.add_argument(
+        "--finetune_lr", 
+        default=1e-4, 
+        type=float
+    )
+
+    parser.add_argument(
+        "--finetune_epochs", 
+        default=10, 
+        type=int
+    )
+
+    parser.add_argument(
+        "--bdt_threshold", 
+        default=0.8, 
+        type=float
+    )
+    
 
     args = parser.parse_args()
 
@@ -616,6 +695,10 @@ if __name__ == "__main__":
     remark = args.remark
     conv_type = args.conv_type
     unsculpting_mode = args.unsculpting_mode
+    finetune = args.finetune
+    finetune_lr = args.finetune_lr
+    finetune_epochs = args.finetune_epochs
+    bdt_threshold = args.bdt_threshold
 
     assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
     assert gnn_mode in ["BDT", "embed_once", "embed_always", "final_layer"]
@@ -657,8 +740,13 @@ if __name__ == "__main__":
         "remark": remark,
     }
 
+    if finetune:
+        hyper_params["finetune_lr"] = finetune_lr
+        hyper_params["finetune_epochs"] = finetune_epochs
+        hyper_params["bdt_threshold"] = bdt_threshold
+
     experiment.log_parameters(hyper_params)
     experiment.set_name(name)
 
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, conv_type, args.data_base)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, conv_type, args.data_base, finetune=finetune, finetune_lr=finetune_lr, finetune_epochs=finetune_epochs, bdt_threshold=bdt_threshold)
 
