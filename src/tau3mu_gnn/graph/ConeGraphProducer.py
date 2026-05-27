@@ -83,7 +83,7 @@ class ConeGraphProducer(InMemoryDataset):
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,  
-        bdt_preselection_cut=None,
+        bdt_preselection_cut=False,
     ):
 
         self.root = root
@@ -192,10 +192,9 @@ class ConeGraphProducer(InMemoryDataset):
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
-
         indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
         events = events[indices] 
-        
+
         if self.mask:
             bkg_mask = bkg_mask[indices]
 
@@ -210,13 +209,14 @@ class ConeGraphProducer(InMemoryDataset):
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
 
-            if self.bdt_preselection_cut is not None:
-                raw_tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(
-                    event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool
-                )
-                n_tau = int(ak.sum(raw_tau_mask))
-                n_tau = min(n_tau, 1)
+            # if self.bdt_preselection_cut is not None:
+            #     raw_tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(
+            #         event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool
+            #     )
+            #     n_tau = int(ak.sum(raw_tau_mask))
+            #     n_tau = min(n_tau, 1)
             if n_tau == 0:
+                logging.warning(f"Skipping this event as selected mask deleted it")
                 continue
 
             pfcands_pt = event[f"{old_prefix}PFCands_pt"]
@@ -226,6 +226,10 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_mass = event[f"{old_prefix}PFCands_mass"]
             pfcands_charge = event[f"{old_prefix}PFCands_charge"]
             pfcands_puppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
+
+            if self.bdt_preselection_cut:
+                n_tau = 1
+                bdt_iso = event["bdt_ISO"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
@@ -508,6 +512,8 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.non_permuted_tau_eta = torch.tensor([fitted_tau_eta], dtype=torch.float)
                     graph.non_permuted_tau_phi = torch.tensor([fitted_tau_phi], dtype=torch.float)
 
+                if self.bdt_preselection_cut:
+                    graph.bdt_iso = torch.tensor([bdt_iso], dtype=torch.float)
                 # Add previous isolation approach score if requested
                 if self.save_benchmark_score:
                     abs_iso = event[f"{prefix}TauTo3Mu_iso_ptChargedFromPV"][tau_mask][nt]  + max(0., event[f"{prefix}TauTo3Mu_iso_ptPhotons"][tau_mask][nt] - 0.2 * event[f"{prefix}TauTo3Mu_iso_ptChargedFromPU"][tau_mask][nt])
@@ -585,7 +591,7 @@ class ConeGraphProducer(InMemoryDataset):
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
-        if self.bdt_preselection_cut is not None:
+        if self.bdt_preselection_cut:
             branches_to_load += [f"bdt_ISO"]  # adjust branch name to whatever it's called in your ROOT files
 
         # self.graph_level_branches = [f"{prefix}{b}" for b in self.graph_level_features]
@@ -609,12 +615,12 @@ class ConeGraphProducer(InMemoryDataset):
             all_chunks.append(events)
 
         events = ak.concatenate(all_chunks)
-        print(f"bdt preselection cut: {self.bdt_preselection_cut}")
-        if self.bdt_preselection_cut is not None:
-            prev_event_num = len(events)
-            bdt_cut_mask = events[f"bdt_ISO"] > self.bdt_preselection_cut
-            events = events[bdt_cut_mask]
-            print(f"  BDT preselection > {self.bdt_preselection_cut}: {len(events):,} events out of {prev_event_num:,} remaining")
+        # print(f"bdt preselection cut: {self.bdt_preselection_cut}")
+        # if self.bdt_preselection_cut is not None:
+        #     prev_event_num = len(events)
+        #     bdt_cut_mask = events[f"bdt_ISO"] > self.bdt_preselection_cut
+        #     events = events[bdt_cut_mask]
+        #     print(f"  BDT preselection > {self.bdt_preselection_cut}: {len(events):,} events out of {prev_event_num:,} remaining")
         
         bkg_mask = None
         total_events = len(events)
