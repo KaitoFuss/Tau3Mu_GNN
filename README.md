@@ -10,13 +10,13 @@ A Graph Neural Network pipeline for searching the lepton-flavour-violating decay
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
 - [Pipeline Overview](#pipeline-overview)
-  - [Step 0 — Skimming](#step-0--skimming)
+  - [Step 0 — Skimming](#step-0--skimming-optional)
   - [Step 1 — Graph Creation (T3)](#step-1--graph-creation-t3)
   - [Step 2 — Copy Graphs to lxplus](#step-2--copy-graphs-to-lxplus)
   - [Step 3 — GNN Training (lxplus)](#step-3--gnn-training-lxplus)
   - [Step 4 — Copy Model back to T3](#step-4--copy-model-back-to-t3)
   - [Step 5 — GNN Inference (T3)](#step-5--gnn-inference-t3)
-  - [Step 6 — Model Evaluation (T3)](#step-6--model-evaluation-t3)
+  - [Step 6 — Model Evaluation (T3)](#step-6--model-evaluation-t3-optional)
   - [Step 7 — Limit Setting (T3)](#step-7--limit-setting-t3)
 - [Key Concepts](#key-concepts)
   - [Channels](#channels)
@@ -116,7 +116,7 @@ The full pipeline proceeds in the following order. Each step has a corresponding
 
 ### Step 0 — Skimming (OPTIONAL)
 
-Before graph creation, raw ROOT files can optionally be pre-selected (fiducial cuts, resonance vetoes, etc.) using the skimmer. Most of these steps were done by supervisor:
+Before graph creation, raw ROOT files can optionally be pre-selected (fiducial cuts, resonance vetoes, etc.) using the skimmer. Pre-selection steps are described in detail in the project report.
 
 ```bash
 # jobs/graph_creation/skimming.sh
@@ -134,14 +134,15 @@ Reads skimmed ROOT files, applies selection cuts, and builds PyTorch Geometric g
 # SLURM: jobs/graph_creation/GraphCreation_HF.sh
 
 python -m tau3mu_gnn.scripts.GraphCreation \
-  --graph_type   knn          # knn | r_threshold | fully
-  --k            10           # number of nearest neighbours (knn only)
-  --tau_channel  W            # W | HF
-  --unsculpting_mode <mode>   # see §Key Concepts
-  [--bdt_preselection_cut]    # save bdt benchmark score to graph for furhter use downstream (root file needs to have been inferenced in order to do so)
+  --graph_type       knn \
+  --k                10 \
+  --tau_channel      W \
+  --unsculpting_mode <mode>
 ```
 
-The output dataset name is constructed automatically from the parameters and written into `data/signal_<channel>/processed/` and `data/background_<channel>/processed/`.
+Pass `--bdt_preselection_cut` to also save the BDT ISO score as a graph-level feature (requires the ROOT file to have been scored first). See [Graph Feature Integration Modes](#graph-feature-integration-modes) and [Unsculpting / Mass Decorrelation](#unsculpting--mass-decorrelation) for argument details of `graph_type` and `unsculpting_mode` respectively.
+
+The output dataset name is constructed automatically from the parameters and written into `data/signal_<channel>/processed/` and `data/background_<channel>/processed/`. This name is used as `--model` in Step 3.
 
 **Node features** include: particle kinematics (pT, η, φ), displacement (dz, d0), PUPPI weights, and charge.  
 **Edge features** include: relative angles (ΔR, Δη, Δφ) and pairwise pT.  
@@ -169,23 +170,21 @@ Training runs on lxplus GPU nodes via HTCondor. The training entry point is `Tra
 #           jobs/condor/train_W_GINE_deleted.sh  (executable)
 
 python -m tau3mu_gnn.scripts.Train_TauMuNet \
-  --epochs        1000 \
-  --batch         128 \
-  --name          <run_name> \
-  --model         <graph_identifier>   \  # must match the .pt filename suffix from Step 1
-  --lr            0.0016 \
-  --disco         <float>  \             # DisCo regularisation strength (0 = off)
-  --arch          <arch_name> \          # architecture config from GNN_archs.py
-  --tau_channel   W \                    # W | HF
-  --gnn_mode      <mode> \               # see §Key Concepts
-  --conv_type     <type> \               # GINE | GAT | Transformer
+  --epochs           1000 \
+  --batch            128 \
+  --name             <run_name> \
+  --model            <graph_identifier> \
+  --lr               0.0016 \
+  --disco            <float> \
+  --arch             <arch_name> \
+  --tau_channel      W \
+  --gnn_mode         <mode> \
+  --conv_type        <type> \
   --unsculpting_mode <mode> \
-  --data_base     /eos/user/k/kfuss/tau3mu_gnn_round2/data \
-  [--finetune] \
-  [--finetune_lr <float>] \
-  [--finetune_epochs <int>] \
-  [--bdt_threshold <float>]
+  --data_base        /eos/user/k/kfuss/tau3mu_gnn_round2/data
 ```
+
+`--model` must match the dataset name auto-generated in [Step 1](#step-1--graph-creation-t3) (the suffix of the `.pt` files in `processed/`). Optional fine-tuning flags: `--finetune`, `--finetune_lr <float>`, `--finetune_epochs <int>`, `--bdt_threshold <float>`. See [Fine-Tuning](#fine-tuning) and [Key Concepts](#key-concepts) for other argument details.
 
 Training uses:
 - **Loss**: Binary cross-entropy (+ optional DisCo term on background)
@@ -217,18 +216,18 @@ Runs a trained model on ROOT files and writes a new ROOT file containing the GNN
 #        jobs/gnn_score_creation/create_score_W_signal.sh
 
 python -m tau3mu_gnn.scripts.ScoreCreation \
-  --root           <path/to/root/files> \
-  --output_folder  /work/kfuss/SVJ_GNN/output/ \
-  --model_names    <model_name1> [<model_name2> ...] \
-  --archs          <arch1> [<arch2> ...] \
-  --conv_types     <type1> [<type2> ...] \
-  --tau_channel    W \
-  --gnn_mode       <mode> \
-  --storage_folder <scratch_dir> \
-  --unsculpting_mode <mode> \
-  [--bdt_preselection_cut <float>] \
-  [--max_events_to_process <int>]
+  --root             <path/to/root/files> \
+  --output_folder    /work/kfuss/SVJ_GNN/output/ \
+  --model_names      <model_name1> [<model_name2> ...] \
+  --archs            <arch1> [<arch2> ...] \
+  --conv_types       <type1> [<type2> ...] \
+  --tau_channel      W \
+  --gnn_mode         <mode> \
+  --storage_folder   <scratch_dir> \
+  --unsculpting_mode <mode>
 ```
+
+Optional: `--bdt_preselection_cut <float>` to restrict inference to events above a BDT score threshold; `--max_events_to_process <int>` to cap the number of events processed.
 
 The output ROOT files (containing the `GNN_score` branch) are written to `--storage_folder`. After score production, `ModelEval` is called automatically within the job script to produce tau mass histograms at fixed FPR, which are used to check for mass sculpting.
 
@@ -258,7 +257,7 @@ Limit setting requires a valid CMS VOMS proxy and CMS Combine to be available.
 
 ```bash
 # jobs/analysis/create_datacard.sh
-python -m tau3mu_gnn.analysis.datacard_creation_GNN \
+python -m tau3mu_gnn.analysis.datacard_creation_GNN_permuted \
   --model   <model_name> \
   --channel W \
   --cut     <score_cut>
@@ -320,6 +319,8 @@ A key challenge is preventing the GNN from sculpting the τ invariant mass distr
 
 DisCo regularisation (see below) can also be used independently or in combination with these modes.
 
+> **Note**: `GraphCreation.py` and `ConeGraphProducer.py` use the name `split_pt_uniformly`; `Train_TauMuNet.py` accepts `split_pt`. Use the name that matches the script you are calling.
+
 ### GNN Architecture (TauMuNet)
 
 The model (`TauMuNet`) is a message-passing GNN with the following structure:
@@ -379,7 +380,7 @@ The pre-fine-tune checkpoint is saved separately as `<name>_pretrained.pt`. Fine
 
 ## BDT Baseline
 
-An XGBoost BDT serves as the reference baseline classifier. There is legacy code that trains two BDTs: one taking a `GNN_Score` as input and one using `rel_iso`. This was the initial approach before moving to an end-to-end GNN. It can still be trained and used to produce scores independently:
+An XGBoost BDT serves as the reference baseline classifier. The ISO BDT (`rel_iso` input) is the primary comparison baseline used in limit setting. This is also the classifier currently used in the analysis. There is also legacy code for a BDT that takes a `GNN_Score` as input — this was an earlier approach and is no longer the focus. Both can still be trained and used to produce scores:
 
 ```bash
 # Train (W channel)
