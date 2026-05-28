@@ -491,7 +491,7 @@ Combine outputs and limit results are written to `/work/kfuss/SVJ_GNN/output/` a
 | lxplus `/eos/user/k/kfuss/` | EOS storage used for training data and model outputs on lxplus |
 
 ```
-ROOT files (T3 /pnfs/)
+ROOT files (T3 /work/kfuss/SVJ_GNN/)
     │  placed manually into src/tau3mu_gnn/data/ before Step 1
     ▼
 .pt graphs (repo src/tau3mu_gnn/data/…/processed/)   ← Step 1 output
