@@ -95,27 +95,18 @@ tau3mu_gnn/
 
 ## Installation
 
-All steps use the `Tau3Mu` conda environment. Install it with:
+All steps use the `Tau3Mu` conda environment. Create and activate it with:
 
 ```bash
-conda env create -f environment.yaml
+conda env create -f environment_frozen.yaml
 conda activate Tau3Mu
-
-# Additional packages not in the yaml:
-conda install pyg=2.5.2 -c pyg
-conda install root
-pip install comet_ml
-pip install seaborn
-pip install xgboost
-pip install scikit-learn
-
-# Install this package in editable mode (from repo root):
+pip install -r requirements_frozen.txt
 pip install -e .
 ```
 
-> Use `mamba` as a drop-in replacement for `conda` for faster dependency resolution (if you want).
+> `mamba` can be used as a drop-in replacement for `conda` for faster dependency resolution.
 
-The package follows a `src` layout — all modules live under `src/tau3mu_gnn/` and are imported as `tau3mu_gnn.*`. After `pip install -e .`, all scripts can be run with `python -m tau3mu_gnn.scripts.<script_name>`.
+The package follows a `src` layout — all modules live under `src/tau3mu_gnn/` and are imported as `tau3mu_gnn.*`. After `pip install -e .`, scripts can be run as `python -m tau3mu_gnn.scripts.<script_name>`.
 
 ---
 
