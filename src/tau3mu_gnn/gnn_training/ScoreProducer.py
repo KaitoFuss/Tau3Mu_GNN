@@ -1041,10 +1041,11 @@ class ScoreProducer:
                 print(f"Deleted temporary file {root_path_sc_only}")
             
         # Save raw arrays to compressed npz
+        suffix = "" if self.bdt_preselection_cut is None else "_with_bdt_cut"
         for name, output_folder in zip(self.model_names, self.output_folders):
             os.makedirs(output_folder, exist_ok=True)
             np.savez_compressed(
-                os.path.join(output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
+                os.path.join(output_folder, f"raw_scores_and_tau_mass_{mode}{suffix}.npz"),
                 scores=all_scores_dict[name],
                 tau_mass=all_tau_masses,
             )

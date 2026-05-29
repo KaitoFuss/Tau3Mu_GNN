@@ -102,8 +102,9 @@ def plot_roc_bdt(data, root_dir, thresholds_bench, title, tau_channel):
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
-def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs):
+def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut):
 
+    suffix = "_with_bdt_cut" if bdt_score_cut else "" 
     ax = plt.gca()
     first_ROC = True
     tpr_targets = []
@@ -111,9 +112,10 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
     tprs = []
     threshs = []
     
-    for i, gnn_data_loc in enumerate(gnn_data_locs):
-        gnn_sig = np.load(gnn_data_loc + 'raw_scores_and_tau_mass_signal.npz', allow_pickle=True)
-        gnn_bkg = np.load(gnn_data_loc + 'raw_scores_and_tau_mass_background.npz', allow_pickle=True)
+    for i in range(len(gnn_data_locs)-1):
+        gnn_data_loc = gnn_data_locs[i]
+        gnn_sig = np.load(gnn_data_loc + f'raw_scores_and_tau_mass_signal{suffix}.npz', allow_pickle=True)
+        gnn_bkg = np.load(gnn_data_loc + f'raw_scores_and_tau_mass_background{suffix}.npz', allow_pickle=True)
 
         gnn_sig_scores = gnn_sig["scores"]
         gnn_bkg_scores = gnn_bkg["scores"]
@@ -228,14 +230,15 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
     plt.xlim(1e-5, 1)
     plt.title(f"ROC Curves: different GNN archs vs BDT with for {tau_channel} channel")
 
-    output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}_full.png"
+    output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}{suffix}_full.png"
     print(f"{output_plot_name} has been saved.")
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
     
     return fprs, tprs, threshs
 
-def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs):
+def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut):
+    suffix = "_with_bdt_cut" if bdt_score_cut else "" 
     bdt = True
     for i, (fpr, tpr, thresh) in enumerate(zip(fprs, tprs, threshs)):
         #calculate sic
@@ -270,7 +273,7 @@ def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lam
     plt.axhline(y=1, color='gray', linestyle='--')
     plt.title(f"SIC scores: different GNN archs and BDT with GNN score for {tau_channel} channel")
 
-    output_plot_name = f"GNNs_SIC_comparison_{tau_channel}_sculpt_{sculpt_degree}_full.png"
+    output_plot_name = f"GNNs_SIC_comparison_{tau_channel}_sculpt_{sculpt_degree}{suffix}_full.png"
     print(f"{output_plot_name} has been saved.")
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
@@ -360,19 +363,19 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
-def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
+def tau_score_hist(root, mode, title, tau_channel, plot_mode, view, bdt_score_cut):
     normalize = view == "normalized"
     use_fpr = plot_mode.endswith("fpr")
-
+    suffix = "_with_bdt_cut" if bdt_score_cut else "" 
     if plot_mode.startswith("tau_hist") and not plot_mode.startswith("tau_hist_after"):
         model = "GNN"
 
-        data = np.load(root + "raw_scores_and_tau_mass_background.npz", allow_pickle=True)
+        data = np.load(root + f"raw_scores_and_tau_mass_background{suffix}.npz", allow_pickle=True)
         scores = data["scores"]
         f_tau_mass = data["tau_mass"]
 
         if use_fpr:
-            signal = np.load(root + 'raw_scores_and_tau_mass_signal.npz', allow_pickle=True)
+            signal = np.load(root + f'raw_scores_and_tau_mass_signal{suffix}.npz', allow_pickle=True)
             scores_signal = signal["scores"]
             nan_mask = ~np.isnan(scores)
             scores = scores[nan_mask]
@@ -473,6 +476,7 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode, view):
         plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of {model} score:\n {tau_channel} channel {mode}, {title}") 
 
     suffix = "_normalized" if normalize else ""
+    suffix += "_with_bdt_cut" if bdt_score_cut else "" 
     if plot_mode.startswith("tau_hist_after"):
         if use_fpr:
             save_name = f'{mode}_after_tau_hist_fpr{suffix}.png'
@@ -608,6 +612,8 @@ if __name__ == "__main__":
     parser.add_argument("--view", default=None)
     parser.add_argument("--cut", type=float)
     parser.add_argument("--model", type=str)
+    parser.add_argument("--bdt_cut", type=str)
+
 
     args = parser.parse_args()
     output_path = args.output_path
@@ -623,13 +629,14 @@ if __name__ == "__main__":
     view = args.view
     cut = args.cut
     model = args.model
+    bdt_score_cut = True if args.bdt_cut == "true" else False
 
     if plot_mode.startswith("tau_hist"):
         if view == "both":
-            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, "non_normalized")
-            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, "normalized")
+            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, "non_normalized", bdt_score_cut)
+            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, "normalized", bdt_score_cut)
         else:
-            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, view)
+            tau_score_hist(output_path, gnn_mode, title, tau_channel, plot_mode, view, bdt_score_cut)
 
     elif plot_mode == "ROC_comp":
         root_dir = "/work/kfuss/SVJ_GNN/output/comparison_plots"
@@ -639,8 +646,8 @@ if __name__ == "__main__":
     elif plot_mode == "ROC_comp_full":
         root_dir = "/work/kfuss/SVJ_GNN/output/comparison_plots"
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
-        fprs, tprs, threshs = plot_roc_gnn_arch_comparison_full(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs)
-        plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs)
+        fprs, tprs, threshs = plot_roc_gnn_arch_comparison_full(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut)
+        plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut)
     
     elif plot_mode == "score_cut":
         data = load_and_filter_root(model, tau_channel, cut)

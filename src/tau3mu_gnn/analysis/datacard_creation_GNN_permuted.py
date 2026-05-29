@@ -286,7 +286,10 @@ expo.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlack))     # this is the fit in 
 
 frame.Draw()
 ROOT.gPad.SaveAs('mass.pdf')
-ROOT.gPad.SaveAs(f'/work/kfuss/SVJ_GNN/output/{MODEL}/mass_{CUT}.pdf')
+if "bdt" in FILE_SUFFIX:
+    ROOT.gPad.SaveAs(f'/work/kfuss/SVJ_GNN/output/{MODEL}/mass_{CUT}_with_bdt_cut.pdf')
+else:
+    ROOT.gPad.SaveAs(f'/work/kfuss/SVJ_GNN/output/{MODEL}/mass_{CUT}.pdf')
 ##########################################################################################
 ##      Step 6: Create output workspace and datacard
 ##########################################################################################
