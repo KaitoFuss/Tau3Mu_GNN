@@ -51,10 +51,11 @@ fi
 
 # Add multiple models here
 MODELS=(
+    "pt_ft_W_fl_8_sd_4_GINE_delete_muons_small_ft_bdt_cut_0.7_vs1"
     # "600k_disco0_permuted_W_fl_8_sd_4_GINE_vs1"
     # "new_hope_W_fl_8_sd_4_GINE_permutation_disco1_vs4"
     # "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
-    "new_hope_W_fl_8_sd_4_GINE_delete_muons_BDT_cut_0.7_vs1"
+    # "new_hope_W_fl_8_sd_4_GINE_delete_muons_BDT_cut_0.7_vs1"
     # "new_dropout_disco0_permuted_W_fl_8_sd_4_vs1"
     # "new_dropout_disco10_W_fl_8_sd_4_vs1"
     # "new_dropout_disco1_permuted_W_fl_8_sd_4_vs1"

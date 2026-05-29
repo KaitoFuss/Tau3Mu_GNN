@@ -20,9 +20,9 @@ source /work/kfuss/miniforge3/bin/activate Tau3Mu
 # Config
 #############################################
 
-CHANNEL=HF
+CHANNEL=W
 MODEL="benchmark_${CHANNEL}_BDT_vs1"
-CUT=0.92
+CUT=0.991
 
 OUTPUT=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/datacard_tests/${MODEL}/${CUT}
 
@@ -73,6 +73,7 @@ done
 python -m tau3mu_gnn.analysis.readout_limit \
   --model "$MODEL" \
   --channel "$CHANNEL" \
+  --path "$OUTPUT" \
   --cut "$CUT"
 
 #############################################
