@@ -4,7 +4,7 @@
 #SBATCH --account=t3
 #SBATCH --job-name=sc_W_bkg
 #SBATCH --mem=64G
-#SBATCH --time 2-00:00:00
+#SBATCH --time 7-00:00:00
 #SBATCH -o /work/kfuss/SVJ_GNN/logs/%x-%j.out    # replace default slurm-SLURM_JOB_ID.out; %x is a job-name (or script name when there is no job-name)
 #SBATCH -e /work/kfuss/SVJ_GNN/logs/%x-%j.err    # replace default slurm-SLURM_JOB_ID.err 
 
@@ -29,10 +29,10 @@ echo "Using scratch: $JOB_SCRATCH"
 CHANNEL=W
 # GNN_MODE=final_layer
 GNN_MODE=final_layer
-MAX_EVENTS_TO_PROCESS="100000"
+MAX_EVENTS_TO_PROCESS=""
 UNSCULPTING_MODE=delete_muons
-BDT_PRESELECTION_CUT_ENABLED=false
-BDT_PRESELECTION_CUT_VALUE="0.7"
+BDT_PRESELECTION_CUT_ENABLED=true
+BDT_PRESELECTION_CUT_VALUE="0.8"
 
 if [ "$BDT_PRESELECTION_CUT_ENABLED" = true ] && [ -n "$BDT_PRESELECTION_CUT_VALUE" ]; then
     BDT_PRESELECTION_ARG="--bdt_preselection_cut $BDT_PRESELECTION_CUT_VALUE"
@@ -51,10 +51,10 @@ fi
 
 # Add multiple models here
 MODELS=(
-  "pt_ft_W_fl_8_sd_4_GINE_delete_muons_small_ft_bdt_cut_0.7_vs1"
+  # "pt_ft_W_fl_8_sd_4_GINE_delete_muons_small_ft_bdt_cut_0.7_vs1"
     # "600k_disco0_permuted_W_fl_8_sd_4_GINE_vs1"
     # "new_hope_W_fl_8_sd_4_GINE_permutation_disco1_vs4"
-    # "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
+    "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
     # "new_hope_W_fl_8_sd_4_GINE_delete_muons_BDT_cut_0.7_vs1"
     # "new_dropout_disco0_permuted_W_fl_8_sd_4_vs1"
     # "new_dropout_disco10_W_fl_8_sd_4_vs1"

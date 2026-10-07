@@ -23,11 +23,12 @@ source /work/kfuss/miniforge3/bin/activate Tau3Mu
 CHANNEL=W
 CONV_TYPE=GINE
 UNSCULPTING_MODE=delete_muons
-# MODEL="new_dropout_disco1_permuted_${CHANNEL}_fl_8_sd_4_vs1"
-MODEL="pt_ft_${CHANNEL}_fl_8_sd_4_${CONV_TYPE}_${UNSCULPTING_MODE}_ft_bdt_cut_0.75_vs1"
-CUT=6.0
-BDT_PRESELECTION_CUT="0.75"  # set to "" to disable
-FINE_TUNE="with_bdt_cut" # "", with_bdt_cut, without_bdt_cut
+MODEL="new_hope_${CHANNEL}_fl_8_sd_4_GINE_delete_muons_vs2"
+# MODEL="pt_ft_${CHANNEL}_fl_8_sd_4_${CONV_TYPE}_${UNSCULPTING_MODE}_small_ft_bdt_cut_0.7_vs1"
+# MODEL="new_hope_W_fl_8_sd_4_GINE_delete_muons_vs1"
+CUT=3.9
+BDT_PRESELECTION_CUT="0.8"  # set to "" to disable
+FINE_TUNE="" # "", with_bdt_cut, without_bdt_cut
 
 if [ -n "$BDT_PRESELECTION_CUT" ]; then
     FILE_SUFFIX="_with_scores_bdt_full_with_scores"
