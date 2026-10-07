@@ -82,7 +82,7 @@ def _expand(patterns: Sequence[str], problems: list[str]) -> list[str]:
             files.extend(matches)
         else:
             files.append(pattern)
-    return files
+    return list(dict.fromkeys(files))  # overlapping patterns must not process a file twice
 
 
 def check_input_branches(patterns: Sequence[str], tree_name: str,
@@ -125,8 +125,13 @@ def rename_columns(df, branch_map: Mapping[str, str]):
     user's original names that were renamed, ready for df.Snapshot(tree, file, columns).
     """
     renames = {analysis: user for analysis, user in branch_map.items() if analysis != user}
+    existing = {str(c) for c in df.GetColumnNames()}
     for analysis in sorted(renames):
-        df = df.Define(analysis, renames[analysis])
+        # The user's file may also hold the analysis name; the mapped branch wins.
+        if analysis in existing:
+            df = df.Redefine(analysis, renames[analysis])
+        else:
+            df = df.Define(analysis, renames[analysis])
     originals = set(renames.values())
     columns = [str(c) for c in df.GetColumnNames() if str(c) not in originals]
     return df, columns

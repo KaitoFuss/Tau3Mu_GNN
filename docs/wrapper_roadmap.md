@@ -196,7 +196,7 @@ New code only. Old job scripts keep working.
 src/tau3mu_gnn/pipeline/
 ├── cli.py          # tau3mu-run phase-a|phase-b|phase-c|all|stage <name>
 ├── config.py       # load defaults + user file, merge, validate
-├── branches.py     # required-branch list + load_with_branch_map
+├── branches.py     # required branches, input checks, RDataFrame rename
 ├── manifest.py     # write/read manifest, stale-settings check
 ├── storage.py      # scratch dir + xrdcp to output_dir
 ├── slurm.py        # submit jobs, dependencies (later: condor.py)
@@ -231,7 +231,7 @@ Each step is small, testable, and keeps the old job scripts working.
 3. ✅ Branch map: write the required-branch list, the check + rename helpers, and tests (identity map on Kaito's files; renamed test file; missing branch → crash).
 3b. Stage "resonance skim": add an empty placeholder stage (clear "not implemented" message, or pass-through when the input is already resonance-skimmed). Fill it when Kaito gives the code.
 4. Stage "skim": refactor to take inputs from config. Regression check vs old output.
-5. Stage "BDT inference": make `BDT_ScoreProducer` run **only** the ISO classifier. Remove the GNN classifier and the `GNN_score` input. (Own mini step, before the config refactor of this stage.) **Caution:** the BDT drops rows with NaN in *any loaded* column (`dropna`); loading fewer branches can change which events get `bdt_ISO` — check against the reference limit. Add a test that the BDT feature list ⊆ `required_branches("W")`.
+5. Stage "BDT inference": make `BDT_ScoreProducer` run **only** the ISO classifier. Remove the GNN classifier and the `GNN_score` input. (Own mini step, before the config refactor of this stage.) **Caution:** the BDT drops rows with NaN in *any loaded* column (`dropna`); loading fewer branches can change which events get `bdt_ISO` — check against the reference limit. Today the W BDT also loads 5 raw branches it does not use as features and that are **not** in `required_branches("W")`: `Slimmed_TauTo3Mu_charge`, `Slimmed_TauTo3Mu_mu{1,2,3}_idx`, `Muon_tkRelIso` (`BDT_ScoreProducer.py:100-127`). Decide on purpose: drop them from the load (then check the limit) or add them to the W list. Add a test that the BDT feature list ⊆ `required_branches("W")`.
 5b. Stage "BDT inference": take inputs from config.
 6. Stage "GNN inference": refactor `ScoreCreation`/`ScoreProducer` into a function; inputs from config. Regression check vs old output. Add a test that the GNN branch list ⊆ `required_branches("W")`.
 7. Stage "model eval": refactor the `ModelEval` modes used here (`tau_hist_fpr`, `tau_hist`, `ROC_comp_full`) into functions; inputs from config. **Note:** `ROC_comp_full` reads `GNN_score_{sig,bkg}` from `tau_score_corr.pkl` (GNN-input BDT, dropped in step 5) — adapt it to ISO only.

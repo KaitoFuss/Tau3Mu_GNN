@@ -156,6 +156,30 @@ def test_rename_columns_snapshot_has_analysis_name_only(tmp_path):
     assert tree["run"].array().tolist() == [1, 2]
 
 
+def test_rename_columns_replaces_existing_analysis_column(tmp_path):
+    # User file has the analysis name AND an alternative branch it wants to use instead.
+    import ROOT
+
+    src = tmp_path / "in.root"
+    with uproot.recreate(src) as f:
+        f["Events"] = {"Slimmed_TauTo3Mu_fitted_pt": ak.Array([[9.0], [9.0]]),
+                       "MyPt": ak.Array([[1.0], [2.0]])}
+    df = ROOT.RDataFrame("Events", str(src))
+    df, columns = b.rename_columns(df, {"Slimmed_TauTo3Mu_fitted_pt": "MyPt"})
+    assert "MyPt" not in columns
+    out = tmp_path / "out.root"
+    df.Snapshot("Events", str(out), columns)
+    tree = uproot.open(out)["Events"]
+    assert "MyPt" not in tree.keys()
+    assert tree["Slimmed_TauTo3Mu_fitted_pt"].array().tolist() == [[1.0], [2.0]]
+
+
+def test_check_dedupes_overlapping_patterns(tmp_path):
+    make_root_file(tmp_path / "x1.root", REQ_W)
+    files = b.check_input_branches([str(tmp_path / "x*.root"), str(tmp_path / "x1.root")], "Events", {}, "W")
+    assert files == [str(tmp_path / "x1.root")]
+
+
 def test_rename_columns_identity_and_empty_map_change_nothing(tmp_path):
     import ROOT
 
