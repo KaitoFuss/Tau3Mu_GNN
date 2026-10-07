@@ -1,5 +1,7 @@
 import os
 
+import awkward as ak
+import numpy as np
 import pytest
 import uproot
 
@@ -130,3 +132,36 @@ def test_target_is_other_required_name(tmp_path):
 def test_identity_entry_is_allowed(tmp_path):
     f = make_root_file(tmp_path / "a.root", REQ_W)
     assert b.check_input_branches([str(f)], "Events", {"run": "run"}, "W") == [str(f)]
+
+
+def _tiny_jagged_file(path):
+    with uproot.recreate(path) as f:
+        f["Events"] = {"UserPt": ak.Array([[1.0, 2.0], [3.0]]), "run": np.array([1, 2], dtype=np.uint32)}
+    return path
+
+
+def test_rename_columns_snapshot_has_analysis_name_only(tmp_path):
+    import ROOT
+
+    src = _tiny_jagged_file(tmp_path / "in.root")
+    df = ROOT.RDataFrame("Events", str(src))
+    df, columns = b.rename_columns(df, {"Slimmed_TauTo3Mu_fitted_pt": "UserPt"})
+    assert "UserPt" not in columns
+    assert "Slimmed_TauTo3Mu_fitted_pt" in columns and "run" in columns
+    out = tmp_path / "out.root"
+    df.Snapshot("Events", str(out), columns)
+    tree = uproot.open(out)["Events"]
+    assert "UserPt" not in tree.keys()
+    assert tree["Slimmed_TauTo3Mu_fitted_pt"].array().tolist() == [[1.0, 2.0], [3.0]]
+    assert tree["run"].array().tolist() == [1, 2]
+
+
+def test_rename_columns_identity_and_empty_map_change_nothing(tmp_path):
+    import ROOT
+
+    src = _tiny_jagged_file(tmp_path / "in.root")
+    df = ROOT.RDataFrame("Events", str(src))
+    before = sorted(str(c) for c in df.GetColumnNames())
+    for mapping in ({}, {"run": "run"}):
+        _, columns = b.rename_columns(df, mapping)
+        assert sorted(columns) == before

@@ -127,8 +127,8 @@ From `jobs/gnn_score_creation/create_score_W_*.sh` and `jobs/analysis/create_dat
     └── limits.json               # cut → limit table, best cut marked
 ```
 
-- **Branch map**: applied **once**, by the first stage that runs in phase A (stage 0, or stage 1 if stage 0 is skipped), through one shared helper (`load_with_branch_map`). It renames his raw names → Kaito's raw names (`Slimmed_*`, `PFCands_*`, `TauPlusMET_*`, `Muon_*`, `PV_npvs`, `run`, `luminosityBlock`, `event`). All later stages run unchanged on Kaito's names. The prefix change `Slimmed_*` → `Selected_*` stays inside the skimmer.
-- **Required branches**: one explicit list (~60 branches) in code. After mapping, every required branch must exist. If one is missing: **crash loudly**, list all missing branches, do no work. No fallbacks, no computed substitutes.
+- **Branch map**: applied **once**, by the first stage that runs in phase A (stage 0, or stage 1 if stage 0 is skipped), through shared helpers in `pipeline/branches.py` (`check_input_branches`, `check_input_structure`, `rename_columns`). It renames his raw names → Kaito's raw names (`Slimmed_TauTo3Mu_*`, `Slimmed_PFCands_*`, `TauPlusMET_*`, `run`, `luminosityBlock`, `event`; list in `pipeline/branches.py`). All later stages run unchanged on Kaito's names. The prefix change `Slimmed_*` → `Selected_*` stays inside the skimmer.
+- **Required branches**: one explicit list in code (38 for W: `COMMON` + `PER_CHANNEL["W"]` in `pipeline/branches.py`). After mapping, every required branch must exist. If one is missing: **crash loudly**, list all missing branches, do no work. No fallbacks, no computed substitutes.
 
 ### 5.1 Config
 
@@ -228,13 +228,13 @@ Each step is small, testable, and keeps the old job scripts working.
 
 1. ✅ Agree on the design (this doc). Answer the open questions.
 2. ✅ Config: copy frozen model files to `models/W/` (paths in defaults are relative to repo root); `analysis_defaults_W.yaml`, `example_W.yaml`, and `config.py` (load both, merge, validation: missing key / unknown key / frozen key in user file → crash). Unit tests.
-3. Branch map: write the required-branch list, the `load_with_branch_map` helper, and tests (identity map on Kaito's files; renamed test file; missing branch → crash).
+3. ✅ Branch map: write the required-branch list, the check + rename helpers, and tests (identity map on Kaito's files; renamed test file; missing branch → crash).
 3b. Stage "resonance skim": add an empty placeholder stage (clear "not implemented" message, or pass-through when the input is already resonance-skimmed). Fill it when Kaito gives the code.
 4. Stage "skim": refactor to take inputs from config. Regression check vs old output.
-5. Stage "BDT inference": make `BDT_ScoreProducer` run **only** the ISO classifier. Remove the GNN classifier and the `GNN_score` input. (Own mini step, before the config refactor of this stage.)
+5. Stage "BDT inference": make `BDT_ScoreProducer` run **only** the ISO classifier. Remove the GNN classifier and the `GNN_score` input. (Own mini step, before the config refactor of this stage.) **Caution:** the BDT drops rows with NaN in *any loaded* column (`dropna`); loading fewer branches can change which events get `bdt_ISO` — check against the reference limit. Add a test that the BDT feature list ⊆ `required_branches("W")`.
 5b. Stage "BDT inference": take inputs from config.
-6. Stage "GNN inference": refactor `ScoreCreation`/`ScoreProducer` into a function; inputs from config. Regression check vs old output.
-7. Stage "model eval": refactor the `ModelEval` modes used here (`tau_hist_fpr`, `tau_hist`, `ROC_comp_full`) into functions; inputs from config.
+6. Stage "GNN inference": refactor `ScoreCreation`/`ScoreProducer` into a function; inputs from config. Regression check vs old output. Add a test that the GNN branch list ⊆ `required_branches("W")`.
+7. Stage "model eval": refactor the `ModelEval` modes used here (`tau_hist_fpr`, `tau_hist`, `ROC_comp_full`) into functions; inputs from config. **Note:** `ROC_comp_full` reads `GNN_score_{sig,bkg}` from `tau_score_corr.pkl` (GNN-input BDT, dropped in step 5) — adapt it to ISO only.
 8. Stage "limit": refactor `datacard_creation_GNN_permuted` + `readout_limit` into functions; inputs from config. Regression check: cut 3.9 → 1.2890625.
 8b. Cut scan: config `gnn_score_cut` takes one value or a list. One Combine job per cut, in parallel. A final job writes a table (cut → expected limit) and marks the best cut.
 9. Driver: phase sub-commands (A, B, C), run-single-stage, manifest write/read, input checks, stale-settings warning. **Run versioning**: phase A creates `<output_base>/<analysis_name>_vsN` (N = next free, same logic as `TrainingUtils.py` unique-name helper). Phases B and C use the latest `_vsN` by default; `--run <analysis_name>_vsN` picks another. Phase C cut scans add `cut_<value>/` folders inside the same run, no new version.
@@ -278,3 +278,6 @@ Tracked here. Answers move to section 8.
 | 2026-10-07 | Step 2 done (`src/tau3mu_gnn/pipeline/config.py`, `configs/`, `models/W/`, `tests/pipeline/`). Keys added later by their own steps: `slurm.*` (step 9), `paths.conda_env` (step 10). `gnn.arch` dropped: `ScoreCreation` only uses `--archs` in a length check. `tests/` was gitignored; now only `tests/pipeline/` is tracked. Run tests with `PYTHONPATH=<repo>/src python -m pytest`. |
 | 2026-10-07 | PR #7 review: `channel` lives only in the user file (it selects the defaults file); `channel` in the defaults file → unknown key. User sets `paths.output_base`; run folder is derived as `<output_base>/<analysis_name>` (`Config.output_dir`). Run versioning `_vsN` planned for step 9. |
 | 2026-10-07 | Pre-skim inputs (resonance-skimmed, before stage 1) live in `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/<sample>/old_data/` (W: `signal_skimmed_no_resonances.root`, 801,732 events; `data_skimmed_no_resonances.root`, 10,855,317 events; HF: `ds_large_signal_...`, `data_..._part1-4`). Checked: `Slimmed_TauTo3Mu_*` present, no `Selected_*`. Used in `configs/example_W.yaml`. Raw NanoAOD (before stage 0) still unknown; not needed while `already_resonance_skimmed: true`. |
+| 2026-10-07 | Step 3 done: `pipeline/branches.py` (`required_branches`, `check_input_branches`, `rename_columns`). 38 required W branches, all present in Kaito's W old_data files. HF list added in step 12. PF candidates are `Slimmed_PFCands_*` (not `PFCands_*`). |
+| 2026-10-07 | Flagged to Kaito (outside wrapper scope): `TauPlusMET_*` has one entry per **unskimmed** candidate, but `ScoreProducer.py:519/523` indexes it with the **skimmed** candidate mask; lengths match `nSlimmedTauTo3Mu` in only 99.36% of signal events. |
+| 2026-10-07 | On the T3 login node `gcc/12.2.0` is not available; importing ROOT prints a header error but RDataFrame works. Tests import ROOT only inside the tests that need it. |

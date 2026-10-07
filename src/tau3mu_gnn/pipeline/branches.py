@@ -114,3 +114,17 @@ def check_input_branches(patterns: Sequence[str], tree_name: str,
     if problems:
         raise BranchError(problems)
     return files
+
+
+def rename_columns(df, branch_map: Mapping[str, str]):
+    """Define each analysis name from the user's name on an RDataFrame.
+
+    Returns (df, columns): columns are all columns of the new df except the
+    user's original names that were renamed, ready for df.Snapshot(tree, file, columns).
+    """
+    renames = {analysis: user for analysis, user in branch_map.items() if analysis != user}
+    for analysis in sorted(renames):
+        df = df.Define(analysis, renames[analysis])
+    originals = set(renames.values())
+    columns = [str(c) for c in df.GetColumnNames() if str(c) not in originals]
+    return df, columns
