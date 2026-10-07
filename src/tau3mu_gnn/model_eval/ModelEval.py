@@ -191,6 +191,10 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
 
         ISO_bkg = data["ISO_score_bkg"][sideband_mask]
         ISO_sig = data["ISO_score_sig"]
+
+        ISO_bkg = ISO_bkg[ISO_bkg > 0.8]
+        ISO_sig = ISO_sig[ISO_sig > 0.8]
+
         ISO_scores = np.concatenate([ISO_sig, ISO_bkg])
         ISO_labels = np.concatenate([np.ones(len(ISO_sig)), np.zeros(len(ISO_bkg))])
 

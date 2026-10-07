@@ -31,8 +31,8 @@ CHANNEL = args.channel
 CUT = args.cut
 
 if CHANNEL == "W":
-    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores_with_scores_bdt.root"
-    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores_with_scores_bdt.root"
+    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances_with_scores_bdt_full.root"
+    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_with_scores_bdt_full.root"
 elif CHANNEL == "HF":
     CHANNEL="W"
     SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_ds_large_signal_skimmed_no_resonances_with_scores_with_scores_bdt.root"

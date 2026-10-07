@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
 
     print("Starting the ScoreProducer")
-
+    print(f"BDT Selections cut: {bdt_preselection_cut}")
     # max_events_to_process = 100000
 
     if max_events_to_process is None:
