@@ -57,9 +57,15 @@ def _channel(v):
 def _number(v):
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         hint = ""
-        if isinstance(v, str) and re.fullmatch(r"[-+]?\d+[eE][-+]?\d+", v.strip()):
+        if isinstance(v, str) and re.fullmatch(r"[-+]?(\d+\.?\d*|\.\d+)[eE][-+]?\d+", v.strip()):
+            # PyYAML only reads a float with a dot in the mantissa and a signed exponent.
             mantissa, exponent = re.split("[eE]", v.strip())
-            hint = f" (YAML reads this as text; write it as {mantissa}.0e{exponent})"
+            if "." not in mantissa:
+                mantissa += ".0"
+            mantissa = re.sub(r"^([-+]?)\.", r"\g<1>0.", mantissa)
+            if exponent[0] not in "+-":
+                exponent = "+" + exponent
+            hint = f" (YAML reads this as text; write it as {mantissa}e{exponent})"
         raise ValueError(f"must be a number, got {v!r}{hint}")
     return float(v)
 
@@ -236,6 +242,20 @@ class Config:
 
 # ---------------------------------------------------------------- loading
 
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """SafeLoader that rejects repeated keys instead of keeping the last value."""
+
+    def construct_mapping(self, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark)
+            seen.add(key)
+        return super().construct_mapping(node, deep)
+
+
 def _read_yaml(path: Path, problems: list[str]) -> dict | None:
     try:
         text = path.read_text()
@@ -243,7 +263,7 @@ def _read_yaml(path: Path, problems: list[str]) -> dict | None:
         problems.append(f"cannot read config file {path}: {e.strerror}")
         return None
     try:
-        data = yaml.safe_load(text)
+        data = yaml.load(text, Loader=_UniqueKeyLoader)
     except yaml.YAMLError as e:
         problems.append(f"{path}: not valid YAML: {e}")
         return None

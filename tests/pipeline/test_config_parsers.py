@@ -1,6 +1,7 @@
 from types import MappingProxyType
 
 import pytest
+import yaml
 
 from tau3mu_gnn.pipeline import config as c
 
@@ -40,6 +41,16 @@ def test_number_hint_for_yaml_exponent_text():
     # PyYAML reads `1e-5` (no dot) as the string "1e-5"
     with pytest.raises(ValueError, match=r"write it as 1\.0e-5"):
         c._number("1e-5")
+
+
+@pytest.mark.parametrize("text", ["1e5", "1.0e5", "1.9E5", ".5e3", "1e-5"])
+def test_number_hint_is_valid_yaml_float(text):
+    # PyYAML needs a dot in the mantissa and a signed exponent; the hint must satisfy both.
+    assert isinstance(yaml.safe_load(f"x: {text}")["x"], str)
+    with pytest.raises(ValueError, match="write it as") as e:
+        c._number(text)
+    suggested = str(e.value).split("write it as ")[1].rstrip(")")
+    assert yaml.safe_load(f"x: {suggested}")["x"] == float(text)
 
 
 def test_number_accepts_int_and_float():

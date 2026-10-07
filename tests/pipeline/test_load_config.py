@@ -125,6 +125,45 @@ limit:
     assert "unknown key" not in problems_of(e)
 
 
+def test_duplicate_key_is_error(load):
+    raw = """
+analysis_name: toy_run
+channel: W
+paths:
+  output_dir: /tmp/toy_out
+inputs:
+  signal: [/data/sig.root]
+  background: [/data/bkg.root]
+  already_resonance_skimmed: true
+limit:
+  signal_weight: 1.9e-5
+limit:
+  signal_weight: 2.0
+"""
+    with pytest.raises(ConfigError) as e:
+        load(raw_text=raw)
+    assert "duplicate key 'limit'" in problems_of(e)
+
+
+def test_duplicate_nested_key_is_error(load):
+    raw = """
+analysis_name: toy_run
+channel: W
+paths:
+  output_dir: /tmp/toy_out
+inputs:
+  signal: [/data/sig.root]
+  background: [/data/bkg.root]
+  already_resonance_skimmed: true
+limit:
+  signal_weight: 1.9e-5
+  signal_weight: 2.0
+"""
+    with pytest.raises(ConfigError) as e:
+        load(raw_text=raw)
+    assert "duplicate key 'signal_weight'" in problems_of(e)
+
+
 def test_missing_user_file(fake_repo):
     with pytest.raises(ConfigError) as e:
         load_config(fake_repo / "nope.yaml", defaults_dir=fake_repo / "configs")
