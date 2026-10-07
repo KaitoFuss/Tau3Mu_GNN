@@ -181,8 +181,9 @@ logs/
 # Ignore model eval script
 src/tau3mu_gnn/model_eval/signal_histo.py
 
-# Ignore the entire tests folder
-tests/
+# Ignore the tests folder, except the pipeline unit tests
+tests/*
+!tests/pipeline/
 
 # Ignore notebook folder
 notebooks/
