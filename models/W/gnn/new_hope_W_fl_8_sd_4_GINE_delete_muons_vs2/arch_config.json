@@ -1,0 +1,1 @@
+{"conv_params": [1004, 502, 251, 125, 62], "fc_params": [[1024, 0.8], [256, 0.8], [64, 0.8]], "use_fusion": true, "dropout": 0.2633831214702671, "fusion_scale_down_params": [[512, 0.8], [64, 0.8]]}
