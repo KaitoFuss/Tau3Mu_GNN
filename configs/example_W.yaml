@@ -3,11 +3,12 @@
 
 analysis_name: kaito_W_reference           # letters, digits, _ - . only; used as folder name
 
-channel: W
+channel: W                                 # selects configs/analysis_defaults_W.yaml
 
 paths:
-  # All outputs go here. Jobs write to /scratch first and then xrdcp to this location.
-  output_dir: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/kaito_W_reference
+  # All outputs go to <output_base>/<analysis_name>.
+  # Jobs write to /scratch first and then xrdcp to this location.
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
 
 inputs:
   # Globs are allowed. A single path is also fine.

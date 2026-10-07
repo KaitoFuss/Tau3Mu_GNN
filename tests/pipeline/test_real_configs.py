@@ -1,9 +1,12 @@
 from tau3mu_gnn.pipeline.config import REPO_ROOT, load_config
 
 
-def test_example_w_matches_production_settings():
+def test_example_w_matches_production_settings(monkeypatch):
+    monkeypatch.setenv("USER", "tester")
     cfg = load_config(REPO_ROOT / "configs" / "example_W.yaml")
     assert cfg.channel == "W"
+    assert cfg.output_dir == ("root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/"
+                              "tester/tau3mu_pipeline/kaito_W_reference")
     assert cfg.gnn.model_name == "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
     assert cfg.gnn.conv_type == "GINE"
     assert cfg.gnn.gnn_mode == "final_layer"

@@ -14,7 +14,8 @@ def test_valid_config_loads(load, user, fake_repo):
     cfg = load(user)
     assert cfg.analysis_name == "toy_run"
     assert cfg.channel == "W"
-    assert cfg.paths.output_dir == "/tmp/toy_out"
+    assert cfg.paths.output_base == "/tmp/toy_out"
+    assert cfg.output_dir == "/tmp/toy_out/toy_run"
     assert cfg.inputs.signal == ("/data/sig.root",)
     assert cfg.inputs.background == ("/data/bkg_*.root",)
     assert cfg.inputs.already_resonance_skimmed is True
@@ -95,7 +96,7 @@ def test_empty_branch_map_header_is_empty_map(load):
 analysis_name: toy_run
 channel: W
 paths:
-  output_dir: /tmp/toy_out
+  output_base: /tmp/toy_out
 inputs:
   signal: [/data/sig.root]
   background: [/data/bkg.root]
@@ -121,7 +122,7 @@ limit:
 """
     with pytest.raises(ConfigError) as e:
         load(raw_text=raw)
-    assert "missing required key 'paths.output_dir'" in problems_of(e)
+    assert "missing required key 'paths.output_base'" in problems_of(e)
     assert "unknown key" not in problems_of(e)
 
 
@@ -130,7 +131,7 @@ def test_duplicate_key_is_error(load):
 analysis_name: toy_run
 channel: W
 paths:
-  output_dir: /tmp/toy_out
+  output_base: /tmp/toy_out
 inputs:
   signal: [/data/sig.root]
   background: [/data/bkg.root]
@@ -150,7 +151,7 @@ def test_duplicate_nested_key_is_error(load):
 analysis_name: toy_run
 channel: W
 paths:
-  output_dir: /tmp/toy_out
+  output_base: /tmp/toy_out
 inputs:
   signal: [/data/sig.root]
   background: [/data/bkg.root]
@@ -190,9 +191,26 @@ def test_missing_frozen_model_file(load, user, fake_repo):
     assert "Normalization.pkl" in problems_of(e)
 
 
-def test_defaults_channel_must_match(load, user, fake_repo):
+def test_channel_not_allowed_in_defaults(load, user, fake_repo):
+    # The channel is chosen once, in the user file; the defaults file name carries it.
     path = fake_repo / "configs/analysis_defaults_W.yaml"
-    path.write_text(path.read_text().replace("channel: W", "channel: HF"))
+    path.write_text("channel: W\n" + path.read_text())
     with pytest.raises(ConfigError) as e:
         load(user)
-    assert "channel" in problems_of(e)
+    assert "unknown key 'channel'" in problems_of(e)
+
+
+@pytest.mark.parametrize("base, expected", [
+    ("/tmp/toy_out/", "/tmp/toy_out/toy_run"),
+    ("root://t3dcachedb03.psi.ch:1094//pnfs/x", "root://t3dcachedb03.psi.ch:1094//pnfs/x/toy_run"),
+])
+def test_output_dir_from_base_and_analysis_name(load, user, base, expected):
+    user["paths"]["output_base"] = base
+    assert load(user).output_dir == expected
+
+
+def test_old_output_dir_key_points_to_output_base(load, user):
+    user["paths"]["output_dir"] = user["paths"].pop("output_base")
+    with pytest.raises(ConfigError) as e:
+        load(user)
+    assert "did you mean 'paths.output_base'" in problems_of(e)

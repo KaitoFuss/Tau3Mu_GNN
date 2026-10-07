@@ -20,7 +20,6 @@ if _imported_from != REPO_ROOT:
 TOY_MODEL = "toy_model"
 
 TOY_DEFAULTS = {
-    "channel": "W",
     "skim": {"dz_max": 0.5, "cos_alpha_2d_min": 0.5},
     "bdt": {"classifier": "models/W/bdt/toy.pck"},
     "gnn": {
@@ -38,7 +37,7 @@ TOY_DEFAULTS = {
 TOY_USER = {
     "analysis_name": "toy_run",
     "channel": "W",
-    "paths": {"output_dir": "/tmp/toy_out"},
+    "paths": {"output_base": "/tmp/toy_out"},
     "inputs": {
         "signal": ["/data/sig.root"],
         "background": ["/data/bkg_*.root"],

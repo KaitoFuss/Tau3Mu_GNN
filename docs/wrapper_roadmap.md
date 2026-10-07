@@ -136,11 +136,11 @@ Merged view (defaults + user file). Kaito's W values shown.
 
 ```yaml
 analysis_name: W_new_hope_v2
-channel: W                              # W now, HF later
+channel: W                              # user file only; selects analysis_defaults_W.yaml
 
 paths:
-  output_dir: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/<user>/tau3mu_run/
-  repo_dir:   /work/<user>/SVJ_GNN
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  # run folder = <output_base>/<analysis_name>_vsN (version added in step 9)
   conda_env:  /work/<user>/miniforge3/envs/Tau3Mu
 
 inputs:
@@ -237,7 +237,7 @@ Each step is small, testable, and keeps the old job scripts working.
 7. Stage "model eval": refactor the `ModelEval` modes used here (`tau_hist_fpr`, `tau_hist`, `ROC_comp_full`) into functions; inputs from config.
 8. Stage "limit": refactor `datacard_creation_GNN_permuted` + `readout_limit` into functions; inputs from config. Regression check: cut 3.9 → 1.2890625.
 8b. Cut scan: config `gnn_score_cut` takes one value or a list. One Combine job per cut, in parallel. A final job writes a table (cut → expected limit) and marks the best cut.
-9. Driver: phase sub-commands (A, B, C), run-single-stage, manifest write/read, input checks, stale-settings warning.
+9. Driver: phase sub-commands (A, B, C), run-single-stage, manifest write/read, input checks, stale-settings warning. **Run versioning**: phase A creates `<output_base>/<analysis_name>_vsN` (N = next free, same logic as `TrainingUtils.py` unique-name helper). Phases B and C use the latest `_vsN` by default; `--run <analysis_name>_vsN` picks another. Phase C cut scans add `cut_<value>/` folders inside the same run, no new version.
 10. Bash entry point + README section for the new user.
 10b. `all` command: submits A, B and C at once. Each phase command takes `--after <JOBID>` and prints the job ID of its **last** job. `all` passes A's last job ID to B and B's to C (`--dependency=afterok:<JOBID>`). If a job fails, the later jobs never start.
 11. Dry run on a clean account / clean checkout.
@@ -278,3 +278,4 @@ Tracked here. Answers move to section 8.
 | 2026-10-07 | Frozen model files (GNN `.pt`, `Normalization.pkl`, `arch_config.json`, BDT ISO `.pck`; ~40 MB) are committed to the repo under `models/W/`. No LFS. |
 | 2026-10-07 | Config validation: plain Python (dataclasses + own checks). No new dependency. |
 | 2026-10-07 | Step 2 done (`src/tau3mu_gnn/pipeline/config.py`, `configs/`, `models/W/`, `tests/pipeline/`). Keys added later by their own steps: `slurm.*` (step 9), `paths.conda_env` (step 10). `gnn.arch` dropped: `ScoreCreation` only uses `--archs` in a length check. `tests/` was gitignored; now only `tests/pipeline/` is tracked. Run tests with `PYTHONPATH=<repo>/src python -m pytest`. |
+| 2026-10-07 | PR #7 review: `channel` lives only in the user file (it selects the defaults file); `channel` in the defaults file → unknown key. User sets `paths.output_base`; run folder is derived as `<output_base>/<analysis_name>` (`Config.output_dir`). Run versioning `_vsN` planned for step 9. |

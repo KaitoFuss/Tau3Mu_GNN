@@ -145,7 +145,7 @@ class _Field:
 USER_FIELDS: dict[str, _Field] = {
     "analysis_name": _Field(_name),
     "channel": _Field(_channel),
-    "paths.output_dir": _Field(_user_path),
+    "paths.output_base": _Field(_user_path),
     "inputs.signal": _Field(_user_path_list),
     "inputs.background": _Field(_user_path_list),
     "inputs.tree_name": _Field(_non_empty_str, required=False, default="Events"),
@@ -156,8 +156,8 @@ USER_FIELDS: dict[str, _Field] = {
 }
 
 # Keys of the frozen defaults file. Paths are relative to the repo root.
+# The channel is not repeated here: the user file selects analysis_defaults_<channel>.yaml.
 DEFAULTS_FIELDS: dict[str, _Field] = {
-    "channel": _Field(_channel),
     "skim.dz_max": _Field(_positive_number),
     "skim.cos_alpha_2d_min": _Field(_number),
     "bdt.classifier": _Field(_non_empty_str),
@@ -182,7 +182,7 @@ _LEAF_KEYS = {"branch_map"}
 
 @dataclass(frozen=True)
 class PathsConfig:
-    output_dir: str
+    output_base: str
 
 
 @dataclass(frozen=True)
@@ -238,6 +238,11 @@ class Config:
     limit: LimitConfig
     user_file: Path
     defaults_file: Path
+
+    @property
+    def output_dir(self) -> str:
+        """Run folder: <output_base>/<analysis_name>. String join, so xrootd URLs stay intact."""
+        return f"{self.paths.output_base.rstrip('/')}/{self.analysis_name}"
 
 
 # ---------------------------------------------------------------- loading
@@ -338,8 +343,6 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
         raise ConfigError(problems)
     source = f"defaults {defaults_path}"
     defaults = _parse(_flatten(defaults_raw, DEFAULTS_FIELDS), DEFAULTS_FIELDS, source, problems)
-    if "channel" in defaults and defaults["channel"] != user["channel"]:
-        problems.append(f"{source}: 'channel' is {defaults['channel']!r} but the user config asks for {user['channel']!r}")
 
     if {"bdt.classifier", "gnn.model_dir", "gnn.model_name"} <= defaults.keys():
         name = defaults["gnn.model_name"]
@@ -357,7 +360,7 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
     return Config(
         analysis_name=user["analysis_name"],
         channel=user["channel"],
-        paths=PathsConfig(output_dir=user["paths.output_dir"]),
+        paths=PathsConfig(output_base=user["paths.output_base"]),
         inputs=InputsConfig(
             signal=user["inputs.signal"],
             background=user["inputs.background"],
