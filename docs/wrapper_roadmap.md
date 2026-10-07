@@ -253,8 +253,6 @@ Tracked here. Answers move to section 8.
 ## 7b. Waiting on Kaito
 
 - Code for the resonance skim (raw NanoAOD → `*_skimmed_no_resonances.root`).
-- Location of the W input files **before** stage 1 (`*_skimmed_no_resonances.root` without `selected_`), or of the raw NanoAOD. Only the `selected_*` files exist in `/pnfs/.../tau3mu_gnn_round2/data/`. `configs/example_W.yaml` uses the `selected_*` files as placeholders until this is answered.
-
 ## 8. Decision log
 
 | Date | Decision |
@@ -279,3 +277,4 @@ Tracked here. Answers move to section 8.
 | 2026-10-07 | Config validation: plain Python (dataclasses + own checks). No new dependency. |
 | 2026-10-07 | Step 2 done (`src/tau3mu_gnn/pipeline/config.py`, `configs/`, `models/W/`, `tests/pipeline/`). Keys added later by their own steps: `slurm.*` (step 9), `paths.conda_env` (step 10). `gnn.arch` dropped: `ScoreCreation` only uses `--archs` in a length check. `tests/` was gitignored; now only `tests/pipeline/` is tracked. Run tests with `PYTHONPATH=<repo>/src python -m pytest`. |
 | 2026-10-07 | PR #7 review: `channel` lives only in the user file (it selects the defaults file); `channel` in the defaults file → unknown key. User sets `paths.output_base`; run folder is derived as `<output_base>/<analysis_name>` (`Config.output_dir`). Run versioning `_vsN` planned for step 9. |
+| 2026-10-07 | Pre-skim inputs (resonance-skimmed, before stage 1) live in `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/<sample>/old_data/` (W: `signal_skimmed_no_resonances.root`, 801,732 events; `data_skimmed_no_resonances.root`, 10,855,317 events; HF: `ds_large_signal_...`, `data_..._part1-4`). Checked: `Slimmed_TauTo3Mu_*` present, no `Selected_*`. Used in `configs/example_W.yaml`. Raw NanoAOD (before stage 0) still unknown; not needed while `already_resonance_skimmed: true`. |

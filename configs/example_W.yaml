@@ -12,12 +12,11 @@ paths:
 
 inputs:
   # Globs are allowed. A single path is also fine.
-  # NOTE: these two files already passed stage 1 (skim, "selected_" prefix).
-  # They are placeholders until the pre-skim / raw NanoAOD inputs are known.
+  # Kaito's W inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*).
   signal:
-    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/selected_signal_skimmed_no_resonances.root
+    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/old_data/signal_skimmed_no_resonances.root
   background:
-    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/selected_data_skimmed_no_resonances.root
+    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/old_data/data_skimmed_no_resonances.root
   tree_name: Events                        # optional, default: Events
   already_resonance_skimmed: true          # true: skip stage 0 (resonance skim)
 
