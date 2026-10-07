@@ -5,6 +5,12 @@ The user config's branch_map maps analysis name -> name in the user's files.
 """
 from __future__ import annotations
 
+import difflib
+import glob
+from typing import Mapping, Sequence
+
+import uproot
+
 _TAU = "Slimmed_TauTo3Mu_"
 _PF = "Slimmed_PFCands_"
 
@@ -43,3 +49,68 @@ def required_branches(channel: str) -> tuple[str, ...]:
     if channel not in PER_CHANNEL:
         raise BranchError([f"no required-branch list for channel {channel!r} (known: {sorted(PER_CHANNEL)})"])
     return COMMON + PER_CHANNEL[channel]
+
+
+def _check_map(branch_map: Mapping[str, str], required: tuple[str, ...]) -> list[str]:
+    problems = []
+    required_set = set(required)
+    seen_targets: dict[str, str] = {}
+    for key in sorted(branch_map):
+        target = branch_map[key]
+        if key not in required_set:
+            hint = difflib.get_close_matches(key, required, n=1)
+            problems.append(f"branch_map: unknown analysis branch '{key}'"
+                            + (f" (did you mean '{hint[0]}'?)" if hint else ""))
+        if target in seen_targets:
+            problems.append(f"branch_map: '{seen_targets[target]}' and '{key}' both map to '{target}'")
+        else:
+            seen_targets[target] = key
+        if target != key and target in required_set:
+            problems.append(f"branch_map: '{key}' maps to '{target}', which is itself a required analysis branch name")
+    return problems
+
+
+def _expand(patterns: Sequence[str], problems: list[str]) -> list[str]:
+    files = []
+    for pattern in patterns:
+        if any(c in pattern for c in "*?["):
+            matches = sorted(glob.glob(pattern))
+            if not matches:
+                problems.append(f"input pattern matches no file: {pattern}")
+            files.extend(matches)
+        else:
+            files.append(pattern)
+    return files
+
+
+def check_input_branches(patterns: Sequence[str], tree_name: str,
+                         branch_map: Mapping[str, str], channel: str) -> list[str]:
+    """Check that every input file has every required branch after the branch map.
+
+    Reads branch names only (no events). Returns the expanded file list.
+    Raises BranchError listing every problem of every file.
+    """
+    required = required_branches(channel)
+    problems = _check_map(branch_map, required)
+    files = _expand(patterns, problems)
+    for path in files:
+        try:
+            with uproot.open(path) as f:
+                keys = set(f[tree_name].keys())
+        except FileNotFoundError:
+            problems.append(f"{path}: file not found")
+            continue
+        except KeyError:
+            problems.append(f"{path}: no tree '{tree_name}'")
+            continue
+        except Exception as e:  # corrupt file, not ROOT, xrootd error, ...
+            problems.append(f"{path}: cannot open ({type(e).__name__}: {e})")
+            continue
+        missing = [name for name in required if branch_map.get(name, name) not in keys]
+        if missing:
+            lines = [f"      {branch_map[n]} (analysis name {n})" if branch_map.get(n, n) != n else f"      {n}"
+                     for n in missing]
+            problems.append(f"{path}: {len(missing)} required branch(es) missing:\n" + "\n".join(lines))
+    if problems:
+        raise BranchError(problems)
+    return files

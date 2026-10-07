@@ -1,7 +1,9 @@
 import copy
 from pathlib import Path
 
+import numpy as np
 import pytest
+import uproot
 import yaml
 
 import tau3mu_gnn
@@ -85,3 +87,11 @@ def load(fake_repo):
         return load_config(path, defaults_dir=fake_repo / "configs")
 
     return _load
+
+
+def make_root_file(path, names, tree="Events"):
+    """Write a tiny ROOT file with one flat float branch per name (2 entries)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with uproot.recreate(path) as f:
+        f[tree] = {name: np.array([1.0, 2.0]) for name in names}
+    return path
