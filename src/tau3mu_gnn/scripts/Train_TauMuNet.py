@@ -11,13 +11,13 @@ import argparse
 import os
 import pickle
 import numpy as np
+import json
 
 import tau3mu_gnn.gnn_training.EvaluationUtils as ueval
 import tau3mu_gnn.gnn_training.TrainingUtils as utrain
 
 # import linecache
-from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
-from tau3mu_gnn.architectures.TauMuNet import get_arch_configs
+from tau3mu_gnn.architectures.GNN_archs import get_arch_configs, get_arch_configs_random
 # import tracemalloc
 
 
@@ -41,7 +41,7 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, conv_type, data_base, finetune=False, finetune_lr=1e-4, finetune_epochs=10, bdt_threshold=0.8):
     """Train the model and evaluate it.
 
     Args:
@@ -55,6 +55,8 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         include_puppi : whether we include puppi weights or not
         tau_channel(str): tau channel (W or HF)
         gnn_mode(str): mode of GNN. Can be BDT, embed, final_layer
+        conv_type(str: type of convolution in GNN (GINE, GAT, Transformer support)
+        data_base(str): path to pt graphs, default is T3: /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data
     Returns: -
         
     """
@@ -67,29 +69,13 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     output_path = utrain.output_directory(name)
 
     # Directory for the graphs
-    if tau_channel == "W":
-        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/"
-        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/"
+    base_directory_signal = os.path.join(data_base, f"signal_{tau_channel}/")
+    base_directory_bkg    = os.path.join(data_base, f"background_{tau_channel}/")
 
-        datasets_signal = [
-            [base_directory_signal, f"W_decay_signal_{model_type}"],
-        ]
+    prefix = "W_decay" if tau_channel == "W" else "HF_decay"
 
-        datasets_bkg = [
-            [base_directory_bkg, f"W_decay_background_{model_type}"],
-        ]
-
-    elif tau_channel == "HF":
-        base_directory_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/"
-        base_directory_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/"
-
-        datasets_signal = [
-            [base_directory_signal, f"HF_decay_signal_{model_type}"],
-        ]
-
-        datasets_bkg = [
-            [base_directory_bkg, f"HF_decay_background_{model_type}"],
-        ]
+    datasets_signal = [[base_directory_signal, f"{prefix}_signal_{model_type}"]]
+    datasets_bkg    = [[base_directory_bkg,    f"{prefix}_background_{model_type}"]]
 
     # List: [paths to the "processed" directory containting the .pt files with the graph, name of the .pt file]
 
@@ -273,6 +259,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         use_fusion=params["use_fusion"],
         gnn_mode=gnn_mode,
         scale_down_params=params["fusion_scale_down_params"],
+        conv_type=conv_type,
     )
 
     # Define the optimizer
@@ -301,7 +288,52 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     
     print("Traininig finished")
 
-     ###--------- Evaluate the model -----------------------------------------------------------
+    ###--------- Fine-tune the network -----------------------------------------------------------
+
+    if finetune:
+        start_ft = time.time()
+        print("==> Fine-tuning on BDT-selected events...")
+
+        import shutil
+        shutil.copy(
+            os.path.join(output_path, name + ".pt"),
+            os.path.join(output_path, name + "_pretrained.pt")
+        )
+        print("==> Saved pre-trained checkpoint as _pretrained.pt")
+        
+        dataloader_finetune = GraphDataLoader(
+            datasets,
+            window_to_load=[[0., 0.6] for _ in range(len(datasets))],
+            dataset_fraction=df,
+            batch_size=batch_size,
+            normalizer=normalizer,
+            drop_last=True,
+            score_threshold=bdt_threshold,
+        )
+
+        # count surviving events before committing
+        n_bkg = sum(1 for d in dataloader_finetune.dataset if d.y == 0)
+        n_sig = sum(1 for d in dataloader_finetune.dataset if d.y == 1)
+        print(f"Fine-tune sample: {n_sig} signal, {n_bkg} background")
+
+        # reload best model checkpoint (early stopping may have saved it)
+        checkpoint = torch.load(os.path.join(output_path, name + ".pt"))
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        optimizer_ft = torch.optim.Adam(model.parameters(), lr=finetune_lr)
+        # no scheduler for fine-tuning — too few epochs for plateau detection to be meaningful
+
+        training_losses, validation_losses = train_and_validate(
+            model, finetune_epochs, dataloader_finetune, dataloader_validation,
+            loss_criterion, device, optimizer_ft, disco_reg, name, 
+            scheduler=None, tau_channel=tau_channel, gnn_mode=gnn_mode, finetune=finetune
+        )
+        print(f"==> Fine-tune completed in {time.time()-start_ft:.2f} seconds")
+
+        print("==> Saving losses...")
+        utrain.save_loss(training_losses, validation_losses, name, finetune=finetune)
+
+    ###--------- Evaluate the model -----------------------------------------------------------
 
     print("==> Evaluate Model...")
     start_eva = time.time()
@@ -319,12 +351,13 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     # ueval.plot_sic_small(roc,name)
     # ueval.plot_dnn(evaluation_dict,name)
     # ueval.plot_dnn_2(evaluation_dict, name)
+    ueval.plot_sculpting(evaluation_dict, name)
 
     print(f"==> Evaluation completed in {time.time()-start_eva:.2f} seconds")
 
     return auc
 
-def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode):
+def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode, finetune=False):
     """Train and validate model.
 
     Args:
@@ -348,9 +381,11 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     validation_discos = []
     validation_full_losses = []
 
-
     # initalize early stopping class
-    early_stop = utrain.early_stop()
+    if not finetune:
+        early_stop = utrain.early_stop()
+    else:
+        early_stop = utrain.early_stop(patience=20)
 
     # get output_path
     output_path = utrain.output_directory(name)
@@ -363,8 +398,11 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         disco_per_batch = 0
         loss_per_batch = 0
         
-        warmup = 20  # 30
-        lambda_eff = disco_reg * min(1.0, epoch / warmup) # we keep lambda for the first warmup epoch so we do in the beginnng large steps into the right directions
+        if finetune:
+            lambda_eff = disco_reg
+        else:
+            warmup = 20
+            lambda_eff = disco_reg * min(1.0, epoch / warmup) # we keep lambda for the first warmup epoch so we do in the beginnng large steps into the right directions
 
 
 
@@ -407,9 +445,9 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_bce = bce_per_batch/batch_counter
         epoch_disco = disco_per_batch/batch_counter
         training_losses.append(epoch_loss_training)
-        experiment.log_metric("Full training loss", epoch_loss_training, epoch=epoch)
-        experiment.log_metric("BCE training loss", epoch_bce, epoch=epoch)
-        experiment.log_metric("Disco training", epoch_disco, epoch=epoch)
+        experiment.log_metric(f"Full training loss", epoch_loss_training, epoch=epoch)
+        experiment.log_metric(f"BCE training loss", epoch_bce, epoch=epoch)
+        experiment.log_metric(f"Disco training", epoch_disco, epoch=epoch)
 
 
         # validation
@@ -460,24 +498,25 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         # calculate loss per epoch and log it
         epoch_bce_loss_validation = bce_per_batch/batch_counter
         validation_losses.append(epoch_bce_loss_validation)
-        experiment.log_metric("BCE validation loss", epoch_bce_loss_validation, epoch=epoch)
+        experiment.log_metric(f"BCE validation loss", epoch_bce_loss_validation, epoch=epoch)
 
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
-        experiment.log_metric("Disco validation", epoch_disco_validation, epoch=epoch)
+        experiment.log_metric(f"Disco validation", epoch_disco_validation, epoch=epoch)
 
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_full_losses.append(epoch_loss_validation)
-        experiment.log_metric("Full validation validation", epoch_loss_validation, epoch=epoch)
+        experiment.log_metric(f"Full validation validation", epoch_loss_validation, epoch=epoch)
 
-        scheduler.step(epoch_loss_validation)
+        if scheduler is not None:
+            scheduler.step(epoch_loss_validation)
 
         ## check for early stop
         early_stop(epoch_loss_validation,model,epoch,output_path,name)
         if early_stop.early_stop:
             break
         ## log the average loss as well
-        experiment.log_metric("Average full validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
+        experiment.log_metric(f"Average full validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
 
 
 
@@ -511,8 +550,11 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         }
 
     print("Model saved to ", output_path + "/" + name + ".pt")
-
-    with open(os.path.join(output_path, name + "_disco_loss.pkl"), "wb") as f:
+    
+    suffix = ""
+    if finetune:
+        suffix = "_finetune"
+    with open(os.path.join(output_path, name + f"_disco_loss{suffix}.pkl"), "wb") as f:
         pickle.dump(val_disco_loss, f)
 
        
@@ -527,11 +569,7 @@ if __name__ == "__main__":
         type=str,
         default="arch1",
         help="Choose model architecture"
-)
-
-
-    arch_configs = get_arch_configs()
-
+        )
     
     parser.add_argument(
         "--epochs",
@@ -596,6 +634,51 @@ if __name__ == "__main__":
         help="additional info for particular training"
         )
     
+    parser.add_argument(
+        "--conv_type",
+        default="GINE",
+        type=str,
+        help="GNN convolutional layer specification"
+        )
+    
+    parser.add_argument(
+        "--unsculpting_mode",
+        default="",
+        type=str,
+        help="Type of unsculpting mode"
+        )
+    
+    parser.add_argument(
+        "--data_base",
+        default="/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data",
+        type=str,
+        help="Base directory for signal and background graphs"
+        )
+    
+    parser.add_argument(
+        "--finetune", 
+        action="store_true", 
+        help="Enable fine-tuning phase"
+    )
+
+    parser.add_argument(
+        "--finetune_lr", 
+        default=1e-4, 
+        type=float
+    )
+
+    parser.add_argument(
+        "--finetune_epochs", 
+        default=10, 
+        type=int
+    )
+
+    parser.add_argument(
+        "--bdt_threshold", 
+        default=0.8, 
+        type=float
+    )
+    
 
     args = parser.parse_args()
 
@@ -609,9 +692,17 @@ if __name__ == "__main__":
     tau_channel = args.tau_channel
     gnn_mode = args.gnn_mode
     remark = args.remark
+    conv_type = args.conv_type
+    unsculpting_mode = args.unsculpting_mode
+    finetune = args.finetune
+    finetune_lr = args.finetune_lr
+    finetune_epochs = args.finetune_epochs
+    bdt_threshold = args.bdt_threshold
 
     assert tau_channel in ["W", "HF"], f"Invalid tau_channel: {tau_channel}"
     assert gnn_mode in ["BDT", "embed_once", "embed_always", "final_layer"]
+    assert conv_type in ["GINE", "GAT", "Transformer"]
+    assert unsculpting_mode in ["", "delete_muons", "permutation", "split_pt"]
 
 
     print("==> Running TauMuNet ")
@@ -622,9 +713,17 @@ if __name__ == "__main__":
         workspace="kaitofuss"
         )
     
+    if arch == "random":
+        model_params, arch_descr = get_arch_configs_random(tau_channel, disco_reg)
+    else:
+        model_params, arch_descr = get_arch_configs(arch, tau_channel, disco_reg)
+
     # overwriting names (adding versionnumber) such that no old files get overwritten
-    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), gnn_mode, tau_channel)
-    utrain.output_directory(name)
+    name = utrain.generate_name_with_versionnumber(name, os.getcwd(), tau_channel, arch_descr, unsculpting_mode, conv_type=conv_type, remark=remark)
+    output_path = utrain.output_directory(name)
+
+    with open(os.path.join(output_path, "arch_config.json"), "w") as f:
+        json.dump(model_params, f)
     
     #log hyperparameters in the experiment
     hyper_params = {
@@ -635,12 +734,18 @@ if __name__ == "__main__":
         "Model" : model_type,
         "tau_channel" : tau_channel,
         "gnn_mode": gnn_mode,
+        "conv_type": conv_type,
+        "unsculpting_mode": unsculpting_mode,
         "remark": remark,
     }
+
+    if finetune:
+        hyper_params["finetune_lr"] = finetune_lr
+        hyper_params["finetune_epochs"] = finetune_epochs
+        hyper_params["bdt_threshold"] = bdt_threshold
 
     experiment.log_parameters(hyper_params)
     experiment.set_name(name)
 
-    
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, arch_configs[arch], tau_channel, gnn_mode)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, conv_type, args.data_base, finetune=finetune, finetune_lr=finetune_lr, finetune_epochs=finetune_epochs, bdt_threshold=bdt_threshold)
 

@@ -1,11 +1,22 @@
 from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+# from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
 import logging
 import argparse
 import os
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
+parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
+parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
+parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
+parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None")
+parser.add_argument("--bdt_preselection_cut", action="store_true", help="whether BDT ISO is saved as graph attr")
+# parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
+args = parser.parse_args()
 
 # default values
-max_events_to_process = 100000
+# max_events_to_process = None
+max_events_to_process = 300000
 use_relative_angles = True
 save_edge_attributes = True
 save_event_number = False
@@ -14,6 +25,9 @@ save_fitted_tau_idx = False
 verbose = True
 use_displacement = True
 cone_size = 0.5
+unsculpting_mode = args.unsculpting_mode
+# if use_muon_permutation:
+#     max_events_to_process = max_events_to_process // 5
 
 def create_graph(
     root: str,
@@ -30,6 +44,7 @@ def create_graph(
     tau_channel: str = "W",
     graph_level_branches: list = [],
     save_benchmark_score: bool = False,
+    bdt_preselection_cut: str = False,
 ):
     dzd0 = "_dzd0" if use_displacement else ""
     suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
@@ -37,8 +52,13 @@ def create_graph(
         suffix += f"_{k_knn}"
     elif edge_connection_mode == "r_threshold":
         suffix += f"_{delta_r_threshold}"
-
+    if unsculpting_mode:
+        suffix += f"_{unsculpting_mode}"
+    else:
+        suffix += f"_testing"
     output_dataset_name = output_ident + suffix
+
+    print(output_dataset_name)
 
     ConeGraphProducer(
         root,
@@ -63,23 +83,18 @@ def create_graph(
         slimmed=slimmed,
         shuffle_bool=shuffle,
         use_displacement=use_displacement,
+        unsculpting_mode=unsculpting_mode,
+        bdt_preselection_cut=bdt_preselection_cut,
     )
                 
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--graph_type", choices=["fully", "knn", "r_threshold"], required=True, help="Type of edge connection")
-    parser.add_argument("--k", type=int, default=None, help="Number of nearest neighbors for knn")
-    parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
-    parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
-    # parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
-    args = parser.parse_args()
-
     model_type = args.graph_type
     k = args.k
     delta_r = args.delta_r
     tau_channel = args.tau_channel
+    bdt_preselection_cut = args.bdt_preselection_cut
     # max_events_to_process = args.nevents
 
     if model_type == "knn" and k is None:
@@ -113,14 +128,21 @@ if __name__ == "__main__":
     #     delta_r_threshold=delta_r
     # )
 
+    prefix = "Selected_"
+    graph_file_ident = "skimmed"
+    if bdt_preselection_cut:
+        graph_file_ident += f"_small_with_bdt_iso"
+
     if tau_channel == "W":
-        base_direc_W_signal = "data/signal_W"
+        base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
+        if bdt_preselection_cut:
+            base_direc_W_signal += "/bdt_full"
         # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
-            [base_direc_W_signal, "skimmed"],
+            [base_direc_W_signal, graph_file_ident],
         ]
         W_graph_level_branches = [
-            'Slimmed_TauTo3Mu_fitted_pt',
+            f'{prefix}TauTo3Mu_fitted_pt',
             'TauPlusMET_Tau_Puppi_mT',
             #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
             #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
@@ -131,12 +153,12 @@ if __name__ == "__main__":
             'TauPlusMET_Puppi_pt',
             'TauPlusMET_PuppiMETminPz',
             'TauPlusMET_PuppiMETmaxPz',
-            'Slimmed_TauTo3Mu_dZmu12', 
-            'Slimmed_TauTo3Mu_dZmu13', 
-            'Slimmed_TauTo3Mu_dZmu23',
-            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
-            'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
-            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+            f'{prefix}TauTo3Mu_dZmu12', 
+            f'{prefix}TauTo3Mu_dZmu13', 
+            f'{prefix}TauTo3Mu_dZmu23',
+            f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
+            f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+            f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
         ]
 
         for base_direc, signal_identifier in root_W_signals_skimmed:
@@ -156,14 +178,17 @@ if __name__ == "__main__":
                 tau_channel=tau_channel,
                 graph_level_branches=W_graph_level_branches,
                 weights="npvs_rescale",
-                save_benchmark_score=True
+                save_benchmark_score=True,
+                bdt_preselection_cut=bdt_preselection_cut
             )
         
-        base_direc_W_bkg = "data/background_W"
+        base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
+        if bdt_preselection_cut:
+            base_direc_W_bkg += "/bdt_full"
         # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
         root_bkgs_skimmed = [
-            [base_direc_W_bkg, "skimmed"]
+            [base_direc_W_bkg, graph_file_ident]
         ]
         for base_direc, bkg_identifier in root_bkgs_skimmed:
             output_ident_bkg = "W_decay_background_" + bkg_identifier.replace("/", "")
@@ -181,35 +206,38 @@ if __name__ == "__main__":
                 shuffle = True,
                 tau_channel=tau_channel,
                 graph_level_branches=W_graph_level_branches,
-                save_benchmark_score=True
+                save_benchmark_score=True,
+                bdt_preselection_cut=bdt_preselection_cut
             )
     
     elif tau_channel == "HF":
         # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
-        base_direc_HF_signal = "data/signal_HF"
+        base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
+        if bdt_preselection_cut:
+            base_direc_HF_signal += "/bdt_full"
 
         root_HF_signals_skimmed = [
-            [base_direc_HF_signal, "skimmed"],
+            [base_direc_HF_signal, graph_file_ident],
         ]
         HF_graph_level_branches = [
-            'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
+            f'Muon_pt[{prefix}TauTo3Mu_mu3_idx]',
             
             # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
             # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
             # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
 
-            'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
-            'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
-            'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+            f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]', 
+            f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]', 
+            f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]', 
 
-            'Slimmed_TauTo3Mu_dZmu12', 
-            'Slimmed_TauTo3Mu_dZmu13', 
-            'Slimmed_TauTo3Mu_dZmu23', 
+            f'{prefix}TauTo3Mu_dZmu12', 
+            f'{prefix}TauTo3Mu_dZmu13', 
+            f'{prefix}TauTo3Mu_dZmu23', 
 
-            'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
-            'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+            f'{prefix}TauTo3Mu_sigLxy_3muVtxBS', 
+            f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu', 
 
-            'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+            f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
         ]
 
         for base_direc, signal_identifier in root_HF_signals_skimmed:
@@ -229,13 +257,18 @@ if __name__ == "__main__":
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
                 weights="npvs_rescale",
-                save_benchmark_score=False
+                save_benchmark_score=False,
+                bdt_preselection_cut=bdt_preselection_cut
             )
 
         # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
-        base_direc_HF_bkg = "data/background_HF"
+        base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
+
+        if bdt_preselection_cut:
+            base_direc_HF_bkg += "/bdt_full"
+
         root_bkgs_skimmed = [
-            [base_direc_HF_bkg, "skimmed"]
+            [base_direc_HF_bkg, graph_file_ident]
         ]
 
         for base_direc, bkg_identifier in root_bkgs_skimmed:
@@ -247,14 +280,15 @@ if __name__ == "__main__":
                 label=0., 
                 mask=True, 
                 edge_connection_mode=model_type,
-                max_events_to_process=max_events_to_process//4,
+                max_events_to_process=max_events_to_process//4 if max_events_to_process is not None else max_events_to_process,
                 k_knn=k, 
                 delta_r_threshold=delta_r,
                 slimmed=True,
                 shuffle=True,
                 tau_channel=tau_channel,
                 graph_level_branches=HF_graph_level_branches,
-                save_benchmark_score=False
+                save_benchmark_score=False,
+                bdt_preselection_cut=bdt_preselection_cut
             )
 
     # root_W_signals = [

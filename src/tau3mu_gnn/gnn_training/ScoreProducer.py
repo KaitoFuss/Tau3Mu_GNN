@@ -336,12 +336,14 @@ class ScoreProducer:
         slimmed=False,
         shuffle_bool=False,
         use_displacement=False,
+        unsculpting_mode=None,
         models=None,
         device=None,
         normalizers=None,
         output_folders=None,
         storage_folder=None,
-        model_names=None
+        model_names=None,
+        bdt_preselection_cut=None
     ):
 
         self.root = root
@@ -373,11 +375,13 @@ class ScoreProducer:
         self.output_folders = output_folders
         self.storage_folder = storage_folder
         self.model_names = model_names
+        self.unsculpting_mode = unsculpting_mode
         self.edge_connection_methods = {
             "fully": self.connect_fully,
             "knn": self.connect_knn,
             "r_threshold": self.connect_r_threshold,
         } 
+        self.bdt_preselection_cut = bdt_preselection_cut
 
         if not (len(self.models) == len(self.normalizers) == len(self.output_folders)):
             raise ValueError(f"models ({len(self.models)}), normalizers ({len(self.normalizers)}) and output_folders ({len(self.output_folders)}) must all have the same length")
@@ -388,11 +392,25 @@ class ScoreProducer:
 
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
+        assert self.unsculpting_mode in ["permutation", "split_pt_uniformly", "delete_muons", None], "Unsupported unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None"
+
+        self.use_muon_permutation = False
+        self.use_split_pt_uniformly = False
+        self.delete_muons = False
+
+        if self.unsculpting_mode == "permutation":
+            self.use_muon_permutation = True
+        elif self.unsculpting_mode == "split_pt_uniformly":
+            self.use_split_pt_uniformly = True
+        elif self.unsculpting_mode == "delete_muons":
+            self.delete_muons = True
+
         # Assert that no incompatible flags are used
+        prefix = "Selected_" if self.slimmed else ""
 
         if self.tau_channel == "W":
             self.graph_level_branches = [
-                'Slimmed_TauTo3Mu_fitted_pt',
+                f'{prefix}TauTo3Mu_fitted_pt',
                 'TauPlusMET_Tau_Puppi_mT',
                 #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
                 #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
@@ -403,33 +421,33 @@ class ScoreProducer:
                 'TauPlusMET_Puppi_pt',
                 'TauPlusMET_PuppiMETminPz',
                 'TauPlusMET_PuppiMETmaxPz',
-                'Slimmed_TauTo3Mu_dZmu12', 
-                'Slimmed_TauTo3Mu_dZmu13', 
-                'Slimmed_TauTo3Mu_dZmu23',
-                'Slimmed_TauTo3Mu_sigLxy_3muVtxBS',
-                'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
-                'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu',
+                f'{prefix}TauTo3Mu_dZmu12', 
+                f'{prefix}TauTo3Mu_dZmu13', 
+                f'{prefix}TauTo3Mu_dZmu23',
+                f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
+                f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+                f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
             ]
         elif self.tau_channel == "HF":
             self.graph_level_branches = [
-                'Muon_pt[Slimmed_TauTo3Mu_mu3_idx]',
-            
+                f'Muon_pt[{prefix}TauTo3Mu_mu3_idx]',
+                
                 # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
                 # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
                 # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
 
-                'Muon_isGlobal[Slimmed_TauTo3Mu_mu1_idx]', 
-                'Muon_isGlobal[Slimmed_TauTo3Mu_mu2_idx]', 
-                'Muon_isGlobal[Slimmed_TauTo3Mu_mu3_idx]', 
+                f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]', 
+                f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]', 
+                f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]', 
 
-                'Slimmed_TauTo3Mu_dZmu12', 
-                'Slimmed_TauTo3Mu_dZmu13', 
-                'Slimmed_TauTo3Mu_dZmu23', 
+                f'{prefix}TauTo3Mu_dZmu12', 
+                f'{prefix}TauTo3Mu_dZmu13', 
+                f'{prefix}TauTo3Mu_dZmu23', 
 
-                'Slimmed_TauTo3Mu_sigLxy_3muVtxBS', 
-                'Slimmed_TauTo3Mu_CosAlpha2D_LxyP3mu', 
+                f'{prefix}TauTo3Mu_sigLxy_3muVtxBS', 
+                f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu', 
 
-                'Slimmed_TauTo3Mu_vtx_chi2*(Slimmed_TauTo3Mu_vtx_Ndof**-1)',
+                f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
             ]
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
@@ -441,8 +459,9 @@ class ScoreProducer:
 
     def process_event(self, i_start, i_stop, events, xsec, gen_events_before_selection, total_events, events_to_process, bkg_mask, npvs_weights, score_dict_for_root):
 
-        prefix = "Slimmed_" if self.slimmed else ""
-        n_prefix = "Slimmed" if self.slimmed else ""
+        prefix = "Selected_" if self.slimmed else ""
+        n_prefix = "Selected" if self.slimmed else ""
+        old_prefix = "Slimmed_" if self.slimmed else ""
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
@@ -467,26 +486,33 @@ class ScoreProducer:
                 n_tau = min(n_tau, ak.sum(bkg_mask[i_ev]))
             else:
                 n_tau = event[f"n{n_prefix}TauTo3Mu"] 
+            
+            if self.bdt_preselection_cut is not None and event["bdt_ISO"] < self.bdt_preselection_cut:
+                continue
 
-            pfcands_pt = event[f"{prefix}PFCands_pt"]
-            pfcands_eta = event[f"{prefix}PFCands_eta"]
-            pfcands_phi = event[f"{prefix}PFCands_phi"]
-            pfcands_pdgId = event[f"{prefix}PFCands_pdgId"]
-            pfcands_mass = event[f"{prefix}PFCands_mass"]
-            pfcands_charge = event[f"{prefix}PFCands_charge"]
-            pfcands_pupppiWeight = event[f"{prefix}PFCands_puppiWeight"]
+            pfcands_pt = event[f"{old_prefix}PFCands_pt"]
+            pfcands_eta = event[f"{old_prefix}PFCands_eta"]
+            pfcands_phi = event[f"{old_prefix}PFCands_phi"]
+            pfcands_pdgId = event[f"{old_prefix}PFCands_pdgId"]
+            pfcands_mass = event[f"{old_prefix}PFCands_mass"]
+            pfcands_charge = event[f"{old_prefix}PFCands_charge"]
+            pfcands_pupppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             key = (runs[i_ev], lumis[i_ev], event_ids[i_ev])
             tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
+            if n_tau == 0:
+                # print("Skipping event as all TauCands have not been selected")
+                continue
             nt = np.argmax(event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask])
-            
+            if n_tau > 1:
+                print(f"WARNING: using {nt}-th tau cand")
             # Read data for fitted tau from event
             fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
             fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
             fitted_tau_phi = event[f"{prefix}{self.tau_collection_name}_phi"][tau_mask][nt] 
             fitted_tau_mass = event[f"{prefix}{self.tau_collection_name}_mass"][tau_mask][nt] 
-            
+
             graph_level_features = []
 
             for branch_name in self.graph_level_branches:
@@ -544,9 +570,13 @@ class ScoreProducer:
             pfcands_charge_masked = pfcands_charge[cone_mask]
             pfcands_puppiWeight_masked = pfcands_pupppiWeight[cone_mask]
 
+            if len(pfcands_pt_masked) <= 1:
+                    logging.warning(f"Empty graph for tau candidate {nt} in event {i_ev}, skipping.")
+                    continue
+
             if self.use_displacement:
-                pfcands_d0_masked = event[f"{prefix}PFCands_d0"][cone_mask]
-                pfcands_dz_masked = event[f"{prefix}PFCands_dz"][cone_mask]
+                pfcands_d0_masked = event[f"{old_prefix}PFCands_d0"][cone_mask]
+                pfcands_dz_masked = event[f"{old_prefix}PFCands_dz"][cone_mask]
             else:
                 pfcands_d0_masked, pfcands_dz_masked = None, None 
 
@@ -749,17 +779,18 @@ class ScoreProducer:
             gen_events_before_selection = None
             npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
 
-        prefix = "Slimmed_" if self.slimmed else ""
-        n_prefix = "Slimmed" if self.slimmed else ""
+        prefix = "Selected_" if self.slimmed else ""
+        n_prefix = "Selected" if self.slimmed else ""
+        old_prefix = "Slimmed_" if self.slimmed else ""
         branches_to_load = [
             # f"n{n_prefix}PFCands",
-            f"{prefix}PFCands_pt",
-            f"{prefix}PFCands_eta",
-            f"{prefix}PFCands_phi",
-            f"{prefix}PFCands_pdgId",
-            f"{prefix}PFCands_mass",  
-            f"{prefix}PFCands_charge",
-            f"{prefix}PFCands_puppiWeight",
+            f"{old_prefix}PFCands_pt",
+            f"{old_prefix}PFCands_eta",
+            f"{old_prefix}PFCands_phi",
+            f"{old_prefix}PFCands_pdgId",
+            f"{old_prefix}PFCands_mass",  
+            f"{old_prefix}PFCands_charge",
+            f"{old_prefix}PFCands_puppiWeight",
             f"n{n_prefix}TauTo3Mu",
             # f"{prefix}TauTo3Mu_mu1_idx",
             f"{prefix}TauTo3Mu_mu1_eta",
@@ -789,6 +820,9 @@ class ScoreProducer:
             "event",   
         ]
 
+        if self.bdt_preselection_cut is not None:
+            branches_to_load += [f"bdt_ISO"] 
+
         branches_to_load += self.graph_level_branches
 
         if self.tau_channel == "W":
@@ -800,7 +834,7 @@ class ScoreProducer:
             pass # no additional features needed
 
         if self.use_displacement:
-            branches_to_load += [f"{prefix}PFCands_d0", f"{prefix}PFCands_dz"]
+            branches_to_load += [f"{old_prefix}PFCands_d0", f"{old_prefix}PFCands_dz"]
 
         all_scores_dict = {name: [] for name in self.model_names}
         all_tau_masses = []
@@ -1007,10 +1041,11 @@ class ScoreProducer:
                 print(f"Deleted temporary file {root_path_sc_only}")
             
         # Save raw arrays to compressed npz
+        suffix = "" if self.bdt_preselection_cut is None else "_with_bdt_cut"
         for name, output_folder in zip(self.model_names, self.output_folders):
             os.makedirs(output_folder, exist_ok=True)
             np.savez_compressed(
-                os.path.join(output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
+                os.path.join(output_folder, f"raw_scores_and_tau_mass_{mode}{suffix}.npz"),
                 scores=all_scores_dict[name],
                 tau_mass=all_tau_masses,
             )
@@ -1076,9 +1111,18 @@ class ScoreProducer:
         else:
             cone_size_sq = self.cone_size ** 2
 
-        cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
-        
-        # TODO extract tau3mu cands from pfcands to prevent them from being in the Graph, st. GNN does not just learn tau mass
+        if self.delete_muons:
+            mu_indices = self.get_muon_idx(mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta, pfcands_phi)
+            n = len(pfcands_eta)
+            mu_mask = np.zeros(n, dtype=bool)
+            mu_mask[mu_indices[0]] = True
+            mu_mask[mu_indices[1]] = True
+            mu_mask[mu_indices[2]] = True
+
+            non_mu_mask = ak.Array(~mu_mask)
+            cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) & non_mu_mask
+        else:
+            cone_mask = (delta_R_sq_pfcands_tau < cone_size_sq) # binary ak.array whether pf_cand is inside cone or not
 
         return cone_mask
     
@@ -1096,3 +1140,14 @@ class ScoreProducer:
         delta_phi = np.minimum(delta_phi_internal, delta_phi_external)
         return delta_phi
         
+    def get_muon_idx(self, mu1_eta, mu1_phi, mu2_eta, mu2_phi, mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked):
+        delta_R_sq_mu1 = self.calc_delta_R_sq(mu1_eta, mu1_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu2 = self.calc_delta_R_sq(mu2_eta, mu2_phi, pfcands_eta_masked, pfcands_phi_masked)
+        delta_R_sq_mu3 = self.calc_delta_R_sq(mu3_eta, mu3_phi, pfcands_eta_masked, pfcands_phi_masked)
+
+        idx_mu1 = np.argmin(delta_R_sq_mu1)
+        idx_mu2 = np.argmin(delta_R_sq_mu2)
+        idx_mu3 = np.argmin(delta_R_sq_mu3)
+
+        mu_indices = [idx_mu1, idx_mu2, idx_mu3]
+        return mu_indices

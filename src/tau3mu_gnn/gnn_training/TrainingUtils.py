@@ -158,7 +158,7 @@ def output_directory(name):
     
     return output_path
 
-def save_loss(training_losses, validation_losses, name):
+def save_loss(training_losses, validation_losses, name, finetune=False):
     """Save Losses in root file and make plots of it.
 
     Args:
@@ -174,11 +174,13 @@ def save_loss(training_losses, validation_losses, name):
         "Training_loss": np.array(training_losses),
         "Validation_loss": np.array(validation_losses),
     }
-
+    suffix = ""
+    if finetune:
+        suffix = "_finetune"
     output_path = output_directory(name)
 
     # take output and convert each column to a list and safe it in a root file
-    output_file_path = output_path + f"/{name}_loss.root"
+    output_file_path = output_path + f"/{name}_loss{suffix}.root"
     file = uproot.recreate(output_file_path)
     df = pd.DataFrame(output_dict,columns=output_dict.keys())
     file["Output"] = df
@@ -198,7 +200,7 @@ def save_loss(training_losses, validation_losses, name):
     plt.legend()
 
     output_path = output_directory(name)
-    outout_plot_name = name + "_loss.png"
+    outout_plot_name = name + f"_loss{suffix}.png"
     plt.savefig(os.path.join(output_path,outout_plot_name), dpi = 200)
     plt.close()
     print(f"{outout_plot_name} has been saved.")
@@ -206,26 +208,29 @@ def save_loss(training_losses, validation_losses, name):
  
 
 
-def generate_name_with_versionnumber(base_name, directory, gnn_mode, tau_channel):
-    """Generate the name with a version number so that I dont' overwrite stuff.
-
+def generate_name_with_versionnumber(base_name, directory, tau_channel, unique_ident, unsculpting_mode, conv_type="GINE", remark=""):
+    """Generate the name with a version number so that I don't overwrite stuff.
     Args:
-        base_name(str): Name of the experiment
-        directory(str): current working directory
-
-    Returns: unique_name(str): base_name with version number
-        
+        base_name (str): Name of the experiment
+        directory (str): current working directory
+        tau_channel (str): tau channel identifier
+        unique_ident (list[str]): list of identifier strings to include in name
+        conv_type (str): name of Conv layer type
+    Returns:
+        unique_name (str): base_name with version number
     """
-        
+    ident_str = "_".join(unique_ident) if unique_ident else ""
+    prefix = f"{base_name}_{tau_channel}"
+    unique_name_base = f"{prefix}_{ident_str}" if ident_str else prefix
+    unique_name_base = f"{unique_name_base}_{conv_type}"
+    unique_name_base = f"{unique_name_base}_{unsculpting_mode}" if unsculpting_mode else unique_name_base
+    unique_name_base = f"{unique_name_base}_{remark}" if remark else unique_name_base
     version = 1
-    unique_name = f"{base_name}_{tau_channel}_{gnn_mode}_vs{version}"
-
+    unique_name = f"{unique_name_base}_vs{version}"
     while os.path.exists(os.path.join(directory, "output", unique_name)):
         version += 1
-        unique_name = f"{base_name}_{tau_channel}_{gnn_mode}_vs{version}"
-
+        unique_name = f"{unique_name_base}_vs{version}"
     return unique_name
-
 
 
 class early_stop:

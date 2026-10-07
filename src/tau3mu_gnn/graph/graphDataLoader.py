@@ -51,6 +51,7 @@ class GraphDataLoader(DataLoader):
             device: torch.device=None,
             sample = True,
             drop_last=False,
+            score_threshold=None,
             **kwargs,
     ):
         self.dataset_paths = dataset_paths
@@ -89,6 +90,15 @@ class GraphDataLoader(DataLoader):
                 data = data[self.permutation[name]]
             
             data = data[int(self.window_to_load[i][0]*len(data)):int(self.window_to_load[i][1]*len(data))]
+
+            if score_threshold is not None:
+                print(f"Length of dataset before BDT score cut: {len(data)}")
+                indices = data.indices() if hasattr(data, 'indices') else range(len(data))
+                bdt_scores = data._data.bdt_iso[list(indices)]
+                mask = bdt_scores >= score_threshold
+                data = data[mask]
+                print(f"Length of dataset after BDT score cut: {len(data)}")
+
             weights.append(data.w)
 
             if dataset_fraction is not None:

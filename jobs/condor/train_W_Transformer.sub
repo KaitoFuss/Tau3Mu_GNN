@@ -1,0 +1,14 @@
+universe    = vanilla
+executable  = /afs/cern.ch/user/k/kfuss/condor_jobs/train_W_Transformer1.sh
+output      = /afs/cern.ch/user/k/kfuss/condor_logs/train_W.$(ClusterId).$(ProcId).out
+error       = /afs/cern.ch/user/k/kfuss/condor_logs/train_W.$(ClusterId).$(ProcId).err
+log         = /afs/cern.ch/user/k/kfuss/condor_logs/train_W.$(ClusterId).log
+
+request_CPUs   = 5
+request_memory = 115000
+request_GPUs   = 1
++WantGPUSlot   = True
++JobFlavour    = "tomorrow"
+requirements = (GPUs_Capability >= 7.0) && (GPUs_GlobalMemoryMb >= 30000)
+
+queue

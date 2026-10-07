@@ -186,3 +186,5 @@ tests/
 
 # Ignore notebook folder
 notebooks/
+
+HiggsAnalysis/
