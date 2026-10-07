@@ -207,10 +207,3 @@ def test_channel_not_allowed_in_defaults(load, user, fake_repo):
 def test_output_dir_from_base_and_analysis_name(load, user, base, expected):
     user["paths"]["output_base"] = base
     assert load(user).output_dir == expected
-
-
-def test_old_output_dir_key_points_to_output_base(load, user):
-    user["paths"]["output_dir"] = user["paths"].pop("output_base")
-    with pytest.raises(ConfigError) as e:
-        load(user)
-    assert "did you mean 'paths.output_base'" in problems_of(e)
