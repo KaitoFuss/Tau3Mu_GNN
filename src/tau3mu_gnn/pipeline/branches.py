@@ -9,6 +9,8 @@ import difflib
 import glob
 from typing import Mapping, Sequence
 
+import awkward as ak
+import numpy as np
 import uproot
 
 _TAU = "Slimmed_TauTo3Mu_"
@@ -128,3 +130,45 @@ def rename_columns(df, branch_map: Mapping[str, str]):
     originals = set(renames.values())
     columns = [str(c) for c in df.GetColumnNames() if str(c) not in originals]
     return df, columns
+
+
+# Branches with one entry per tau candidate / PF candidate / TauPlusMET object.
+# Lengths are compared inside a family only: TauPlusMET_* has one entry per
+# unskimmed candidate and can differ from Slimmed_TauTo3Mu_* (seen in Kaito's signal).
+FAMILIES: tuple[str, ...] = ("Slimmed_TauTo3Mu_", "Slimmed_PFCands_", "TauPlusMET_")
+
+
+def check_input_structure(files: Sequence[str], tree_name: str, branch_map: Mapping[str, str],
+                          channel: str, n_events: int = 1000) -> None:
+    """Check per-event list lengths agree within each branch family (first n_events per file).
+
+    Expects files that already passed check_input_branches. Raises BranchError listing every problem.
+    """
+    required = required_branches(channel)
+    problems = []
+    for path in files:
+        tree = uproot.open(path)[tree_name]
+        for family in FAMILIES:
+            members = [n for n in required if n.startswith(family)]
+            if not members:
+                continue
+            user_names = [branch_map.get(n, n) for n in members]
+            arrays = tree.arrays(user_names, entry_stop=n_events, library="ak")
+            reference = None
+            for analysis, user in zip(members, user_names):
+                label = analysis if user == analysis else f"{user} (analysis name {analysis})"
+                try:
+                    counts = np.asarray(ak.num(arrays[user], axis=1))
+                except Exception:
+                    problems.append(f"{path}: {label} is not a per-event list ({family}* branches must be)")
+                    continue
+                if reference is None:
+                    reference = (label, counts)
+                    continue
+                bad = np.nonzero(counts != reference[1])[0]
+                if bad.size:
+                    i = int(bad[0])
+                    problems.append(f"{path}: {family}* branches differ in length: {reference[0]} has "
+                                    f"{reference[1][i]} but {label} has {counts[i]} (first at entry {i})")
+    if problems:
+        raise BranchError(problems)
