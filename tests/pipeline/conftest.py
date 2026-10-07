@@ -1,4 +1,8 @@
+import copy
 from pathlib import Path
+
+import pytest
+import yaml
 
 import tau3mu_gnn
 
@@ -11,3 +15,74 @@ if _imported_from != REPO_ROOT:
         f"tau3mu_gnn imported from {_imported_from}, expected {REPO_ROOT}. "
         f"Run with PYTHONPATH={REPO_ROOT / 'src'}"
     )
+
+
+TOY_MODEL = "toy_model"
+
+TOY_DEFAULTS = {
+    "channel": "W",
+    "skim": {"dz_max": 0.5, "cos_alpha_2d_min": 0.5},
+    "bdt": {"classifier": "models/W/bdt/toy.pck"},
+    "gnn": {
+        "model_dir": "models/W/gnn",
+        "model_name": TOY_MODEL,
+        "conv_type": "GINE",
+        "gnn_mode": "final_layer",
+        "unsculpting_mode": "delete_muons",
+        "graph_type": "skimmed_dzd0_cone_size_0.5_knn_10",
+        "bdt_preselection_cut": 0.8,
+    },
+    "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.62, 1.98], "cl": 0.9},
+}
+
+TOY_USER = {
+    "analysis_name": "toy_run",
+    "channel": "W",
+    "paths": {"output_dir": "/tmp/toy_out"},
+    "inputs": {
+        "signal": ["/data/sig.root"],
+        "background": ["/data/bkg_*.root"],
+        "already_resonance_skimmed": True,
+    },
+    "limit": {"signal_weight": 1.9e-5},
+}
+
+
+def write_yaml(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(data))
+
+
+@pytest.fixture
+def fake_repo(tmp_path):
+    write_yaml(tmp_path / "configs" / "analysis_defaults_W.yaml", TOY_DEFAULTS)
+    for rel in [
+        "models/W/bdt/toy.pck",
+        f"models/W/gnn/{TOY_MODEL}/{TOY_MODEL}.pt",
+        f"models/W/gnn/{TOY_MODEL}/Normalization.pkl",
+        f"models/W/gnn/{TOY_MODEL}/arch_config.json",
+    ]:
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+    return tmp_path
+
+
+@pytest.fixture
+def user():
+    return copy.deepcopy(TOY_USER)
+
+
+@pytest.fixture
+def load(fake_repo):
+    from tau3mu_gnn.pipeline.config import load_config
+
+    def _load(user_dict=None, raw_text=None):
+        path = fake_repo / "user.yaml"
+        if raw_text is not None:
+            path.write_text(raw_text)
+        else:
+            write_yaml(path, user_dict)
+        return load_config(path, defaults_dir=fake_repo / "configs")
+
+    return _load
