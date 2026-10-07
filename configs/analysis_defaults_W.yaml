@@ -1,0 +1,27 @@
+# Frozen analysis settings for the W channel.
+# NOT meant to be edited. Put your own settings in your user config (see example_W.yaml).
+# Paths are relative to the repository root.
+
+channel: W
+
+skim:                          # stage 1, values from tau3mu_gnn/utils/skimmer.py
+  dz_max: 0.5                  # |dZ(mu_i, mu_j)| < dz_max for all three pairs
+  cos_alpha_2d_min: 0.5        # CosAlpha2D_LxyP3mu > cos_alpha_2d_min
+
+bdt:                           # stage 2, ISO BDT only
+  classifier: models/W/bdt/ISO_classifiers_24feb2026_v0.pck
+
+gnn:                           # stage 3, fixed model
+  model_dir: models/W/gnn      # files in <model_dir>/<model_name>/
+  model_name: new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2
+  conv_type: GINE
+  gnn_mode: final_layer
+  unsculpting_mode: delete_muons
+  graph_type: skimmed_dzd0_cone_size_0.5_knn_10
+  bdt_preselection_cut: 0.8    # run the GNN only on events with BDT ISO score > this
+
+limit:                         # stage 5, mass fit + Combine
+  tau_mass: 1.78               # GeV
+  mass_window: 0.060           # GeV, half-width of the blinded signal window
+  fit_range: [1.62, 1.98]      # GeV
+  cl: 0.90                     # confidence level of the expected limit

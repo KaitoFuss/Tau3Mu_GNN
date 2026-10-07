@@ -1,0 +1,21 @@
+from tau3mu_gnn.pipeline.config import REPO_ROOT, load_config
+
+
+def test_example_w_matches_production_settings():
+    cfg = load_config(REPO_ROOT / "configs" / "example_W.yaml")
+    assert cfg.channel == "W"
+    assert cfg.gnn.model_name == "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
+    assert cfg.gnn.conv_type == "GINE"
+    assert cfg.gnn.gnn_mode == "final_layer"
+    assert cfg.gnn.unsculpting_mode == "delete_muons"
+    assert cfg.gnn.graph_type == "skimmed_dzd0_cone_size_0.5_knn_10"
+    assert cfg.gnn.bdt_preselection_cut == 0.8
+    assert cfg.bdt.classifier == REPO_ROOT / "models/W/bdt/ISO_classifiers_24feb2026_v0.pck"
+    assert cfg.skim.dz_max == 0.5
+    assert cfg.skim.cos_alpha_2d_min == 0.5
+    assert cfg.limit.gnn_score_cut == (3.9,)
+    assert cfg.limit.signal_weight == 0.000019
+    assert cfg.limit.tau_mass == 1.78
+    assert cfg.limit.mass_window == 0.060
+    assert cfg.limit.fit_range == (1.62, 1.98)
+    assert cfg.limit.cl == 0.90

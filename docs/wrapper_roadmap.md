@@ -201,6 +201,11 @@ src/tau3mu_gnn/pipeline/
 ├── storage.py      # scratch dir + xrdcp to output_dir
 ├── slurm.py        # submit jobs, dependencies (later: condor.py)
 └── stages/         # one thin file per stage 0-5
+models/W/                     # frozen model files, committed to the repo (~40 MB)
+├── gnn/new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2.pt
+├── gnn/Normalization.pkl
+├── gnn/arch_config.json
+└── bdt/ISO_classifiers_24feb2026_v0.pck
 configs/
 ├── analysis_defaults_W.yaml
 └── example_W.yaml
@@ -222,7 +227,7 @@ Existing scripts (`skimmer.py`, `BDT_ScoreProducer.py`, `datacard_creation_GNN_p
 Each step is small, testable, and keeps the old job scripts working.
 
 1. ✅ Agree on the design (this doc). Answer the open questions.
-2. Config: `analysis_defaults_W.yaml`, `example_W.yaml`, and `config.py` (load both, merge, validation: missing key / unknown key / frozen key in user file → crash). Unit tests.
+2. ✅ Config: copy frozen model files to `models/W/` (paths in defaults are relative to repo root); `analysis_defaults_W.yaml`, `example_W.yaml`, and `config.py` (load both, merge, validation: missing key / unknown key / frozen key in user file → crash). Unit tests.
 3. Branch map: write the required-branch list, the `load_with_branch_map` helper, and tests (identity map on Kaito's files; renamed test file; missing branch → crash).
 3b. Stage "resonance skim": add an empty placeholder stage (clear "not implemented" message, or pass-through when the input is already resonance-skimmed). Fill it when Kaito gives the code.
 4. Stage "skim": refactor to take inputs from config. Regression check vs old output.
@@ -248,6 +253,7 @@ Tracked here. Answers move to section 8.
 ## 7b. Waiting on Kaito
 
 - Code for the resonance skim (raw NanoAOD → `*_skimmed_no_resonances.root`).
+- Location of the W input files **before** stage 1 (`*_skimmed_no_resonances.root` without `selected_`), or of the raw NanoAOD. Only the `selected_*` files exist in `/pnfs/.../tau3mu_gnn_round2/data/`. `configs/example_W.yaml` uses the `selected_*` files as placeholders until this is answered.
 
 ## 8. Decision log
 
@@ -269,3 +275,6 @@ Tracked here. Answers move to section 8.
 | 2026-10-07 | Config split: frozen `analysis_defaults_<channel>.yaml` in repo + short user file with tunable/required values. Frozen values change only via `overrides:` with a warning. |
 | 2026-10-07 | Reference for final regression: cut 3.9, BDT preselection 0.8 → limit 1.2890625 (`output/W_limits.json`). |
 | 2026-10-07 | Frozen defaults = separate config file, not meant to be changed. No `overrides:` section. Frozen key in user file → crash. (Supersedes the override part of the config-split entry.) |
+| 2026-10-07 | Frozen model files (GNN `.pt`, `Normalization.pkl`, `arch_config.json`, BDT ISO `.pck`; ~40 MB) are committed to the repo under `models/W/`. No LFS. |
+| 2026-10-07 | Config validation: plain Python (dataclasses + own checks). No new dependency. |
+| 2026-10-07 | Step 2 done (`src/tau3mu_gnn/pipeline/config.py`, `configs/`, `models/W/`, `tests/pipeline/`). Keys added later by their own steps: `slurm.*` (step 9), `paths.conda_env` (step 10). `gnn.arch` dropped: `ScoreCreation` only uses `--archs` in a length check. `tests/` was gitignored; now only `tests/pipeline/` is tracked. Run tests with `PYTHONPATH=<repo>/src python -m pytest`. |
