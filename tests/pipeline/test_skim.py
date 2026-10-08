@@ -123,3 +123,40 @@ def test_regression_vs_old_signal_output(tmp_path):
         if a.ndim > 1:
             assert ak.num(a, axis=1).tolist() == ak.num(o, axis=1).tolist(), name
         np.testing.assert_array_equal(ak.to_numpy(ak.ravel(a)), ak.to_numpy(ak.ravel(o)), err_msg=name)
+
+
+# --- old CLI ---------------------------------------------------------------------
+
+def _cli(monkeypatch, argv):
+    from tau3mu_gnn.utils import skimmer
+
+    calls = []
+    monkeypatch.setattr(skimmer, "skim", lambda *a, **kw: calls.append((a, kw)))
+    skimmer.main(argv)
+    return calls
+
+
+def test_cli_without_config_uses_default_cuts(monkeypatch, tmp_path):
+    for name in ("a_1.root", "a_2.root"):
+        (tmp_path / name).write_bytes(b"x")
+    calls = _cli(monkeypatch, ["--input", str(tmp_path / "a_*.root"), "--output", "out.root"])
+    assert calls == [(([str(tmp_path / "a_1.root"), str(tmp_path / "a_2.root")], "out.root", "Events"),
+                      {"dz_max": 0.5, "cos_alpha_2d_min": 0.5})]
+
+
+def test_cli_with_config_reads_cuts_and_tree(monkeypatch, fake_repo, user, tmp_path):
+    from conftest import TOY_DEFAULTS, write_yaml
+    from tau3mu_gnn.pipeline import config
+    from tau3mu_gnn.utils import skimmer
+
+    write_yaml(fake_repo / "configs" / "analysis_defaults_W.yaml",
+               {**TOY_DEFAULTS, "skim": {"dz_max": 0.3, "cos_alpha_2d_min": 0.7}})
+    user["inputs"]["tree_name"] = "MyTree"
+    write_yaml(fake_repo / "user.yaml", user)
+    real_load = config.load_config
+    monkeypatch.setattr(skimmer, "load_config", lambda p: real_load(p, defaults_dir=fake_repo / "configs"))
+    (tmp_path / "in.root").write_bytes(b"x")
+    calls = _cli(monkeypatch, ["--config", str(fake_repo / "user.yaml"),
+                               "--input", str(tmp_path / "in.root"), "--output", "out.root"])
+    assert calls == [(([str(tmp_path / "in.root")], "out.root", "MyTree"),
+                      {"dz_max": 0.3, "cos_alpha_2d_min": 0.7})]

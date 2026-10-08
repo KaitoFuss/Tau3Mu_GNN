@@ -2,6 +2,8 @@ import glob
 import argparse
 from typing import Sequence
 
+from tau3mu_gnn.pipeline.config import load_config
+
 
 def skim(files: Sequence[str], output: str, tree_name: str, dz_max: float, cos_alpha_2d_min: float) -> None:
     """Select tau candidates with |dZmu12|, |dZmu13|, |dZmu23| < dz_max and cos alpha > cos_alpha_2d_min.
@@ -36,12 +38,22 @@ def skim(files: Sequence[str], output: str, tree_name: str, dz_max: float, cos_a
     df.Snapshot(tree_name, output)
 
 
-if __name__ == "__main__":
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
-    args = parser.parse_args()
+    parser.add_argument("--config", help="pipeline config; gives the skim cuts and tree name (default: cuts 0.5, tree Events)")
+    args = parser.parse_args(argv)
 
-    files = glob.glob(args.input)
+    tree_name, dz_max, cos_alpha_2d_min = "Events", 0.5, 0.5
+    if args.config:
+        cfg = load_config(args.config)
+        tree_name, dz_max, cos_alpha_2d_min = cfg.inputs.tree_name, cfg.skim.dz_max, cfg.skim.cos_alpha_2d_min
+
+    files = sorted(glob.glob(args.input))
     print(f"Found {len(files)} input files: {files}")
-    skim(files, args.output, "Events", dz_max=0.5, cos_alpha_2d_min=0.5)
+    skim(files, args.output, tree_name, dz_max=dz_max, cos_alpha_2d_min=cos_alpha_2d_min)
+
+
+if __name__ == "__main__":
+    main()
