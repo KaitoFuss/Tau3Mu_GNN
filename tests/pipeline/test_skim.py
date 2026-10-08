@@ -44,10 +44,10 @@ def _write(path, data):
     return path
 
 
-def _skim(tmp_path, data, branch_map=None, **kw):
+def _skim(tmp_path, data):
     src = _write(tmp_path / "in.root", data)
     out = tmp_path / "out.root"
-    skim([str(src)], str(out), "Events", branch_map or {}, dz_max=0.5, cos_alpha_2d_min=0.5, **kw)
+    skim([str(src)], str(out), "Events", dz_max=0.5, cos_alpha_2d_min=0.5)
     return uproot.open(out)["Events"]
 
 
@@ -70,49 +70,20 @@ def test_every_slimmed_tau_branch_gets_a_selected_copy(tmp_path):
 def test_cut_values_come_from_arguments(tmp_path):
     src = _write(tmp_path / "in.root", _toy_events())
     out = tmp_path / "out.root"
-    skim([str(src)], str(out), "Events", {}, dz_max=0.55, cos_alpha_2d_min=0.95)
+    skim([str(src)], str(out), "Events", dz_max=0.55, cos_alpha_2d_min=0.95)
     assert uproot.open(out)["Events"]["nSelectedTauTo3Mu"].array().tolist() == [0, 0, 0]
-
-
-def test_branch_map_applied_and_user_name_dropped(tmp_path):
-    data = _toy_events()
-    data["MyDz12"] = data.pop("Slimmed_TauTo3Mu_dZmu12")
-    tree = _skim(tmp_path, data, {"Slimmed_TauTo3Mu_dZmu12": "MyDz12"})
-    keys = set(tree.keys())
-    assert "MyDz12" not in keys
-    assert tree["Slimmed_TauTo3Mu_dZmu12"].array().tolist()[0] == [0.1, 0.5, -0.49]
-    assert tree["Selected_TauTo3Mu_dZmu12"].array().tolist() == [[0.1, -0.49], [], []]
-
-
-def test_max_events(tmp_path):
-    assert _skim(tmp_path, _toy_events(), max_events=2).num_entries == 2
 
 
 # --- stage -------------------------------------------------------------------
 
 def test_stage_writes_one_file_per_sample(load, user, tmp_path):
     sig = _write(tmp_path / "sig.root", _toy_events())
-    _write(tmp_path / "bkg_1.root", _toy_events())
-    _write(tmp_path / "bkg_2.root", _toy_events())
-    user["inputs"]["signal"] = [str(sig)]
-    user["inputs"]["background"] = [str(tmp_path / "bkg_*.root")]
+    bkg = [str(_write(tmp_path / f"bkg_{i}.root", _toy_events())) for i in (1, 2)]
     out_dir = tmp_path / "1_skim"
-    outputs = skim_stage.run(load(user), out_dir)
+    outputs = skim_stage.run(load(user), {"signal": [str(sig)], "background": bkg}, out_dir)
     assert outputs == {"signal": out_dir / "signal.root", "background": out_dir / "background.root"}
     assert uproot.open(outputs["signal"])["Events"].num_entries == 3
     assert uproot.open(outputs["background"])["Events"].num_entries == 6
-
-
-def test_stage_checks_inputs_before_any_work(load, user, tmp_path):
-    data = _toy_events()
-    del data["run"]
-    sig = _write(tmp_path / "sig.root", data)
-    user["inputs"]["signal"] = [str(sig)]
-    user["inputs"]["background"] = [str(sig)]
-    out_dir = tmp_path / "1_skim"
-    with pytest.raises(b.BranchError, match="run"):
-        skim_stage.run(load(user), out_dir)
-    assert not out_dir.exists()
 
 
 # --- regression vs. the old skimmer output -------------------------------------
@@ -125,9 +96,14 @@ KEY = ["run", "luminosityBlock", "event"]
 def test_regression_vs_old_signal_output(tmp_path):
     if not (os.path.exists(OLD_IN) and os.path.exists(OLD_OUT)):
         pytest.skip("old W signal input/output not reachable on this machine")
+    import ROOT
+
     n = 2000
+    small = tmp_path / "first_events.root"
+    ROOT.DisableImplicitMT()  # RDataFrame.Range needs a single thread
+    ROOT.RDataFrame("Events", OLD_IN).Range(n).Snapshot("Events", str(small))
     out = tmp_path / "new.root"
-    skim([OLD_IN], str(out), "Events", {}, dz_max=0.5, cos_alpha_2d_min=0.5, max_events=n)
+    skim([str(small)], str(out), "Events", dz_max=0.5, cos_alpha_2d_min=0.5)
     new = uproot.open(out)["Events"]
     old = uproot.open(OLD_OUT)["Events"]
     compare = sorted(k for k in new.keys() if k.startswith("Selected_")) + ["nSelectedTauTo3Mu", "tau3mu_mask"]
