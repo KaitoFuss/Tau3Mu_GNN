@@ -9,8 +9,6 @@ import difflib
 import glob
 from typing import Mapping, Sequence
 
-import awkward as ak
-import numpy as np
 import uproot
 
 _TAU = "Slimmed_TauTo3Mu_"
@@ -72,29 +70,31 @@ def _check_map(branch_map: Mapping[str, str], required: tuple[str, ...]) -> list
     return problems
 
 
-def _expand(patterns: Sequence[str], problems: list[str]) -> list[str]:
+def _expand(inputs: Sequence[str], problems: list[str]) -> list[str]:
     files = []
-    for pattern in patterns:
-        if any(c in pattern for c in "*?["):
-            matches = sorted(glob.glob(pattern))
+    for entry in inputs:
+        if any(c in entry for c in "*?["):
+            matches = sorted(glob.glob(entry))
             if not matches:
-                problems.append(f"input pattern matches no file: {pattern}")
+                problems.append(f"input pattern matches no file: {entry}")
             files.extend(matches)
         else:
-            files.append(pattern)
-    return list(dict.fromkeys(files))  # overlapping patterns must not process a file twice
+            files.append(entry)
+    return list(dict.fromkeys(files))  # overlapping globs must not process a file twice
 
 
-def check_input_branches(patterns: Sequence[str], tree_name: str,
+def check_input_branches(inputs: Sequence[str], tree_name: str,
                          branch_map: Mapping[str, str], channel: str) -> list[str]:
     """Check that every input file has every required branch after the branch map.
 
+    inputs: config input entries (inputs.signal / inputs.background); each is a path or a glob.
+    A file that holds both a mapped user name and its analysis name is an error.
     Reads branch names only (no events). Returns the expanded file list.
     Raises BranchError listing every problem of every file.
     """
     required = required_branches(channel)
     problems = _check_map(branch_map, required)
-    files = _expand(patterns, problems)
+    files = _expand(inputs, problems)
     for path in files:
         try:
             with uproot.open(path) as f:
@@ -113,6 +113,10 @@ def check_input_branches(patterns: Sequence[str], tree_name: str,
             lines = [f"      {branch_map[n]} (analysis name {n})" if branch_map.get(n, n) != n else f"      {n}"
                      for n in missing]
             problems.append(f"{path}: {len(missing)} required branch(es) missing:\n" + "\n".join(lines))
+        clashes = sorted(n for n, user in branch_map.items() if user != n and n in keys)
+        if clashes:
+            lines = [f"      {n} (mapped from {branch_map[n]})" for n in clashes]
+            problems.append(f"{path}: branch_map renames onto name(s) the file already has:\n" + "\n".join(lines))
     if problems:
         raise BranchError(problems)
     return files
@@ -125,55 +129,9 @@ def rename_columns(df, branch_map: Mapping[str, str]):
     user's original names that were renamed, ready for df.Snapshot(tree, file, columns).
     """
     renames = {analysis: user for analysis, user in branch_map.items() if analysis != user}
-    existing = {str(c) for c in df.GetColumnNames()}
     for analysis in sorted(renames):
-        # The user's file may also hold the analysis name; the mapped branch wins.
-        if analysis in existing:
-            df = df.Redefine(analysis, renames[analysis])
-        else:
-            df = df.Define(analysis, renames[analysis])
+        # Define fails if the column exists; check_input_branches reports that case first.
+        df = df.Define(analysis, renames[analysis])
     originals = set(renames.values())
     columns = [str(c) for c in df.GetColumnNames() if str(c) not in originals]
     return df, columns
-
-
-# Branches with one entry per tau candidate / PF candidate / TauPlusMET object.
-# Lengths are compared inside a family only: TauPlusMET_* has one entry per
-# unskimmed candidate and can differ from Slimmed_TauTo3Mu_* (seen in Kaito's signal).
-FAMILIES: tuple[str, ...] = ("Slimmed_TauTo3Mu_", "Slimmed_PFCands_", "TauPlusMET_")
-
-
-def check_input_structure(files: Sequence[str], tree_name: str, branch_map: Mapping[str, str],
-                          channel: str, n_events: int = 1000) -> None:
-    """Check per-event list lengths agree within each branch family (first n_events per file).
-
-    Expects files that already passed check_input_branches. Raises BranchError listing every problem.
-    """
-    required = required_branches(channel)
-    problems = []
-    for path in files:
-        tree = uproot.open(path)[tree_name]
-        for family in FAMILIES:
-            members = [n for n in required if n.startswith(family)]
-            if not members:
-                continue
-            user_names = [branch_map.get(n, n) for n in members]
-            arrays = tree.arrays(user_names, entry_stop=n_events, library="ak")
-            reference = None
-            for analysis, user in zip(members, user_names):
-                label = analysis if user == analysis else f"{user} (analysis name {analysis})"
-                try:
-                    counts = np.asarray(ak.num(arrays[user], axis=1))
-                except Exception:
-                    problems.append(f"{path}: {label} is not a per-event list ({family}* branches must be)")
-                    continue
-                if reference is None:
-                    reference = (label, counts)
-                    continue
-                bad = np.nonzero(counts != reference[1])[0]
-                if bad.size:
-                    i = int(bad[0])
-                    problems.append(f"{path}: {family}* branches differ in length: {reference[0]} has "
-                                    f"{reference[1][i]} but {label} has {counts[i]} (first at entry {i})")
-    if problems:
-        raise BranchError(problems)

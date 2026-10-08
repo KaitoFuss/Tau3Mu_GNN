@@ -127,7 +127,7 @@ From `jobs/gnn_score_creation/create_score_W_*.sh` and `jobs/analysis/create_dat
     └── limits.json               # cut → limit table, best cut marked
 ```
 
-- **Branch map**: applied **once**, by the first stage that runs in phase A (stage 0, or stage 1 if stage 0 is skipped), through shared helpers in `pipeline/branches.py` (`check_input_branches`, `check_input_structure`, `rename_columns`). It renames his raw names → Kaito's raw names (`Slimmed_TauTo3Mu_*`, `Slimmed_PFCands_*`, `TauPlusMET_*`, `run`, `luminosityBlock`, `event`; list in `pipeline/branches.py`). All later stages run unchanged on Kaito's names. The prefix change `Slimmed_*` → `Selected_*` stays inside the skimmer.
+- **Branch map**: applied **once**, by the first stage that runs in phase A (stage 0, or stage 1 if stage 0 is skipped), through shared helpers in `pipeline/branches.py` (`check_input_branches`, `rename_columns`). It renames his raw names → Kaito's raw names (`Slimmed_TauTo3Mu_*`, `Slimmed_PFCands_*`, `TauPlusMET_*`, `run`, `luminosityBlock`, `event`; list in `pipeline/branches.py`). All later stages run unchanged on Kaito's names. The prefix change `Slimmed_*` → `Selected_*` stays inside the skimmer.
 - **Required branches**: one explicit list in code (38 for W: `COMMON` + `PER_CHANNEL["W"]` in `pipeline/branches.py`). After mapping, every required branch must exist. If one is missing: **crash loudly**, list all missing branches, do no work. No fallbacks, no computed substitutes.
 
 ### 5.1 Config
@@ -282,3 +282,5 @@ Tracked here. Answers move to section 8.
 | 2026-10-07 | Flagged to Kaito (outside wrapper scope): `TauPlusMET_*` has one entry per **unskimmed** candidate, but `ScoreProducer.py:519/523` indexes it with the **skimmed** candidate mask; lengths match `nSlimmedTauTo3Mu` in only 99.36% of signal events. |
 | 2026-10-07 | On the T3 login node `gcc/12.2.0` is not available; importing ROOT prints a header error but RDataFrame works. Tests import ROOT only inside the tests that need it. |
 | 2026-10-07 | Structure check `check_input_structure`: within each family (`Slimmed_TauTo3Mu_`, `Slimmed_PFCands_`, `TauPlusMET_`) all required branches must be per-event lists of equal length (first 1000 events per file). No cross-family check. Raw count branches (`nSlimmedTauTo3Mu`, ...) are not required: the code reads only `nSelectedTauTo3Mu`, which the skimmer defines. Kaito's W files pass. |
+| 2026-10-08 | PR 8 review: `check_input_structure` removed (YAGNI). It did not compare families, so it missed the only real length problem (`TauPlusMET_*`). Note: awkward 2.9 does **not** raise when a boolean mask is shorter than the array, so `ScoreProducer.py:522` silently picks a wrong `TauPlusMET_*` entry in those events. |
+| 2026-10-08 | PR 8 review: if a file has both a mapped user branch and its analysis name, `check_input_branches` fails (probably not intended). `rename_columns` uses `Define` only. `patterns` renamed to `inputs`. |

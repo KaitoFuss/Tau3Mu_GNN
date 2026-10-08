@@ -156,25 +156,19 @@ def test_rename_columns_snapshot_has_analysis_name_only(tmp_path):
     assert tree["run"].array().tolist() == [1, 2]
 
 
-def test_rename_columns_replaces_existing_analysis_column(tmp_path):
-    # User file has the analysis name AND an alternative branch it wants to use instead.
-    import ROOT
-
-    src = tmp_path / "in.root"
-    with uproot.recreate(src) as f:
-        f["Events"] = {"Slimmed_TauTo3Mu_fitted_pt": ak.Array([[9.0], [9.0]]),
-                       "MyPt": ak.Array([[1.0], [2.0]])}
-    df = ROOT.RDataFrame("Events", str(src))
-    df, columns = b.rename_columns(df, {"Slimmed_TauTo3Mu_fitted_pt": "MyPt"})
-    assert "MyPt" not in columns
-    out = tmp_path / "out.root"
-    df.Snapshot("Events", str(out), columns)
-    tree = uproot.open(out)["Events"]
-    assert "MyPt" not in tree.keys()
-    assert tree["Slimmed_TauTo3Mu_fitted_pt"].array().tolist() == [[1.0], [2.0]]
+def test_mapped_name_already_in_file_is_error(tmp_path):
+    # File has the analysis name AND the user's mapped branch: probably not intended.
+    f1 = make_root_file(tmp_path / "a.root", [*REQ_W, "MyPt"])
+    f2 = make_root_file(tmp_path / "b.root", [n for n in REQ_W if n != "Slimmed_TauTo3Mu_fitted_pt"] + ["MyPt"])
+    with pytest.raises(b.BranchError) as e:
+        b.check_input_branches([str(f1), str(f2)], "Events", {"Slimmed_TauTo3Mu_fitted_pt": "MyPt"}, "W")
+    text = problems_of(e)
+    assert f"{f1}: branch_map renames onto name(s) the file already has" in text
+    assert "Slimmed_TauTo3Mu_fitted_pt (mapped from MyPt)" in text
+    assert str(f2) not in text
 
 
-def test_check_dedupes_overlapping_patterns(tmp_path):
+def test_check_dedupes_overlapping_globs(tmp_path):
     make_root_file(tmp_path / "x1.root", REQ_W)
     files = b.check_input_branches([str(tmp_path / "x*.root"), str(tmp_path / "x1.root")], "Events", {}, "W")
     assert files == [str(tmp_path / "x1.root")]
@@ -189,61 +183,3 @@ def test_rename_columns_identity_and_empty_map_change_nothing(tmp_path):
     for mapping in ({}, {"run": "run"}):
         _, columns = b.rename_columns(df, mapping)
         assert sorted(columns) == before
-
-
-def _structured_file(path, overrides=None):
-    """All required W branches; families jagged with consistent lengths per event (2 events)."""
-    lengths = {"Slimmed_TauTo3Mu_": [2, 1], "Slimmed_PFCands_": [3, 4], "TauPlusMET_": [2, 1]}
-    data = {}
-    for name in REQ_W:
-        prefix = next((p for p in lengths if name.startswith(p)), None)
-        if prefix is None:
-            data[name] = np.array([1, 2], dtype=np.int64)
-        else:
-            data[name] = ak.Array([[1.0] * n for n in lengths[prefix]])
-    data.update(overrides or {})
-    with uproot.recreate(path) as f:
-        f["Events"] = data
-    return path
-
-
-def test_structure_ok(tmp_path):
-    f = _structured_file(tmp_path / "ok.root")
-    b.check_input_structure([str(f)], "Events", {}, "W")
-
-
-def test_structure_length_mismatch_in_family(tmp_path):
-    f = _structured_file(tmp_path / "bad.root",
-                         {"Slimmed_TauTo3Mu_vtx_chi2": ak.Array([[1.0, 1.0], [1.0, 1.0]])})
-    with pytest.raises(b.BranchError) as e:
-        b.check_input_structure([str(f)], "Events", {}, "W")
-    text = problems_of(e)
-    assert "bad.root" in text and "Slimmed_TauTo3Mu_" in text
-    assert "Slimmed_TauTo3Mu_vtx_chi2" in text
-    assert "entry 1" in text
-
-
-def test_structure_flat_branch_in_family(tmp_path):
-    f = _structured_file(tmp_path / "flat.root", {"Slimmed_PFCands_pt": np.array([1.0, 2.0])})
-    with pytest.raises(b.BranchError) as e:
-        b.check_input_structure([str(f)], "Events", {}, "W")
-    assert "Slimmed_PFCands_pt is not a per-event list" in problems_of(e)
-
-
-def test_structure_families_not_compared_with_each_other(tmp_path):
-    taumet = {n: ak.Array([[1.0], [1.0, 1.0, 1.0]]) for n in REQ_W if n.startswith("TauPlusMET_")}
-    f = _structured_file(tmp_path / "cross.root", taumet)
-    b.check_input_structure([str(f)], "Events", {}, "W")
-
-
-def test_structure_uses_branch_map(tmp_path):
-    f = _structured_file(tmp_path / "mapped.root",
-                         {"UserChi2": ak.Array([[1.0, 1.0], [1.0]])})
-    b.check_input_structure([str(f)], "Events", {"Slimmed_TauTo3Mu_vtx_chi2": "UserChi2"}, "W")
-
-
-@pytest.mark.parametrize("path", W_FILES)
-def test_real_w_files_structure(path):
-    if not os.path.exists(path):
-        pytest.skip(f"not reachable on this machine: {path}")
-    b.check_input_structure([path], "Events", {}, "W")
