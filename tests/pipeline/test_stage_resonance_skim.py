@@ -49,9 +49,22 @@ def test_inputs_checked_before_any_work(load, user, tmp_path):
     assert not (tmp_path / "0_resonance_skim").exists()
 
 
-def test_not_implemented_when_inputs_are_raw(load, user, tmp_path):
+@pytest.mark.parametrize("branch_map", [{}, {"Slimmed_PFCands_pt": "PFCand_pt"}])
+def test_not_implemented_when_inputs_are_raw(load, user, tmp_path, branch_map):
+    # Order: check -> rename -> resonance skim. The skim is not implemented: error, no output.
+    names = [n for n in REQ_W if n not in branch_map] + list(branch_map.values())
+    _inputs(user, tmp_path, names)
+    user["branch_map"] = branch_map
     user["inputs"]["already_resonance_skimmed"] = False
-    cfg = load(user)
+    out_dir = tmp_path / "0_resonance_skim"
     with pytest.raises(resonance_skim.StageNotImplementedError) as e:
-        resonance_skim.run(cfg, tmp_path / "0_resonance_skim")
+        resonance_skim.run(load(user), out_dir)
     assert "already_resonance_skimmed: true" in str(e.value)
+    assert not out_dir.exists()
+
+
+def test_raw_inputs_are_checked_first(load, user, tmp_path):
+    _inputs(user, tmp_path, [n for n in REQ_W if n != "run"])
+    user["inputs"]["already_resonance_skimmed"] = False
+    with pytest.raises(b.BranchError, match="run"):
+        resonance_skim.run(load(user), tmp_path / "0_resonance_skim")
