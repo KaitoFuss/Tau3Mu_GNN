@@ -19,7 +19,6 @@ sns.set_theme(style="white")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, required=True, help="Model name of GNN")
-parser.add_argument("--classifier_gnn", type=str, required=True, help="Path to classifier GNN")
 parser.add_argument("--classifier_iso", type=str, required=True, help="Path to classifier ISO")
 parser.add_argument("--tau_channel", type=str, required=True, help="Tau prduction channel")
 parser.add_argument('--storage_folder', type=str, required=True, help="Output to store the root files with the scores")
@@ -45,7 +44,6 @@ elif tau_channel == "W":
     signals = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/" + model + "/selected_signal_skimmed_no_resonances_with_scores.root"]
     backgrounds = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/" + model + "/selected_data_skimmed_no_resonances_with_scores.root"]
 
-classifier_file_gnn = args.classifier_gnn
 classifier_file_iso = args.classifier_iso
 
 
@@ -102,18 +100,13 @@ branches = features + [
     f'{prefix}TauTo3Mu_vtx_chi2', 
     f'{prefix}TauTo3Mu_vtx_Ndof',
 
-    f'{prefix}TauTo3Mu_charge',
     f'{prefix}TauTo3Mu_fitted_eta',
     f'{prefix}TauTo3Mu_fitted_mass',
     'TauPlusMET_Puppi_phi',
     f'{prefix}TauTo3Mu_fitted_phi',
-    'GNN_score',
     f'{prefix}TauTo3Mu_iso_ptChargedFromPV',
     f'{prefix}TauTo3Mu_iso_ptPhotons',
     f'{prefix}TauTo3Mu_iso_ptChargedFromPU',
-    f'Muon_tkRelIso[{prefix}TauTo3Mu_mu1_idx]',
-    f'Muon_tkRelIso[{prefix}TauTo3Mu_mu2_idx]',
-    f'Muon_tkRelIso[{prefix}TauTo3Mu_mu3_idx]',
     # 'mu1_refit_muonid_soft', 'mu1_refit_muonid_loose', 'mu1_refit_muonid_medium', 'mu1_refit_muonid_tight',
     # 'mu2_refit_muonid_soft', 'mu2_refit_muonid_loose', 'mu2_refit_muonid_medium', 'mu2_refit_muonid_tight',
     # 'mu3_refit_muonid_soft', 'mu3_refit_muonid_loose', 'mu3_refit_muonid_medium', 'mu3_refit_muonid_tight',
@@ -121,6 +114,16 @@ branches = features + [
     "luminosityBlock",
     "event",
 ]
+
+# Only HF uses these (ISO feature: max Muon_tkRelIso of the three muons). W does not load them:
+# dropna below removes rows with NaN in any loaded column.
+if tau_channel == "HF":
+    branches += [
+        f'{prefix}TauTo3Mu_charge',
+        f'Muon_tkRelIso[{prefix}TauTo3Mu_mu1_idx]',
+        f'Muon_tkRelIso[{prefix}TauTo3Mu_mu2_idx]',
+        f'Muon_tkRelIso[{prefix}TauTo3Mu_mu3_idx]',
+    ]
 
 all_chunks_sig = []
 print("Going to load signal events")
@@ -279,24 +282,17 @@ elif tau_channel == "W":
 # features += ['Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)']
 
 
-with open(classifier_file_gnn, "rb") as f:
-    classifiers_gnn = pickle.load(f)
-
 with open(classifier_file_iso, "rb") as f:
     classifiers_iso = pickle.load(f)
 
 output = {}
-for mode in ["GNN", "ISO"]:
+for mode in ["ISO"]:
     print(f"now mode {mode}")
-    if mode == "GNN":
-        bdt_features = features + ['GNN_score']
-        classifiers = classifiers_gnn
-    elif mode == "ISO":
-        if tau_channel == "HF":
-            bdt_features = features + [f'max(Muon_tkRelIso_{prefix}TauTo3Mu_mu1_idx Muon_tkRelIso_{prefix}TauTo3Mu_mu2_idx Muon_tkRelIso_{prefix}TauTo3Mu_mu3_idx)']
-        elif tau_channel == "W":
-            bdt_features = features + ['relative_iso']
-        classifiers = classifiers_iso
+    if tau_channel == "HF":
+        bdt_features = features + [f'max(Muon_tkRelIso_{prefix}TauTo3Mu_mu1_idx Muon_tkRelIso_{prefix}TauTo3Mu_mu2_idx Muon_tkRelIso_{prefix}TauTo3Mu_mu3_idx)']
+    elif tau_channel == "W":
+        bdt_features = features + ['relative_iso']
+    classifiers = classifiers_iso
 
     for col in bdt_features:
         if sig[col].dtype == object:
@@ -315,13 +311,8 @@ for mode in ["GNN", "ISO"]:
         sig  ['bdt_fold%d_' %i + mode] = iclas.predict_proba(sig[bdt_features])[:, 1]
         sig  ['bdt_' + mode] += iclas.predict_proba(sig[bdt_features])[:, 1] / n_class
 
-    if mode == "GNN":
-        output["GNN_score_bkg"] = bkg.bdt_GNN
-        output["GNN_score_sig"] = sig.bdt_GNN
-
-    elif mode == "ISO":
-        output["ISO_score_bkg"] = bkg.bdt_ISO
-        output["ISO_score_sig"] = sig.bdt_ISO
+    output["ISO_score_bkg"] = bkg.bdt_ISO
+    output["ISO_score_sig"] = sig.bdt_ISO
 
 
     output["tau_mass"] = bkg.Selected_TauTo3Mu_fitted_mass
@@ -342,27 +333,23 @@ for file in signals:
     runs = []
     lumis = []
     events = []
-    scores_GNN = []
     scores_ISO = []
 
     for _, row in sig.iterrows():
         runs.append(row["run"])
         lumis.append(row["luminosityBlock"])
         events.append(row["event"])
-        scores_GNN.append(row["bdt_GNN"])
         scores_ISO.append(row["bdt_ISO"])
     
     runs = np.array(runs, dtype=np.uint32)
     lumis = np.array(lumis, dtype=np.uint32)
     events = np.array(events, dtype=np.uint64)
-    scores_GNN = np.array(scores_GNN, dtype=np.float64)
     scores_ISO = np.array(scores_ISO, dtype=np.float64)
 
     scores_to_save = {
         "run": runs,
         "luminosityBlock": lumis,
         "event": events,
-        "bdt_GNN": scores_GNN,
         "bdt_ISO": scores_ISO,
     }
 
@@ -379,7 +366,9 @@ for file in signals:
 
     fin = ROOT.TFile.Open(file)
     t1 = fin.Get("Events")
-    t1.SetBranchStatus("GNN_score", 0)
+    has_gnn_score = bool(t1.GetBranch("GNN_score"))  # old inputs only; kept out of the output
+    if has_gnn_score:
+        t1.SetBranchStatus("GNN_score", 0)
 
     friend_file = ROOT.TFile.Open(root_path_sc_only)
     t2 = friend_file.Get("Events")
@@ -389,13 +378,12 @@ for file in signals:
     # Write merged tree
     fout = ROOT.TFile.Open(root_path, "RECREATE")
     t_merged = t1.CloneTree(0) # empty tree
-    t1.SetBranchStatus("GNN_score", 1)
+    if has_gnn_score:
+        t1.SetBranchStatus("GNN_score", 1)
 
-    # Prepare buffer for GNN_score
-    gnn_score = array('f', [0.])
+    # Prepare buffer for bdt_ISO
     iso_score = array('f', [0.])
     
-    t_merged.Branch("bdt_GNN", gnn_score, "bdt_GNN/F")
     t_merged.Branch("bdt_ISO", iso_score, "bdt_ISO/F")
 
     count = 0
@@ -408,16 +396,14 @@ for file in signals:
 
         if entry2 >= 0:
             t2.GetEntry(entry2) 
-            gnn_score[0] = t2.bdt_GNN
             iso_score[0] = t2.bdt_ISO
             count += 1
         else:
-            gnn_score[0] = -1.  # default if no match
             iso_score[0] = -1.
 
         t_merged.Fill()
 
-    print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
+    print(f"Wrote in total {count} valid BDT scores in to ROOT file")
     t_merged.Write()
     fout.Close()
 
@@ -444,27 +430,23 @@ for file in backgrounds:
     runs = []
     lumis = []
     events = []
-    scores_GNN = []
     scores_ISO = []
 
     for _, row in bkg.iterrows():
         runs.append(row["run"])
         lumis.append(row["luminosityBlock"])
         events.append(row["event"])
-        scores_GNN.append(row["bdt_GNN"])
         scores_ISO.append(row["bdt_ISO"])
     
     runs = np.array(runs, dtype=np.uint32)
     lumis = np.array(lumis, dtype=np.uint32)
     events = np.array(events, dtype=np.uint64)
-    scores_GNN = np.array(scores_GNN, dtype=np.float64)
     scores_ISO = np.array(scores_ISO, dtype=np.float64)
 
     scores_to_save = {
         "run": runs,
         "luminosityBlock": lumis,
         "event": events,
-        "bdt_GNN": scores_GNN,
         "bdt_ISO": scores_ISO,
     }
 
@@ -481,7 +463,9 @@ for file in backgrounds:
 
     fin = ROOT.TFile.Open(file)
     t1 = fin.Get("Events")
-    t1.SetBranchStatus("GNN_score", 0)
+    has_gnn_score = bool(t1.GetBranch("GNN_score"))  # old inputs only; kept out of the output
+    if has_gnn_score:
+        t1.SetBranchStatus("GNN_score", 0)
 
     friend_file = ROOT.TFile.Open(root_path_sc_only)
     t2 = friend_file.Get("Events")
@@ -491,13 +475,12 @@ for file in backgrounds:
     # Write merged tree
     fout = ROOT.TFile.Open(root_path, "RECREATE")
     t_merged = t1.CloneTree(0) # empty tree
-    t1.SetBranchStatus("GNN_score", 1)
+    if has_gnn_score:
+        t1.SetBranchStatus("GNN_score", 1)
 
-    # Prepare buffer for GNN_score
-    gnn_score = array('f', [0.])
+    # Prepare buffer for bdt_ISO
     iso_score = array('f', [0.])
     
-    t_merged.Branch("bdt_GNN", gnn_score, "bdt_GNN/F")
     t_merged.Branch("bdt_ISO", iso_score, "bdt_ISO/F")
 
     count = 0
@@ -510,16 +493,14 @@ for file in backgrounds:
 
         if entry2 >= 0:
             t2.GetEntry(entry2) 
-            gnn_score[0] = t2.bdt_GNN
             iso_score[0] = t2.bdt_ISO
             count += 1
         else:
-            gnn_score[0] = -1.  # default if no match
             iso_score[0] = -1.
 
         t_merged.Fill()
 
-    print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
+    print(f"Wrote in total {count} valid BDT scores in to ROOT file")
     t_merged.Write()
     fout.Close()
 

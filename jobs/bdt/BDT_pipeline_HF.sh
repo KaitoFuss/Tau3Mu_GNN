@@ -27,7 +27,6 @@ STORAGE_OUTPUT=/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/
 /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.bdt_training.Train_XGB_HF --model "$MODEL"
 
 /work/kfuss/miniforge3/envs/Tau3Mu/bin/python -m tau3mu_gnn.bdt_training.BDT_ScoreProducer --model "$MODEL" \
-    --classifier_gnn /work/kfuss/SVJ_GNN/output/"$MODEL"/GNN_classifiers_24feb2026_v0.pck \
     --classifier_iso /work/kfuss/SVJ_GNN/output/"$MODEL"/ISO_classifiers_24feb2026_v0.pck \
     --tau_channel $CHANNEL \
     --storage_folder $JOB_SCRATCH
