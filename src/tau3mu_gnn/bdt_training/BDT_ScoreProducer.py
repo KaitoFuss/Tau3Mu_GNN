@@ -164,7 +164,8 @@ for i in range(len(backgrounds)):
                 new_fields[branch] = events_masked[branch]
 
         events_stripped = ak.zip(new_fields)
-        df_chunk = ak.to_dataframe(events_masked)
+        # one row per event (first candidate), so the (run, event) index below is unique
+        df_chunk = ak.to_dataframe(events_stripped)
         all_chunks_bkg.append(df_chunk)
 
 bkg = pd.concat(all_chunks_bkg, ignore_index=True)
