@@ -244,6 +244,11 @@ Each step is small, testable, and keeps the old job scripts working.
 12. Extend to the HF channel: HF config, HF features, multi-file inputs, HF signal weight. Test.
 13. (Very last) Port to lxplus: HTCondor scheduler layer, EOS paths, Combine on lxplus. Test.
 
+**Maybe, at the very end** (Kaito decides then; not needed for the limit):
+
+- **E1. BDT: `TauPlusMET` candidate mix.** The BDT takes `[0]` of `Selected_TauTo3Mu_*` (candidates that pass the skim) and `[0]` of `TauPlusMET_*` (all candidates, before the skim). If the first candidate fails the skim and a later one passes, the tau features and the tau+MET features come from different candidates. Affects 5 of the 6 W BDT `TauPlusMET` branches: `Puppi_pt`, `Puppi_phi` (in `deltaPhi`), `Tau_Puppi_mT`, `PuppiMETminPz`, `PuppiMETmaxPz` (per candidate). `PuppiMET_pt` is global (same value in every entry), not affected. Measured (W): signal 75 events (0.01%), data 2,214 of the first 1M events (0.29%). Also, `len(TauPlusMET_*) == nSlimmedTauTo3Mu` in only 99.4% (signal) / 97.6% (data) of events. A fix changes the BDT inputs → maybe retrain the classifier. Same root cause as the `ScoreProducer.py` issue in the decision log (2026-10-07).
+- **E2. BDT: vectorized merge.** `_write_with_scores` loops in Python over all events (`iterrows`, then a PyROOT loop with `GetEntryNumberWithIndex`). This is slow: the full W BDT run (job 946596) took 2 h 20 min; the loops are a large part of it (not measured alone). Replace with a vectorized join on `(run, event)`. Regression: outputs must stay identical.
+
 ## 7. Open questions
 
 Tracked here. Answers move to section 8.
