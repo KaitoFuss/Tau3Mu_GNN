@@ -29,31 +29,10 @@ def deltaphi(phi1, phi2):
     return delta_phi
 
 
-def _load_signal(files, tree_name, branches):
-    all_chunks_sig = []
-    print("Going to load signal events")
-    for file in files:
-        for events in uproot.iterate(f"{file}:{tree_name}", expressions=branches, library="ak", step_size="100 MB"):
-            new_fields = {}
-            for branch in events.fields:
-                if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
-                    new_fields[branch] = ak.firsts(events[branch])
-                else:
-                    new_fields[branch] = events[branch]
-
-            events_masked = ak.zip(new_fields)
-            all_chunks_sig.append(events_masked)
-    sig = ak.concatenate(all_chunks_sig)
-    sig = ak.to_dataframe(sig)
-    sig = sig.dropna()
-    print(sig.shape)
-    print(sig.columns)
-    return sig
-
-
-def _load_background(files, tree_name, branches):
-    all_chunks_bkg = []
-    print("Going to load bkg events")
+def _load(files, tree_name, branches, label):
+    """One row per event (first candidate), so the (run, event) index in _write_with_scores is unique."""
+    all_chunks = []
+    print(f"Going to load {label} events")
     for file in files:
         for events in uproot.iterate(f"{file}:{tree_name}", expressions=branches, library="ak", step_size="100 MB"):
             new_fields = {}
@@ -64,15 +43,13 @@ def _load_background(files, tree_name, branches):
                     new_fields[branch] = events[branch]
 
             events_stripped = ak.zip(new_fields)
-            # one row per event (first candidate), so the (run, event) index in _write_with_scores is unique
-            df_chunk = ak.to_dataframe(events_stripped)
-            all_chunks_bkg.append(df_chunk)
+            all_chunks.append(ak.to_dataframe(events_stripped))
 
-    bkg = pd.concat(all_chunks_bkg, ignore_index=True)
-    bkg = bkg.dropna()
-    print(bkg.shape)
-    print(bkg.columns)
-    return bkg
+    df = pd.concat(all_chunks, ignore_index=True)
+    df = df.dropna()
+    print(df.shape)
+    print(df.columns)
+    return df
 
 
 def _add_features(sig, bkg, features, tau_channel, prefix):
@@ -265,8 +242,8 @@ def score_events(signal: Mapping[str, str], background: Mapping[str, str], class
     """
     prefix = PREFIX
     features, branches = bdt_branches(tau_channel, prefix)
-    sig = _load_signal(list(signal), tree_name, branches)
-    bkg = _load_background(list(background), tree_name, branches)
+    sig = _load(list(signal), tree_name, branches, "signal")
+    bkg = _load(list(background), tree_name, branches, "bkg")
     bdt_features = _add_features(sig, bkg, features, tau_channel, prefix)
 
     with open(classifier, "rb") as f:
