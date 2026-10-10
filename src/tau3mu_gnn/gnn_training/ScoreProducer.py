@@ -17,6 +17,7 @@ import csv
 import time
 from array import array
 import copy
+from tau3mu_gnn.gnn_training.gnn_inputs import gnn_branches, graph_level_branches
 
 def __cast_unknown_type_branches(ak_array, field):
 
@@ -408,47 +409,7 @@ class ScoreProducer:
         # Assert that no incompatible flags are used
         prefix = "Selected_" if self.slimmed else ""
 
-        if self.tau_channel == "W":
-            self.graph_level_branches = [
-                f'{prefix}TauTo3Mu_fitted_pt',
-                'TauPlusMET_Tau_Puppi_mT',
-                #'cand_refit_tau_dBetaIsoCone0p8strength0p2_rel',
-                #'deltaPhi(TauPlusMET_Puppi_phi[0], Slimmed_TauTo3Mu_fitted_phi[0])',
-                'TauPlusMET_PuppiMET_pt',
-                #'Slimmed_TauTo3Mu_fitted_pt*(TauPlusMET_PuppiMET_pt**-1)', # only for >= v4
-            #     'cand_refit_tau_pt/cand_refit_met_pt', # only for >= v2
-            #     'cand_refit_dRtauMuonMax',
-                'TauPlusMET_Puppi_pt',
-                'TauPlusMET_PuppiMETminPz',
-                'TauPlusMET_PuppiMETmaxPz',
-                f'{prefix}TauTo3Mu_dZmu12', 
-                f'{prefix}TauTo3Mu_dZmu13', 
-                f'{prefix}TauTo3Mu_dZmu23',
-                f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
-                f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
-                f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
-            ]
-        elif self.tau_channel == "HF":
-            self.graph_level_branches = [
-                f'Muon_pt[{prefix}TauTo3Mu_mu3_idx]',
-                
-                # 'Muon_mediumId[Slimmed_TauTo3Mu_mu1_idx]', 
-                # 'Muon_mediumId[Slimmed_TauTo3Mu_mu2_idx]',
-                # 'Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]',
-
-                f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]', 
-                f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]', 
-                f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]', 
-
-                f'{prefix}TauTo3Mu_dZmu12', 
-                f'{prefix}TauTo3Mu_dZmu13', 
-                f'{prefix}TauTo3Mu_dZmu23', 
-
-                f'{prefix}TauTo3Mu_sigLxy_3muVtxBS', 
-                f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu', 
-
-                f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
-            ]
+        self.graph_level_branches = graph_level_branches(self.tau_channel, prefix)
 
         # If xsec weighs are requested but the number of events is hard capped, warn that an appoximation is used
         if self.weights == "xsec" and self.max_events_to_process:
@@ -780,61 +741,8 @@ class ScoreProducer:
             npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
 
         prefix = "Selected_" if self.slimmed else ""
-        n_prefix = "Selected" if self.slimmed else ""
-        old_prefix = "Slimmed_" if self.slimmed else ""
-        branches_to_load = [
-            # f"n{n_prefix}PFCands",
-            f"{old_prefix}PFCands_pt",
-            f"{old_prefix}PFCands_eta",
-            f"{old_prefix}PFCands_phi",
-            f"{old_prefix}PFCands_pdgId",
-            f"{old_prefix}PFCands_mass",  
-            f"{old_prefix}PFCands_charge",
-            f"{old_prefix}PFCands_puppiWeight",
-            f"n{n_prefix}TauTo3Mu",
-            # f"{prefix}TauTo3Mu_mu1_idx",
-            f"{prefix}TauTo3Mu_mu1_eta",
-            f"{prefix}TauTo3Mu_mu1_phi",
-            # f"{prefix}TauTo3Mu_mu1_pt",
-            # f"{prefix}TauTo3Mu_mu2_idx",
-            f"{prefix}TauTo3Mu_mu2_eta",
-            f"{prefix}TauTo3Mu_mu2_phi",
-            # f"{prefix}TauTo3Mu_mu2_pt",
-            # f"{prefix}TauTo3Mu_mu3_idx",
-            f"{prefix}TauTo3Mu_mu3_eta",
-            f"{prefix}TauTo3Mu_mu3_phi",
-            # f"{prefix}TauTo3Mu_mu3_pt",
-            f"{prefix}TauTo3Mu_fitted_mass",
-            f"{prefix}TauTo3Mu_fitted_eta",
-            f"{prefix}TauTo3Mu_fitted_phi",
-            f"{prefix}TauTo3Mu_fitted_pt",
-            "PV_npvs",
-            f"{prefix}TauTo3Mu_iso_ptChargedFromPV",
-            f"{prefix}TauTo3Mu_iso_ptPhotons",
-            f"{prefix}TauTo3Mu_iso_ptChargedFromPU",
-            # f"{prefix}TauTo3Mu_iso_ptChargedFromPV_pT05",
-            # f"{prefix}TauTo3Mu_iso_ptPhotons_pT05",
-            # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
-            "run",
-            "luminosityBlock",
-            "event",   
-        ]
-
-        if self.bdt_preselection_cut is not None:
-            branches_to_load += [f"bdt_ISO"] 
-
-        branches_to_load += self.graph_level_branches
-
-        if self.tau_channel == "W":
-            branches_to_load += [
-                "TauPlusMET_Puppi_phi", 
-            ]
-            
-        elif self.tau_channel == "HF":
-            pass # no additional features needed
-
-        if self.use_displacement:
-            branches_to_load += [f"{old_prefix}PFCands_d0", f"{old_prefix}PFCands_dz"]
+        branches_to_load = gnn_branches(self.tau_channel, self.slimmed, self.bdt_preselection_cut is not None,
+                                        self.use_displacement, self.weights, self.save_benchmark_score)
 
         all_scores_dict = {name: [] for name in self.model_names}
         all_tau_masses = []

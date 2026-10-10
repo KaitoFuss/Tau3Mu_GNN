@@ -84,8 +84,13 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
     return features, branches
 
 
-def input_branch_names(tau_channel: str, prefix: str = "Selected_") -> set[str]:
-    """Branch names that the loaded expressions read, e.g.
+def expression_names(expressions) -> set[str]:
+    """Branch names that uproot expressions read, e.g.
     'Muon_pt[Selected_TauTo3Mu_mu3_idx]' -> {'Muon_pt', 'Selected_TauTo3Mu_mu3_idx'}."""
+    return {name for expr in expressions for name in re.findall(r"[A-Za-z_]\w*", expr)}
+
+
+def input_branch_names(tau_channel: str, prefix: str = "Selected_") -> set[str]:
+    """Branch names that the loaded expressions read."""
     _, branches = bdt_branches(tau_channel, prefix)
-    return {name for expr in branches for name in re.findall(r"[A-Za-z_]\w*", expr)}
+    return expression_names(branches)
