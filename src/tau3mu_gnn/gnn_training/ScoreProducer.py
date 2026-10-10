@@ -555,9 +555,7 @@ class ScoreProducer:
             if n_tau == 0:
                 # print("Skipping event as all TauCands have not been selected")
                 continue
-            nt = np.argmax(event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask])
-            if n_tau > 1:
-                print(f"WARNING: using {nt}-th tau cand")
+            nt = 0  # first candidate, as the BDT (bdt_ISO) and the limit (fitted_mass[0]) use
             # Read data for fitted tau from event
             fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
             fitted_tau_eta = event[f"{prefix}{self.tau_collection_name}_eta"][tau_mask][nt] 
