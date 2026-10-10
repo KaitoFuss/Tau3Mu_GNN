@@ -1,3 +1,10 @@
+"""GNN scores for the W / HF channel (stage 3).
+
+score_events() reads the input files once, builds one graph per event around the first tau
+candidate (events with bdt_ISO >= bdt_preselection_cut only, if a cut is given) and scores it with
+every model. For each model it writes a copy of each input file with the branch GNN_score
+(-1 for events without a score) and an npz with the scores and tau masses of the scored events.
+"""
 import os
 import numpy as np
 import uproot
@@ -17,6 +24,7 @@ import csv
 import time
 from array import array
 import copy
+from pathlib import Path
 from tau3mu_gnn.gnn_training.gnn_inputs import gnn_branches, graph_level_branches
 
 def __cast_unknown_type_branches(ak_array, field):
@@ -300,6 +308,92 @@ def write_nano_aod_root_file(output_file_name, events=None, trees={}, mode="recr
         for tree_name, tree in trees.items():
             output_file[tree_name] = ak.Array(tree)
 
+def _write_with_scores(score_dict, in_file, out_file, tree_name):
+    """Copy in_file to out_file and add GNN_score from score_dict ((run, lumi, event) -> score), matched by (run, event)."""
+    root_path = str(out_file)
+    root_path_sc_only = root_path.removesuffix(".root") + "_scores_only.root"
+    os.makedirs(os.path.dirname(os.path.abspath(root_path)), exist_ok=True)
+
+    runs = []
+    lumis = []
+    events = []
+    scores = []
+
+    for (run, lumi, event), score in score_dict.items():
+        runs.append(run)
+        lumis.append(lumi)
+        events.append(event)
+        scores.append(score)
+
+    runs = np.array(runs, dtype=np.uint32)
+    lumis = np.array(lumis, dtype=np.uint32)
+    events = np.array(events, dtype=np.uint64)
+    scores = np.array(scores, dtype=np.float64)
+
+    scores_to_save = {
+            "run": runs,
+            "luminosityBlock": lumis,
+            "event": events,
+            "GNN_score": scores,
+        }
+
+    branches = {k: v.dtype for k, v in scores_to_save.items()}
+
+    print(f"Saving scores only to {root_path_sc_only}")
+
+    with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
+        # Create a new TTree in the file
+        tree = f.mktree(tree_name, branches)
+        tree.extend(scores_to_save)  # Fill the tree with data
+
+    print(f"Merging scores with events {root_path}")
+
+    fin = ROOT.TFile.Open(in_file)
+    t1 = fin.Get(tree_name)
+
+    friend_file = ROOT.TFile.Open(root_path_sc_only)
+    t2 = friend_file.Get(tree_name)
+
+    t2.BuildIndex("run", "event")
+
+    # Write merged tree
+    fout = ROOT.TFile.Open(root_path, "RECREATE")
+    t_merged = t1.CloneTree(0) # empty tree
+
+    # Prepare buffer for GNN_score
+    gnn_score = array('f', [0.])
+    t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
+
+    count = 0
+    # Loop over t1
+    for i in range(t1.GetEntries()):
+        t1.GetEntry(i)
+
+        entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
+
+        if entry2 >= 0:
+            t2.GetEntry(entry2) 
+            gnn_score[0] = t2.GNN_score
+            count += 1
+        else:
+            gnn_score[0] = -1.  # default if no match
+
+        t_merged.Fill()
+
+    print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
+    t_merged.Write()
+    fout.Close()
+
+    fin.Close()
+    friend_file.Close()
+
+    print(f"Merged score and event root files to {root_path}")
+
+    os.remove(root_path_sc_only)
+
+    print(f"Deleted temporary file {root_path_sc_only}")
+
+
 class ScoreProducer:
 
     """
@@ -312,7 +406,11 @@ class ScoreProducer:
 
     def __init__(
         self,
-        root,
+        inputs,
+        models,
+        outputs,
+        npz_paths,
+        tree_name="Events",
         cone_size=0.5,
         n_cones=1,
         edge_connection_mode="fully",
@@ -338,16 +436,20 @@ class ScoreProducer:
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,
-        models=None,
         device=None,
-        normalizers=None,
-        output_folders=None,
-        storage_folder=None,
-        model_names=None,
         bdt_preselection_cut=None
     ):
 
-        self.root = root
+        if set(outputs) != set(models) or set(npz_paths) != set(models):
+            raise ValueError(f"outputs ({sorted(outputs)}) and npz_paths ({sorted(npz_paths)}) "
+                             f"must have the model names as keys ({sorted(models)})")
+        self.inputs = list(inputs)
+        self.model_names = list(models)
+        self.models = [models[n][0] for n in self.model_names]
+        self.normalizers = [models[n][1] for n in self.model_names]
+        self.outputs = {n: dict(outputs[n]) for n in self.model_names}
+        self.npz_paths = {n: Path(npz_paths[n]) for n in self.model_names}
+        self.tree_name = tree_name
         self.cone_size = cone_size
         self.n_cones = n_cones
         self.edge_connection_mode = edge_connection_mode
@@ -370,12 +472,7 @@ class ScoreProducer:
         self.slimmed = slimmed
         self.shuffle_bool = shuffle_bool
         self.use_displacement = use_displacement 
-        self.models = models
         self.device = device
-        self.normalizers = normalizers
-        self.output_folders = output_folders
-        self.storage_folder = storage_folder
-        self.model_names = model_names
         self.unsculpting_mode = unsculpting_mode
         self.edge_connection_methods = {
             "fully": self.connect_fully,
@@ -383,13 +480,6 @@ class ScoreProducer:
             "r_threshold": self.connect_r_threshold,
         } 
         self.bdt_preselection_cut = bdt_preselection_cut
-
-        if not (len(self.models) == len(self.normalizers) == len(self.output_folders)):
-            raise ValueError(f"models ({len(self.models)}), normalizers ({len(self.normalizers)}) and output_folders ({len(self.output_folders)}) must all have the same length")
-
-        if self.output_folders:
-            for output_folder in self.output_folders:
-                os.makedirs(output_folder, exist_ok=True)
 
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
@@ -738,7 +828,7 @@ class ScoreProducer:
         if self.weights == "npvs_rescale":
             xsec = 1.
             gen_events_before_selection = None
-            npvs_weights = np.load(self.root + "/npvs_weights.npz")["weight_per_bin"]
+            npvs_weights = np.load(os.path.join(os.path.dirname(file_name), "npvs_weights.npz"))["weight_per_bin"]
 
         prefix = "Selected_" if self.slimmed else ""
         branches_to_load = gnn_branches(self.tau_channel, self.slimmed, self.bdt_preselection_cut is not None,
@@ -748,7 +838,7 @@ class ScoreProducer:
         all_tau_masses = []
         score_dicts = {name: {} for name in self.model_names}
         counter = 1
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="2000 MB"):
+        for events in uproot.iterate(f"{file_name}:{self.tree_name}", expressions=branches_to_load, library="ak", step_size="2000 MB"):
             print(f"Processing bunch {counter} of {file_name}")
             bkg_mask = None
             total_events = len(events)
@@ -785,10 +875,6 @@ class ScoreProducer:
         all_tau_masses = ak.flatten(all_tau_masses)
         
         return all_scores_dict, all_tau_masses, score_dicts
-
-    @property
-    def raw_file_names(self):
-            return [self.root + "/" + f for f in os.listdir(self.root) if f.endswith(".root")]
 
     def create_score(self, graph):
         # Dictionary to hold scores
@@ -835,136 +921,21 @@ class ScoreProducer:
 
 
     def process(self):
-
-        # Read data into huge `Data` list.
-        all_scores_dict = {name: [] for name in self.model_names}
+        all_scores = {name: [] for name in self.model_names}
         all_tau_masses = []
+        for in_file in self.inputs:
+            print(f"Processing {in_file}")
+            scores, tau_masses, score_dicts = self.get_all_scores(in_file)
+            all_tau_masses += ak.to_list(tau_masses)
+            for name in self.model_names:
+                all_scores[name] += ak.to_list(scores[name])
+                _write_with_scores(score_dicts[name], in_file, self.outputs[name][in_file], self.tree_name)
 
-        if "signal" in self.root:
-            mode = "signal"
-        elif "background" in self.root:
-            mode = "background"
-
-        for file in self.raw_file_names:
-            print(f"Processing {file}")
-            # all_scores_temp, all_tau_masses_temp, score_dict = self.get_all_scores(file)
-            all_scores_temp_dict, all_tau_masses_temp, score_dict_all_models = self.get_all_scores(file)
-
-            # all_scores += ak.to_list(all_scores_temp)
-            # all_tau_masses += ak.to_list(all_tau_masses_temp)
-
-            all_tau_masses += ak.to_list(all_tau_masses_temp)
-
-            for model_name in self.model_names:
-                all_scores_dict[model_name] += ak.to_list(all_scores_temp_dict[model_name])
-
-                base_name = os.path.basename(file)   # only filename not full path      
-                name_without_ext = os.path.splitext(base_name)[0] # drop .root
-                model_storage = os.path.join(self.storage_folder, model_name)
-                os.makedirs(model_storage, exist_ok=True)
-                root_path_sc_only = os.path.join(model_storage, f"{name_without_ext}_with_scores_only.root")
-                root_path = os.path.join(model_storage, f"{name_without_ext}_with_scores.root")
-
-                runs = []
-                lumis = []
-                events = []
-                scores = []
-
-                for (run, lumi, event), score in score_dict_all_models[model_name].items():
-                    runs.append(run)
-                    lumis.append(lumi)
-                    events.append(event)
-                    scores.append(score)
-
-                runs = np.array(runs, dtype=np.uint32)
-                lumis = np.array(lumis, dtype=np.uint32)
-                events = np.array(events, dtype=np.uint64)
-                scores = np.array(scores, dtype=np.float64)
-
-                scores_to_save = {
-                        "run": runs,
-                        "luminosityBlock": lumis,
-                        "event": events,
-                        "GNN_score": scores,
-                    }
-
-                branches = {k: v.dtype for k, v in scores_to_save.items()}
-
-                print(f"Saving scores only to {root_path_sc_only}")
-
-                with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
-                    # Create a new TTree in the file
-                    tree = f.mktree("Events", branches)
-                    tree.extend(scores_to_save)  # Fill the tree with data
-
-                print(f"Merging scores with events {root_path}")
-                start = time.time()
-
-                fin = ROOT.TFile.Open(file)
-                t1 = fin.Get("Events")
-
-                friend_file = ROOT.TFile.Open(root_path_sc_only)
-                t2 = friend_file.Get("Events")
-
-                t2.BuildIndex("run", "event")
-
-                # Write merged tree
-                fout = ROOT.TFile.Open(root_path, "RECREATE")
-                t_merged = t1.CloneTree(0) # empty tree
-
-                # Prepare buffer for GNN_score
-                gnn_score = array('f', [0.])
-                t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
-
-                count = 0
-                # Loop over t1
-                for i in range(t1.GetEntries()):
-                    t1.GetEntry(i)
-
-                    # entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-                    entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-
-                    if entry2 >= 0:
-                        t2.GetEntry(entry2) 
-                        gnn_score[0] = t2.GNN_score
-                        count += 1
-                    else:
-                        gnn_score[0] = -1.  # default if no match
-
-                    t_merged.Fill()
-
-                print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
-                t_merged.Write()
-                fout.Close()
-
-                fin.Close()
-                friend_file.Close()
-
-                end = time.time()
-                # print(f"ROOT file merging time: {end - start:.3f}")
-                print(f"Merged score and event root files to {root_path}")
-                
-                os.remove(root_path_sc_only)
-
-                print(f"Deleted temporary file {root_path_sc_only}")
-            
-        # Save raw arrays to compressed npz
-        suffix = "" if self.bdt_preselection_cut is None else "_with_bdt_cut"
-        for name, output_folder in zip(self.model_names, self.output_folders):
-            os.makedirs(output_folder, exist_ok=True)
-            np.savez_compressed(
-                os.path.join(output_folder, f"raw_scores_and_tau_mass_{mode}{suffix}.npz"),
-                scores=all_scores_dict[name],
-                tau_mass=all_tau_masses,
-            )
-            print(f"Raw scores and tau masses saved to: {os.path.join(output_folder, f'raw_scores_and_tau_mass_{mode}.npz')}")
-        
-        # np.savez_compressed(
-        #     os.path.join(self.output_folder, f"raw_scores_and_tau_mass_{mode}.npz"),
-        #     scores=all_scores,
-        #     tau_mass=all_tau_masses,
-        # )
-        return        
+        for name in self.model_names:
+            npz_path = self.npz_paths[name]
+            npz_path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(npz_path, scores=all_scores[name], tau_mass=all_tau_masses)
+            print(f"Raw scores and tau masses saved to: {npz_path}")
 
     
     def connect_fully(self, delta_R: np.ndarray) -> tuple:
@@ -1059,3 +1030,17 @@ class ScoreProducer:
 
         mu_indices = [idx_mu1, idx_mu2, idx_mu3]
         return mu_indices
+
+
+def score_events(inputs, models, outputs, npz_paths, tau_channel, unsculpting_mode, bdt_preselection_cut,
+                 tree_name="Events", device=None, max_events_to_process=None):
+    """inputs: input files. models: name -> (model, normalizer). outputs: name -> {input: output file}.
+    npz_paths: name -> npz file. See the module docstring for the outputs."""
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    ScoreProducer(inputs=inputs, models=models, outputs=outputs, npz_paths=npz_paths, tree_name=tree_name,
+                  edge_connection_mode="knn", delta_r_threshold=None, k_knn=10,
+                  max_events_to_process=max_events_to_process, save_edge_attributes=True, verbose=True,
+                  tau_channel=tau_channel, slimmed=True, shuffle_bool=max_events_to_process is not None,
+                  use_displacement=True, device=device, unsculpting_mode=unsculpting_mode,
+                  bdt_preselection_cut=bdt_preselection_cut)

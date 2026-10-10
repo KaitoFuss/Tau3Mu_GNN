@@ -1,16 +1,14 @@
-from tau3mu_gnn.gnn_training.ScoreProducer import ScoreProducer
-import torch
-import json
-import os
-import numpy as np
-from tau3mu_gnn.model_eval.ModelEval import CPU_Unpickler, load_pkl
-from tau3mu_gnn.architectures.TauMuNet import TauMuNet
-from tau3mu_gnn.gnn_training.TrainingUtils import get_model_parameters
-
+"""Old entry point: score every .root file of --root with each model; outputs as before."""
 import argparse
+import os
 
-if __name__ == "__main__":
+import torch
 
+from tau3mu_gnn.gnn_training.model_loading import load_model
+from tau3mu_gnn.gnn_training.ScoreProducer import score_events
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--root', type=str, required=True, help='Folder to read the data from')
@@ -26,81 +24,34 @@ if __name__ == "__main__":
     parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None")
     parser.add_argument("--bdt_preselection_cut", type=float, default=None, help="BDT preselection score cut")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    input_file = args.root
-    output_folder = args.output_folder
-    model_names = args.model_names
-    archs = args.archs
-    tau_channel = args.tau_channel
-    gnn_mode = args.gnn_mode
-    model_type = args.model
-    storage_folder = args.storage_folder
-    max_events_to_process = args.max_events_to_process
-    conv_types = args.conv_types
-    unsculpting_mode = args.unsculpting_mode
-    bdt_preselection_cut = args.bdt_preselection_cut
-
-    num_node_features, num_edge_features, num_graph_level_features = get_model_parameters(model_type, tau_channel)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    assert len(model_names) == len(archs) == len(conv_types), f"Number of model names ({len(model_names)}) must match number of architectures ({len(archs)}). Got model_names={model_names}, archs={archs}"
-    
-    output_folders = []
-    models = []
-    normalizers = []
-    for i, model_name in enumerate(model_names):
-        model_direc = output_folder + model_name + "/"
-        with open(os.path.join(model_direc, "arch_config.json")) as f:
-            params = json.load(f)
-
-        model =  TauMuNet(
-            conv_params=params["conv_params"],
-            dropout=params["dropout"],
-            fc_params=params["fc_params"],
-            num_node_features=num_node_features,
-            num_edge_features=num_edge_features,
-            num_graph_level_features=num_graph_level_features,
-            use_fusion=params["use_fusion"],
-            gnn_mode=gnn_mode,
-            scoring=True, 
-            scale_down_params=params["fusion_scale_down_params"],
-            conv_type=conv_types[i],
-        )
-        model.load_state_dict(torch.load(model_direc + model_name + ".pt", map_location=device)['model_state_dict'])
-        # Load the normalizer
-        normalizer = load_pkl(model_direc, "Normalization.pkl")[0]
-
-        models.append(model)
-        normalizers.append(normalizer)
-        output_folders.append(model_direc)
-
-
-    print("Starting the ScoreProducer")
-    print(f"BDT Selections cut: {bdt_preselection_cut}")
-    # max_events_to_process = 100000
-
-    if max_events_to_process is None:
-        shuffle = False
+    assert len(args.model_names) == len(args.archs) == len(args.conv_types), (
+        f"Number of model names ({len(args.model_names)}) must match number of architectures "
+        f"({len(args.archs)}). Got model_names={args.model_names}, archs={args.archs}")
+    if "signal" in args.root:
+        mode = "signal"
+    elif "background" in args.root:
+        mode = "background"
     else:
-        shuffle = True
+        raise ValueError(f"--root must contain 'signal' or 'background': {args.root}")
+    suffix = "" if args.bdt_preselection_cut is None else "_with_bdt_cut"
+    in_files = [os.path.join(args.root, f) for f in os.listdir(args.root) if f.endswith(".root")]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"BDT Selections cut: {args.bdt_preselection_cut}")
 
-    ScoreProducer(root=input_file,
-                edge_connection_mode="knn",
-                delta_r_threshold=None,
-                k_knn=10,
-                max_events_to_process=max_events_to_process,
-                save_edge_attributes=True,
-                verbose=True,
-                tau_channel=tau_channel,
-                slimmed=True,
-                shuffle_bool=shuffle,
-                use_displacement=True,
-                models=models,
-                device=device,
-                normalizers=normalizers,
-                output_folders=output_folders,
-                storage_folder=storage_folder,
-                model_names=model_names,
-                unsculpting_mode=unsculpting_mode,
-                bdt_preselection_cut=bdt_preselection_cut
-            )
+    models, outputs, npz_paths = {}, {}, {}
+    for model_name, conv_type in zip(args.model_names, args.conv_types):
+        models[model_name] = load_model(args.output_folder, model_name, conv_type, args.gnn_mode,
+                                        args.model, args.tau_channel, device)
+        storage = os.path.join(args.storage_folder, model_name)
+        outputs[model_name] = {f: os.path.join(storage, os.path.splitext(os.path.basename(f))[0] + "_with_scores.root")
+                               for f in in_files}
+        npz_paths[model_name] = os.path.join(args.output_folder, model_name,
+                                             f"raw_scores_and_tau_mass_{mode}{suffix}.npz")
+    score_events(in_files, models, outputs, npz_paths, args.tau_channel, args.unsculpting_mode,
+                 args.bdt_preselection_cut, device=device, max_events_to_process=args.max_events_to_process)
+
+
+if __name__ == "__main__":
+    main()

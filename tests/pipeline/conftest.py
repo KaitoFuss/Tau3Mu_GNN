@@ -95,3 +95,15 @@ def make_root_file(path, names, tree="Events"):
     with uproot.recreate(path) as f:
         f[tree] = {name: np.array([1.0, 2.0]) for name in names}
     return path
+
+
+def write_tree(path, data, tree="Events"):
+    """Write data (name -> numpy / awkward array) as a TTree.
+    mktree, because f[tree] = data writes an RNTuple in uproot 5.7."""
+    import awkward as ak
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with uproot.recreate(path) as f:
+        f.mktree(tree, {k: ak.type(v) if isinstance(v, ak.Array) else v.dtype for k, v in data.items()})
+        f[tree].extend(data)
+    return path
