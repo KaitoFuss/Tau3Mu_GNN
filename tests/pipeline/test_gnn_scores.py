@@ -165,3 +165,68 @@ def test_old_cli_paths(tmp_path, monkeypatch):
               "--unsculpting_mode", "delete_muons", "--bdt_preselection_cut", "0.8"])
     assert (storage / "m1" / "sig_with_scores.root").exists()
     assert (out_folder / "m1" / "raw_scores_and_tau_mass_signal_with_bdt_cut.npz").exists()
+
+
+# ---------------------------------------------------------------- stage 3
+
+def _stage(tmp_path, monkeypatch, load, user, sig=None, bkg=None):
+    import tau3mu_gnn.gnn_training.model_loading as model_loading
+    from tau3mu_gnn.pipeline.stages import gnn as gnn_stage
+
+    seen = {}
+
+    def fake_load_model(model_dir, model_name, conv_type, gnn_mode, graph_type, tau_channel, device):
+        seen.update(model_dir=model_dir, model_name=model_name, conv_type=conv_type, gnn_mode=gnn_mode,
+                    graph_type=graph_type, tau_channel=tau_channel)
+        return ToyGNN(), None
+
+    monkeypatch.setattr(model_loading, "load_model", fake_load_model)
+    cfg = load(user)
+    inputs = {"signal": write_tree(tmp_path / "2_bdt" / "signal_with_bdt_scores.root",
+                                   sig or gnn_events(CANDS, BDT, PF_ETAS)),
+              "background": write_tree(tmp_path / "2_bdt" / "background_with_bdt_scores.root",
+                                       bkg or gnn_events([[50.0]], [0.85], first_event=20)),
+              "scores_pickle": tmp_path / "2_bdt" / "tau_score_corr.pkl"}
+    out_dir = tmp_path / "3_gnn"
+    return gnn_stage.run(cfg, inputs, out_dir), out_dir, cfg, seen
+
+
+def test_stage_outputs(tmp_path, monkeypatch, load, user):
+    outputs, out_dir, cfg, seen = _stage(tmp_path, monkeypatch, load, user)
+    assert outputs == {
+        "signal": out_dir / "signal_with_gnn_scores.root",
+        "background": out_dir / "background_with_gnn_scores.root",
+        "signal_scores": out_dir / "raw_scores_and_tau_mass_signal.npz",
+        "background_scores": out_dir / "raw_scores_and_tau_mass_background.npz",
+    }
+    assert all(p.exists() for p in outputs.values())
+    np.testing.assert_allclose(np.load(outputs["background_scores"])["scores"], [50.0])
+    assert seen == dict(model_dir=cfg.gnn.model_dir, model_name=cfg.gnn.model_name, conv_type=cfg.gnn.conv_type,
+                        gnn_mode=cfg.gnn.gnn_mode, graph_type=cfg.gnn.graph_type, tau_channel="W")
+
+
+def test_stage_uses_config_cut(tmp_path, monkeypatch, load, user):
+    # TOY_DEFAULTS cut is 0.8: event 3 (bdt 0.5) gets -1
+    outputs, *_ = _stage(tmp_path, monkeypatch, load, user)
+    scores = uproot.open(outputs["signal"])["Events"]["GNN_score"].array(library="np")
+    np.testing.assert_array_equal(scores, np.float32(EXPECTED))
+
+
+def test_missing_branch_fails_before_output(tmp_path, monkeypatch, load, user):
+    from tau3mu_gnn.pipeline.branches import BranchError
+
+    sig = gnn_events(CANDS, BDT, PF_ETAS)
+    del sig["bdt_ISO"], sig[f"{PF}d0"]
+    with pytest.raises(BranchError) as e:
+        _stage(tmp_path, monkeypatch, load, user, sig=sig)
+    assert "bdt_ISO" in str(e.value) and f"{PF}d0" in str(e.value)
+    assert not (tmp_path / "3_gnn").exists()
+
+
+def test_existing_gnn_score_fails(tmp_path, monkeypatch, load, user):
+    from tau3mu_gnn.pipeline.branches import BranchError
+
+    bkg = gnn_events([[50.0]], [0.85])
+    bkg["GNN_score"] = np.full(1, 0.3)
+    with pytest.raises(BranchError, match="GNN_score"):
+        _stage(tmp_path, monkeypatch, load, user, bkg=bkg)

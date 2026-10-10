@@ -9,10 +9,8 @@ import logging
 from pathlib import Path
 from typing import Mapping
 
-import uproot
-
 from tau3mu_gnn.bdt_training.bdt_inputs import input_branch_names
-from tau3mu_gnn.pipeline.branches import BranchError
+from tau3mu_gnn.pipeline.branches import check_stage_inputs
 from tau3mu_gnn.pipeline.config import Config
 
 log = logging.getLogger(__name__)
@@ -23,24 +21,7 @@ PICKLE_NAME = "tau_score_corr.pkl"
 
 def check_inputs(inputs: Mapping[str, str | Path], tree_name: str, channel: str) -> None:
     """Raise BranchError listing every BDT branch missing in any input file. Reads branch names only."""
-    required = sorted(input_branch_names(channel))
-    problems = []
-    for sample in SAMPLES:
-        path = str(inputs[sample])
-        try:
-            with uproot.open(path) as f:
-                keys = set(f[tree_name].keys())
-        except FileNotFoundError:
-            problems.append(f"{path}: file not found")
-            continue
-        except KeyError:
-            problems.append(f"{path}: no tree '{tree_name}'")
-            continue
-        missing = [name for name in required if name not in keys]
-        if missing:
-            problems.append(f"{path}: missing BDT input branches: {', '.join(missing)}")
-    if problems:
-        raise BranchError(problems)
+    check_stage_inputs({s: inputs[s] for s in SAMPLES}, tree_name, input_branch_names(channel), "BDT")
 
 
 def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> dict[str, Path]:

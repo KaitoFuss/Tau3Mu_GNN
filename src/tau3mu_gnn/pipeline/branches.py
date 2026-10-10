@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import difflib
 import glob
-from typing import Mapping, Sequence
+from pathlib import Path
+from typing import Iterable, Mapping, Sequence
 
 import uproot
 
@@ -135,3 +136,30 @@ def rename_columns(df, branch_map: Mapping[str, str]):
     originals = set(renames.values())
     columns = [str(c) for c in df.GetColumnNames() if str(c) not in originals]
     return df, columns
+
+
+def check_stage_inputs(inputs: Mapping[str, str | Path], tree_name: str, required: Iterable[str],
+                       label: str, forbidden: Iterable[str] = ()) -> None:
+    """Raise BranchError listing, for every file in inputs (sample -> file), each missing required
+    branch and each forbidden branch that is present. Reads branch names only."""
+    required = sorted(required)
+    problems = []
+    for path in inputs.values():
+        path = str(path)
+        try:
+            with uproot.open(path) as f:
+                keys = set(f[tree_name].keys())
+        except FileNotFoundError:
+            problems.append(f"{path}: file not found")
+            continue
+        except KeyError:
+            problems.append(f"{path}: no tree '{tree_name}'")
+            continue
+        missing = [name for name in required if name not in keys]
+        if missing:
+            problems.append(f"{path}: missing {label} input branches: {', '.join(missing)}")
+        present = [name for name in sorted(forbidden) if name in keys]
+        if present:
+            problems.append(f"{path}: has branches that {label} writes: {', '.join(present)}")
+    if problems:
+        raise BranchError(problems)
