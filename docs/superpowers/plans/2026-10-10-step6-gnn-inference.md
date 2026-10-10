@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make GNN scoring a function with explicit input → output files, wire it as pipeline stage 3 (`run(cfg, inputs, out_dir)`), and prove with a regression job that the outputs are identical to the old `ScoreCreation` script.
+**Goal:** Make GNN scoring a function with explicit input → output files (still several models in one pass), make it score the **first** candidate (as the BDT and the limit do), wire it as pipeline stage 3 (`run(cfg, inputs, out_dir)`), and prove with a regression job that the only differences to the old `ScoreCreation` script are in multi-candidate events.
 
-**Architecture:** Same pattern as step 5b (BDT). The branch list moves out of `ScoreProducer` into `gnn_training/gnn_inputs.py` (testable without torch). Model loading moves out of `scripts/ScoreCreation.py` into `gnn_training/model_loading.py`. `ScoreProducer` becomes single-model and takes `files: {input: output}`, `npz_path` and `tree_name` instead of a folder + output folders; a function `score_events(...)` wraps it. The graph building and scoring code (`process_event`, `build_cone`, `connect_knn`, ...) does **not** change. The old CLI stays as a thin wrapper, so the old job scripts in `jobs/gnn_score_creation/` keep working. New stage `pipeline/stages/gnn.py` checks every input branch first, then loads the frozen model from the config and scores both samples.
+**Architecture:** Same pattern as step 5b (BDT). The branch list moves out of `ScoreProducer` into `gnn_training/gnn_inputs.py` (testable without torch). Model loading moves out of `scripts/ScoreCreation.py` into `gnn_training/model_loading.py`. `ScoreProducer` stays multi-model (each graph is built once and scored by every model) and takes `inputs`, `models: {name: (model, normalizer)}`, `outputs: {name: {input: output}}`, `npz_paths: {name: path}` and `tree_name` instead of a folder + output folders; a function `score_events(...)` wraps it. The graph building and scoring math (`build_cone`, `connect_knn`, ...) does **not** change. One behavior change, in its own commit: the scored candidate is the first one, not the highest-pt one. The old CLI stays as a thin wrapper, so the old job scripts in `jobs/gnn_score_creation/` keep working. New stage `pipeline/stages/gnn.py` checks every input branch first, then loads the frozen model from the config and scores both samples.
 
 **Tech Stack:** Python 3.11 (Tau3Mu env), PyTorch + torch_geometric, uproot 5.7, awkward, PyROOT 6.34, pytest.
 
@@ -16,9 +16,10 @@
 - Branch `pipeline-step6-gnn`, stacked on `pipeline-step5b-bdt-config` (PR #13).
 - Git in this worktree: `/usr/bin/git` only. One git command per Bash call.
 - Importing ROOT on the login node prints a "cannot extract standard library include paths" error. It is noise. Do not fix it.
-- **No behavior change** in scoring. Do not touch `process_event`, `create_score` math, `build_cone`, `connect_*`, `get_muon_idx`, `calc_delta_R_sq`, `deltaphi`. The regression (Task 6) must give identical `GNN_score` and npz.
-- Known behaviors that stay as they are (regression), recorded in the roadmap only:
-  - The GNN scores the **highest-pt** candidate (`np.argmax(pt)`, `ScoreProducer.py:507`). The BDT uses the **first** candidate. For Kaito to decide later.
+- **One behavior change only:** the GNN scores the **first** candidate (`nt = 0`), not the highest-pt one (`np.argmax(pt)`, `ScoreProducer.py:507`). Decided by Kaito 2026-10-10: `bdt_ISO` is the first candidate's score and the limit uses `Selected_TauTo3Mu_fitted_mass[0]`, so all three now use the same candidate. Training built graphs for every candidate, so this is not a new input type for the model. Own commit (Task 3 Step 9).
+- Otherwise do not touch the scoring math: `create_score` math, `build_cone`, `connect_*`, `get_muon_idx`, `calc_delta_R_sq`, `deltaphi`.
+- `PV_npvs` is **not** a required branch (Kaito 2026-10-10: only needed for training weights). The GNN loads it only for `weights == "npvs_rescale"`.
+- Known behaviors that stay as they are:
   - `TauPlusMET_*` is indexed with the skimmed candidate mask (E1 in the roadmap).
   - Graph settings are fixed for the frozen model: `k_knn=10`, `cone_size=0.5`, `use_displacement=True`, `edge_connection_mode="knn"`. `gnn.graph_type` in the config is used only for the feature counts (`get_model_parameters`), as in the old script.
 - No `max_events` argument in the stage (PR 10 review). `score_events` keeps `max_events_to_process` only for the old CLI.
@@ -30,7 +31,7 @@
 
 1. **Input file already has `GNN_score`** (rerun on a stage 3 output, or an old file) → `CloneTree` + `Branch("GNN_score")` would write two branches with the same name. Expect a clear `BranchError` before any work. Test in Task 4.
 2. **Event without a candidate, or below the BDT cut, or with ≤1 PF candidate in the cone** → event kept, `GNN_score = -1`, not in the npz. Test in Task 3.
-3. **Multi-candidate event** → the highest-pt candidate is scored (old behavior), not the first. Test in Task 3, so a later change is a conscious one.
+3. **Multi-candidate event where the first candidate is not the highest-pt one** → the first candidate is scored (same as BDT and limit). Test in Task 3.
 4. **Tree name not `Events`** → read and write use `inputs.tree_name`. Test in Task 3.
 5. **Wrong `model_name` / missing model file** → `FileNotFoundError` with the path, before any event is read. Test in Task 2.
 
@@ -238,7 +239,7 @@ def input_branch_names(tau_channel: str) -> set[str]:
 ```
   Keep the `prefix = ...` lines above it only if still used in that method (`self.mask` uses `prefix`: keep).
 
-- [ ] **Step 6: Run tests** — `$PYTEST tests/pipeline -q` → all pass (101 old + 7 new).
+- [ ] **Step 6: Run tests** — `$PYTEST tests/pipeline -q` → all pass (101 old + 6 new).
 
 - [ ] **Step 7: Commit** — `feat(gnn): branch list in gnn_inputs, load PV_npvs/iso only when used`.
 
@@ -349,11 +350,12 @@ def load_model(model_dir, model_name, conv_type, gnn_mode, graph_type, tau_chann
 - Consumes: `gnn_branches`, `graph_level_branches` (Task 1); `load_model` (Task 2, old CLI only).
 - Produces:
 ```python
-def score_events(files: Mapping[str, str], model, normalizer, tau_channel: str, npz_path: str | Path,
-                 unsculpting_mode: str | None, bdt_preselection_cut: float | None,
-                 tree_name: str = "Events", device=None, max_events_to_process: int | None = None) -> None
+def score_events(inputs: Sequence[str], models: Mapping[str, tuple], outputs: Mapping[str, Mapping[str, str]],
+                 npz_paths: Mapping[str, str | Path], tau_channel: str, unsculpting_mode: str | None,
+                 bdt_preselection_cut: float | None, tree_name: str = "Events", device=None,
+                 max_events_to_process: int | None = None) -> None
 ```
-  For each `input -> output` in `files` (in order): writes `output` = copy of input (all entries, all branches) + `GNN_score` (float32; `-1` for events without a score). Writes `npz_path` with `scores`, `tau_mass` of all scored events, files concatenated in `files` order. `normalizer=None` means no normalization (already supported by `create_score`).
+  `models`: model name → `(model, normalizer)`. Each input file is read once; each graph is built once and scored by every model. For each model `name` and input `f`: writes `outputs[name][f]` = copy of `f` (all entries, all branches) + `GNN_score` (float32; `-1` for events without a score). Writes `npz_paths[name]` with `scores`, `tau_mass` of all scored events, files concatenated in `inputs` order. `normalizer=None` means no normalization (already supported by `create_score`). `outputs` and `npz_paths` must have exactly the keys of `models` (else `ValueError`).
 - `conftest.write_tree(path, data, tree="Events")` (moved from `test_bdt_scores._write`).
 
 - [ ] **Step 1: Move the tree writer to conftest.** Add to `tests/pipeline/conftest.py`:
@@ -445,33 +447,34 @@ def gnn_events(cands, bdt, pf=None, first_event=10):
     return data
 
 
-def _score(tmp_path, files_data, tree="Events", cut=0.8):
+def _score(tmp_path, files_data, tree="Events", cut=0.8, models=None):
+    """Score with each model (default: one ToyGNN 'm'). Returns (output files of the first model, its npz)."""
     from tau3mu_gnn.gnn_training.ScoreProducer import score_events
 
-    files = {}
-    for i, data in enumerate(files_data):
-        in_file = write_tree(tmp_path / f"in_{i}.root", data, tree)
-        files[str(in_file)] = str(tmp_path / "out" / f"out_{i}.root")
-    npz = tmp_path / "out" / "scores.npz"
-    score_events(files, ToyGNN(), None, "W", npz, "delete_muons", cut, tree_name=tree,
+    models = models or {"m": (ToyGNN(), None)}
+    inputs = [str(write_tree(tmp_path / f"in_{i}.root", data, tree)) for i, data in enumerate(files_data)]
+    outputs = {name: {f: str(tmp_path / name / f"out_{i}.root") for i, f in enumerate(inputs)} for name in models}
+    npz_paths = {name: tmp_path / name / "scores.npz" for name in models}
+    score_events(inputs, models, outputs, npz_paths, "W", "delete_muons", cut, tree_name=tree,
                  device=torch.device("cpu"))
-    return list(files.values()), np.load(npz)
+    first = next(iter(models))
+    return list(outputs[first].values()), np.load(npz_paths[first])
 
 
-# event 0: two candidates (highest pt 900 is scored), 1: one, 2: none, 3: BDT below cut,
-# 4: no PF candidate left in the cone
+# event 0: two candidates (first one, pt 100, is scored; not the highest-pt 900), 1: one, 2: none,
+# 3: BDT below cut, 4: no PF candidate left in the cone
 CANDS = [[100.0, 900.0], [300.0], [], [400.0], [500.0]]
 BDT = [0.9, 0.95, 0.9, 0.5, 0.9]
 PF_ETAS = [PF_GOOD, PF_GOOD, PF_GOOD, PF_GOOD, PF_EMPTY]
-EXPECTED = [900.0, 300.0, -1.0, -1.0, -1.0]
+EXPECTED = [100.0, 300.0, -1.0, -1.0, -1.0]
 
 
 def test_gnn_score_per_event(tmp_path):
     (out,), npz = _score(tmp_path, [gnn_events(CANDS, BDT, PF_ETAS)])
     tree = uproot.open(out)["Events"]
     np.testing.assert_array_equal(tree["GNN_score"].array(library="np"), np.float32(EXPECTED))
-    np.testing.assert_allclose(npz["scores"], [900.0, 300.0])
-    np.testing.assert_allclose(npz["tau_mass"], [1.71, 1.70], rtol=1e-6)
+    np.testing.assert_allclose(npz["scores"], [100.0, 300.0])
+    np.testing.assert_allclose(npz["tau_mass"], [1.70, 1.70], rtol=1e-6)
 
 
 def test_all_events_and_branches_kept(tmp_path):
@@ -497,6 +500,32 @@ def test_several_files_in_order(tmp_path):
                                   np.float32([700.0, 200.0]))
 
 
+class TwiceGNN(ToyGNN):
+    def forward(self, data):
+        return 2 * super().forward(data)
+
+
+def test_several_models_one_pass(tmp_path):
+    from tau3mu_gnn.gnn_training.ScoreProducer import score_events
+
+    inp = str(write_tree(tmp_path / "in.root", gnn_events(CANDS, BDT, PF_ETAS)))
+    models = {"a": (ToyGNN(), None), "b": (TwiceGNN(), None)}
+    outputs = {n: {inp: str(tmp_path / n / "out.root")} for n in models}
+    npz_paths = {n: tmp_path / n / "s.npz" for n in models}
+    score_events([inp], models, outputs, npz_paths, "W", "delete_muons", 0.8, device=torch.device("cpu"))
+    b = uproot.open(outputs["b"][inp])["Events"]["GNN_score"].array(library="np")
+    np.testing.assert_array_equal(b, np.float32([200.0, 600.0, -1.0, -1.0, -1.0]))
+    np.testing.assert_allclose(np.load(npz_paths["a"])["scores"], [100.0, 300.0])
+
+
+def test_outputs_must_match_models(tmp_path):
+    from tau3mu_gnn.gnn_training.ScoreProducer import score_events
+
+    with pytest.raises(ValueError, match="outputs"):
+        score_events(["x.root"], {"a": (ToyGNN(), None)}, {"b": {}}, {"a": tmp_path / "s.npz"},
+                     "W", "delete_muons", 0.8)
+
+
 def test_no_cut_scores_low_bdt_event(tmp_path):
     (out,), _ = _score(tmp_path, [gnn_events([[400.0]], [0.5])], cut=None)
     assert uproot.open(out)["Events"]["GNN_score"].array(library="np")[0] == 400.0
@@ -506,55 +535,61 @@ def test_no_cut_scores_low_bdt_event(tmp_path):
 
 - [ ] **Step 3: Run, expect FAIL** — `ImportError: cannot import name 'score_events'`.
 
-- [ ] **Step 4: Refactor `ScoreProducer`** (edit in place; do not reformat untouched code):
-  1. `__init__`: replace params `root`, `models`, `normalizers`, `output_folders`, `storage_folder`, `model_names` with `files`, `model`, `normalizer`, `npz_path`, `tree_name="Events"` (keep all other params and defaults). Store `self.files = dict(files)`, `self.model = model`, `self.normalizer = normalizer`, `self.npz_path = Path(npz_path)`, `self.tree_name = tree_name`. Delete the length check (`:386-391`). Replace `for model in self.models: model.eval()` with `self.model.eval()`.
-  2. `process_event`: replace `scores_dict_all_models = {name: [] for name in self.model_names}` with `scores = []`, and the block at `:746-755` with:
-```python
-            score, tau_mass = self.create_score(graph)
-            if key in score_dict_for_root:
-                print(f"WARNING: overwriting score for {key}")
-            score_dict_for_root[key] = score[0]
-            scores.append(score[0])
-            tau_masses.append(tau_mass[0])
+  Until Step 9 (first candidate), `test_gnn_score_per_event`, `test_several_models_one_pass` and `test_stage_uses_config_cut` expect the first candidate and fail on event 0 (old code scores 900). That is expected. All other tests must pass after Step 5.
 
-        return scores, tau_masses
+- [ ] **Step 4: Refactor `ScoreProducer`** (edit in place; do not reformat untouched code). The class keeps its multi-model loops (`self.model_names`, `self.models`, `self.normalizers`); only the I/O changes.
+  1. `__init__`: replace params `root`, `models`, `normalizers`, `output_folders`, `storage_folder`, `model_names` with `inputs`, `models` (mapping name → `(model, normalizer)`), `outputs`, `npz_paths`, `tree_name="Events"` (keep all other params and defaults). Set:
+```python
+        if set(outputs) != set(models) or set(npz_paths) != set(models):
+            raise ValueError(f"outputs ({sorted(outputs)}) and npz_paths ({sorted(npz_paths)}) "
+                             f"must have the model names as keys ({sorted(models)})")
+        self.inputs = list(inputs)
+        self.model_names = list(models)
+        self.models = [models[n][0] for n in self.model_names]
+        self.normalizers = [models[n][1] for n in self.model_names]
+        self.outputs = {n: dict(outputs[n]) for n in self.model_names}
+        self.npz_paths = {n: Path(npz_paths[n]) for n in self.model_names}
+        self.tree_name = tree_name
 ```
-  3. `get_all_scores`: `npvs_weights = np.load(os.path.join(os.path.dirname(file_name), "npvs_weights.npz"))["weight_per_bin"]` (was `self.root + "/npvs_weights.npz"`; `root` was the input folder). Use `all_scores = []`, `score_dict = {}`; iterate `f"{file_name}:{self.tree_name}"`; append `scores_per_model` → `all_scores.append(scores)`; at the end `return ak.flatten(all_scores), ak.flatten(all_tau_masses), score_dict`.
-  4. `create_score`: single model — same math, `self.model`, `self.normalizer` instead of `self.models[i]`, `self.normalizers[i]`; return `out[:, 0].cpu().detach().numpy(), tau_mass`. Keep `model.to(device)`, `model.eval()`, `graph.clone()`, `torch.no_grad()`.
-  5. Delete `raw_file_names`. Replace `process` with:
+  Delete the old length check and the `output_folders` makedirs (`:386-391`).
+  2. `get_all_scores`: `npvs_weights = np.load(os.path.join(os.path.dirname(file_name), "npvs_weights.npz"))["weight_per_bin"]` (was `self.root + "/npvs_weights.npz"`; `root` was the input folder). Iterate `f"{file_name}:{self.tree_name}"` (was `:Events`).
+  3. Delete `raw_file_names`. Replace `process` with:
 ```python
     def process(self):
-        all_scores = []
+        all_scores = {name: [] for name in self.model_names}
         all_tau_masses = []
-        for in_file, out_file in self.files.items():
+        for in_file in self.inputs:
             print(f"Processing {in_file}")
-            scores, tau_masses, score_dict = self.get_all_scores(in_file)
-            all_scores += ak.to_list(scores)
+            scores, tau_masses, score_dicts = self.get_all_scores(in_file)
             all_tau_masses += ak.to_list(tau_masses)
-            _write_with_scores(score_dict, in_file, out_file, self.tree_name)
+            for name in self.model_names:
+                all_scores[name] += ak.to_list(scores[name])
+                _write_with_scores(score_dicts[name], in_file, self.outputs[name][in_file], self.tree_name)
 
-        self.npz_path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(self.npz_path, scores=all_scores, tau_mass=all_tau_masses)
-        print(f"Raw scores and tau masses saved to: {self.npz_path}")
+        for name in self.model_names:
+            npz_path = self.npz_paths[name]
+            npz_path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(npz_path, scores=all_scores[name], tau_mass=all_tau_masses)
+            print(f"Raw scores and tau masses saved to: {npz_path}")
 ```
-  6. Module-level `_write_with_scores(score_dict, in_file, out_file, tree_name)`: the body of the old per-model loop (`:960-1041`), with `"Events"` → `tree_name` (3 places), `root_path` → `str(out_file)`, temp file `str(out_file).removesuffix(".root") + "_scores_only.root"`, `os.makedirs(os.path.dirname(os.path.abspath(out_file)), exist_ok=True)` first, `score_dict_all_models[model_name]` → `score_dict`. Keep `-1.` default, `BuildIndex("run", "event")`, `GNN_score/F`.
-  7. Module-level `score_events` (signature in Interfaces):
+  4. Module-level `_write_with_scores(score_dict, in_file, out_file, tree_name)`: the body of the old per-model loop (`:960-1041`), with `"Events"` → `tree_name` (3 places), `root_path` → `str(out_file)`, temp file `str(out_file).removesuffix(".root") + "_scores_only.root"`, `os.makedirs(os.path.dirname(os.path.abspath(out_file)), exist_ok=True)` first, `score_dict_all_models[model_name]` → `score_dict`. Keep `-1.` default, `BuildIndex("run", "event")`, `GNN_score/F`.
+  5. Module-level `score_events` (signature in Interfaces):
 ```python
-def score_events(files, model, normalizer, tau_channel, npz_path, unsculpting_mode, bdt_preselection_cut,
+def score_events(inputs, models, outputs, npz_paths, tau_channel, unsculpting_mode, bdt_preselection_cut,
                  tree_name="Events", device=None, max_events_to_process=None):
-    """Score the highest-pt candidate of each event with the GNN. See module docstring for outputs."""
+    """Score the first candidate of each event with every model. See the module docstring for outputs."""
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    ScoreProducer(files=files, model=model, normalizer=normalizer, npz_path=npz_path, tree_name=tree_name,
+    ScoreProducer(inputs=inputs, models=models, outputs=outputs, npz_paths=npz_paths, tree_name=tree_name,
                   edge_connection_mode="knn", delta_r_threshold=None, k_knn=10,
                   max_events_to_process=max_events_to_process, save_edge_attributes=True, verbose=True,
                   tau_channel=tau_channel, slimmed=True, shuffle_bool=max_events_to_process is not None,
                   use_displacement=True, device=device, unsculpting_mode=unsculpting_mode,
                   bdt_preselection_cut=bdt_preselection_cut)
 ```
-  (These are exactly the values `ScoreCreation.py:87-105` passes today.) Add a short module docstring like `BDT_ScoreProducer.py`'s, and `from pathlib import Path`, `from typing import Mapping` if missing.
+  (These are exactly the values `ScoreCreation.py:87-105` passes today.) Add a short module docstring like `BDT_ScoreProducer.py`'s, and `from pathlib import Path`, `from typing import Mapping, Sequence` if missing.
 
-- [ ] **Step 5: Run tests** — `$PYTEST tests/pipeline/test_gnn_scores.py -v` → PASS. If `test_gnn_score_per_event` fails, read the toy data first (Step 2 note), then the refactor.
+- [ ] **Step 5: Run tests** — `$PYTEST tests/pipeline/test_gnn_scores.py -v` → all PASS except the three first-candidate tests (fail on event 0 only: got 900, expected 100). For any other failure, read the toy data first (Step 2 note), then the refactor.
 
 - [ ] **Step 6: Thin old CLI.** Rewrite `scripts/ScoreCreation.py` (same arguments and defaults as today, all kept):
 
@@ -588,21 +623,23 @@ def main(argv=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"BDT Selections cut: {args.bdt_preselection_cut}")
 
+    models, outputs, npz_paths = {}, {}, {}
     for model_name, conv_type in zip(args.model_names, args.conv_types):
-        model, normalizer = load_model(args.output_folder, model_name, conv_type, args.gnn_mode,
-                                       args.model, args.tau_channel, device)
+        models[model_name] = load_model(args.output_folder, model_name, conv_type, args.gnn_mode,
+                                        args.model, args.tau_channel, device)
         storage = os.path.join(args.storage_folder, model_name)
-        files = {f: os.path.join(storage, os.path.splitext(os.path.basename(f))[0] + "_with_scores.root")
-                 for f in in_files}
-        npz = os.path.join(args.output_folder, model_name, f"raw_scores_and_tau_mass_{mode}{suffix}.npz")
-        score_events(files, model, normalizer, args.tau_channel, npz, args.unsculpting_mode,
-                     args.bdt_preselection_cut, device=device, max_events_to_process=args.max_events_to_process)
+        outputs[model_name] = {f: os.path.join(storage, os.path.splitext(os.path.basename(f))[0] + "_with_scores.root")
+                               for f in in_files}
+        npz_paths[model_name] = os.path.join(args.output_folder, model_name,
+                                             f"raw_scores_and_tau_mass_{mode}{suffix}.npz")
+    score_events(in_files, models, outputs, npz_paths, args.tau_channel, args.unsculpting_mode,
+                 args.bdt_preselection_cut, device=device, max_events_to_process=args.max_events_to_process)
 
 
 if __name__ == "__main__":
     main()
 ```
-  Same output paths as before. One difference: with several models, the input is read once per model (before: once for all). The job scripts use one model.
+  Same output paths as before. Several models are still scored in one pass.
 
 - [ ] **Step 7: CLI test** (append to `test_gnn_scores.py`): monkeypatch `load_model` and check the old output paths.
 
@@ -622,9 +659,24 @@ def test_old_cli_paths(tmp_path, monkeypatch):
     assert (out_folder / "m1" / "raw_scores_and_tau_mass_signal_with_bdt_cut.npz").exists()
 ```
 
-- [ ] **Step 8: Run all tests** — `$PYTEST tests/pipeline -q` → all pass.
+- [ ] **Step 8: Commit the refactor** (the three first-candidate tests still fail; all others pass) — `refactor(gnn): score_events with explicit input and output files (step 6)`.
 
-- [ ] **Step 9: Commit** — `feat(gnn): score_events with explicit input and output files (step 6)`.
+- [ ] **Step 9: Score the first candidate.** In `process_event` (`ScoreProducer.py:507-509`) replace
+
+```python
+            nt = np.argmax(event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask])
+            if n_tau > 1:
+                print(f"WARNING: using {nt}-th tau cand")
+```
+  with
+```python
+            nt = 0  # first candidate, as the BDT (bdt_ISO) and the limit (fitted_mass[0]) use
+```
+  Do not change anything else in `process_event`.
+
+- [ ] **Step 10: Run all tests** — `$PYTEST tests/pipeline -q` → all pass.
+
+- [ ] **Step 11: Commit** — `fix(gnn): score the first candidate, as BDT and limit do`.
 
 ---
 
@@ -777,8 +829,8 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> d
 
     g = cfg.gnn
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model, normalizer = model_loading.load_model(g.model_dir, g.model_name, g.conv_type, g.gnn_mode,
-                                                 g.graph_type, cfg.channel, device)
+    models = {g.model_name: model_loading.load_model(g.model_dir, g.model_name, g.conv_type, g.gnn_mode,
+                                                     g.graph_type, cfg.channel, device)}
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     outputs = {}
@@ -786,10 +838,11 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> d
         outputs[sample] = out_dir / f"{sample}_with_gnn_scores.root"
         outputs[f"{sample}_scores"] = out_dir / f"raw_scores_and_tau_mass_{sample}.npz"
         log.info("stage 3 GNN: %s -> %s", inputs[sample], outputs[sample])
-        score_events({str(inputs[sample]): str(outputs[sample])}, model, normalizer, cfg.channel,
-                     outputs[f"{sample}_scores"], g.unsculpting_mode, g.bdt_preselection_cut,
-                     tree_name=cfg.inputs.tree_name, device=device)
-    return {k: outputs[k] for k in ("signal", "background", "signal_scores", "background_scores")}
+        in_file = str(inputs[sample])
+        score_events([in_file], models, {g.model_name: {in_file: str(outputs[sample])}},
+                     {g.model_name: outputs[f"{sample}_scores"]}, cfg.channel, g.unsculpting_mode,
+                     g.bdt_preselection_cut, tree_name=cfg.inputs.tree_name, device=device)
+    return outputs
 ```
   `model_loading.load_model` (module attribute, not `from ... import load_model`) so the test's monkeypatch works.
 
@@ -807,7 +860,9 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> d
   - Step 6 interface: `score_events(files, model, normalizer, tau_channel, npz_path, unsculpting_mode, bdt_preselection_cut, tree_name, device, max_events_to_process)`, `load_model(...)`, stage `pipeline/stages/gnn.py` → `3_gnn/{sample}_with_gnn_scores.root`, `raw_scores_and_tau_mass_{sample}.npz` (no `_with_bdt_cut` suffix: step 7 adapts `ModelEval`). `ScoreProducer` is single-model; the old CLI loops over models.
   - GNN branch list in `gnn_training/gnn_inputs.py`; test: GNN branches ⊆ `required_branches("W")` (except stage-made `nSelectedTauTo3Mu`, `bdt_ISO`). `PV_npvs` / `iso_*` loaded only when used.
   - Stage 3 fails if an input already has `GNN_score`.
-  - **Open (Kaito):** the GNN scores the highest-pt candidate, the BDT the first candidate. Unchanged for now.
+  - 2026-10-10 (Kaito): the GNN scores the **first** candidate (was highest pt), as the BDT and the limit. Multi-model scoring in one pass kept.
+  - 2026-10-10 (Kaito): `PV_npvs` is not required for inference. The npvs weights (`utils/CorrectPileupDist.py`) are only for training graph weights.
+  - New roadmap item (sec. 6, after step 11, before HF): **npvs weights stage** for when retraining is in the pipeline: after the skim, before the BDT; writes `npvs_weights.npz` + plots from `PV_npvs` (signal vs data). `PV_npvs` becomes required only for that stage. Note: the old weights were made before the skim, so the new ones differ a bit.
 - [ ] **Step 2: Commit** — `docs(roadmap): step 6 interface and decisions`.
 
 ---
@@ -816,14 +871,15 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> d
 
 **Files (not committed, `regression/` is untracked):** `regression/step6/run_regression_6.sh`, `regression/step6/compare_6.py`.
 
-Reference: the old CLI at commit `c6db332` (GNN code identical to `main`). New: `pipeline.stages.gnn.run` with the real config (`configs/example_W.yaml`) and the frozen model in `models/W/gnn`. Same input subset for both.
+Reference: the old CLI at commit `c6db332` (GNN code identical to `main`; scores the highest-pt candidate). New: `pipeline.stages.gnn.run` (first candidate) with the real config (`configs/example_W.yaml`) and the frozen model in `models/W/gnn`. Same input subset for both.
 
 Inputs: the first **5,000** signal and **400,000** background events of the old `bdt_full` files (they have `bdt_ISO`, `Selected_*`, no `GNN_score`). About 85% of signal and 1.2% of background pass the 0.8 BDT cut → ≈ 4,200 + 4,800 scored events.
 
 - [ ] **Step 1: Write `compare_6.py`.** Subcommand-free CLI: `--old-root --new-root --old-npz --new-npz --report --sample`. Checks (per sample, append to the report):
   - same entries; same branch set; every branch equal, read **one branch at a time** (background subset is large). Float compare: equal or both NaN (copy `same()` from `regression/step5b/compare_5b.py`).
-  - `GNN_score`: equal; print number of entries `!= -1`; if not equal, print max abs difference and the number of differing events.
-  - npz: `scores` and `tau_mass` equal (same order).
+  - Every branch except `GNN_score` must be equal.
+  - `GNN_score`: compute `changed = argmax(Selected_TauTo3Mu_fitted_pt) != 0` per event (from the new output file; `False` for events without a candidate). **PASS** if `GNN_score` is identical on all events with `changed == False`. Print: entries `!= -1` (old, new), number of `changed` events, how many of them differ, and how many changed `-1` ↔ scored.
+  - npz: the old and new npz hold one entry per scored event in event order. Rebuild the event order from the output files (`GNN_score != -1`), drop the `changed` events from both, and require `scores` and `tau_mass` equal on the rest. Print the npz lengths.
   - Last line `RESULT: PASS` / `RESULT: FAIL`, exit code 1 on FAIL.
 - [ ] **Step 2: Write `run_regression_6.sh`** (pattern: `regression/step5b/run_regression_5b.sh`): `#SBATCH -p standard --account=t3 --mem=32G --time=12:00:00`, logs in `regression/step6/logs/`, all work in `/scratch/$USER/$SLURM_JOB_ID` (trap removes it). Steps:
   1. Freeze code: `/usr/bin/git -C $WT archive c6db332 src | tar -x -C $S/old`; `cp -r $WT/src $WT/configs $WT/models $S/new/`.
