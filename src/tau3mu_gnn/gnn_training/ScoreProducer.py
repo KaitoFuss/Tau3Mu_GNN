@@ -22,10 +22,11 @@ import awkward as ak
 import ROOT
 import csv
 import time
-from array import array
 import copy
 from pathlib import Path
+import pandas as pd
 from tau3mu_gnn.gnn_training.gnn_inputs import gnn_branches, graph_level_branches
+from tau3mu_gnn.utils.score_merge import KEYS, scores_in_entry_order, write_with_score
 
 def __cast_unknown_type_branches(ak_array, field):
 
@@ -309,89 +310,13 @@ def write_nano_aod_root_file(output_file_name, events=None, trees={}, mode="recr
             output_file[tree_name] = ak.Array(tree)
 
 def _write_with_scores(score_dict, in_file, out_file, tree_name):
-    """Copy in_file to out_file and add GNN_score from score_dict ((run, lumi, event) -> score), matched by (run, event)."""
-    root_path = str(out_file)
-    root_path_sc_only = root_path.removesuffix(".root") + "_scores_only.root"
-    os.makedirs(os.path.dirname(os.path.abspath(root_path)), exist_ok=True)
-
-    runs = []
-    lumis = []
-    events = []
-    scores = []
-
-    for (run, lumi, event), score in score_dict.items():
-        runs.append(run)
-        lumis.append(lumi)
-        events.append(event)
-        scores.append(score)
-
-    runs = np.array(runs, dtype=np.uint32)
-    lumis = np.array(lumis, dtype=np.uint32)
-    events = np.array(events, dtype=np.uint64)
-    scores = np.array(scores, dtype=np.float64)
-
-    scores_to_save = {
-            "run": runs,
-            "luminosityBlock": lumis,
-            "event": events,
-            "GNN_score": scores,
-        }
-
-    branches = {k: v.dtype for k, v in scores_to_save.items()}
-
-    print(f"Saving scores only to {root_path_sc_only}")
-
-    with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
-        # Create a new TTree in the file
-        tree = f.mktree(tree_name, branches)
-        tree.extend(scores_to_save)  # Fill the tree with data
-
-    print(f"Merging scores with events {root_path}")
-
-    fin = ROOT.TFile.Open(in_file)
-    t1 = fin.Get(tree_name)
-
-    friend_file = ROOT.TFile.Open(root_path_sc_only)
-    t2 = friend_file.Get(tree_name)
-
-    t2.BuildIndex("run", "event")
-
-    # Write merged tree
-    fout = ROOT.TFile.Open(root_path, "RECREATE")
-    t_merged = t1.CloneTree(0) # empty tree
-
-    # Prepare buffer for GNN_score
-    gnn_score = array('f', [0.])
-    t_merged.Branch("GNN_score", gnn_score, "GNN_score/F")
-
-    count = 0
-    # Loop over t1
-    for i in range(t1.GetEntries()):
-        t1.GetEntry(i)
-
-        entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-
-        if entry2 >= 0:
-            t2.GetEntry(entry2) 
-            gnn_score[0] = t2.GNN_score
-            count += 1
-        else:
-            gnn_score[0] = -1.  # default if no match
-
-        t_merged.Fill()
-
-    print(f"Wrote in total {count} valid GNN Scores in to ROOT file")
-    t_merged.Write()
-    fout.Close()
-
-    fin.Close()
-    friend_file.Close()
-
-    print(f"Merged score and event root files to {root_path}")
-
-    os.remove(root_path_sc_only)
-
-    print(f"Deleted temporary file {root_path_sc_only}")
+    """Copy in_file to out_file and add GNN_score from score_dict ((run, lumi, event) -> score)."""
+    with uproot.open(in_file) as f:
+        entry_keys = f[tree_name].arrays(KEYS, library="pd")
+    score_keys = pd.DataFrame(list(score_dict), columns=KEYS)
+    scores = scores_in_entry_order(entry_keys, score_keys, list(score_dict.values()))
+    write_with_score(in_file, out_file, tree_name, "GNN_score", scores)
+    print(f"Wrote in total {int(np.sum(scores != -1.))} valid GNN Scores in to ROOT file {out_file}")
 
 
 class ScoreProducer:

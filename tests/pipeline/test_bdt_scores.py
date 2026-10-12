@@ -144,3 +144,23 @@ def test_old_cli_keeps_old_paths(monkeypatch, tmp_path):
          f"{tmp_path}/m/selected_data_skimmed_no_resonances_with_scores_bdt_full.root"},
         "clf.pck", "W", "/work/kfuss/SVJ_GNN/output/m/tau_score_corr.pkl",
     )]
+
+
+def test_same_run_and_event_different_lumi(tmp_path, load, user):
+    """Signal MC: run is always 1 and event numbers repeat across lumi blocks."""
+    sig = _events([[100.0], [300.0], [500.0]])
+    sig["luminosityBlock"] = np.array([1, 2, 1], dtype=np.uint32)
+    sig["event"] = np.array([10, 10, 11], dtype=np.uint64)
+    outputs, _ = _run(tmp_path, load, user, sig_data=sig)
+    scores = uproot.open(outputs["signal"])["Events"]["bdt_ISO"].array(library="np")
+    np.testing.assert_allclose(scores, [0.1, 0.3, 0.5], rtol=1e-6)
+
+
+def test_duplicate_event_keys_fail_before_output(tmp_path, load, user):
+    from tau3mu_gnn.utils.score_merge import DuplicateEventError
+
+    sig = _events(SIG_PTS)
+    sig["event"] = np.array([10, 10, 11], dtype=np.uint64)  # lumi is 1 everywhere
+    with pytest.raises(DuplicateEventError, match="signal.root"):
+        _run(tmp_path, load, user, sig_data=sig)
+    assert not (tmp_path / "2_bdt").exists()
