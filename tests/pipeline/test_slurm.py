@@ -152,3 +152,108 @@ def test_proxy_not_needed_for_local_output(load, user, fake_voms):
 
     check_proxy(load(user), jobs_with("skim"), {})
     assert not fake_voms.exists()
+
+
+@pytest.fixture
+def fake_sbatch(tmp_path, monkeypatch):
+    """sbatch that logs its arguments and prints increasing IDs. FAKE_SBATCH_FAIL_AT=n: call n fails."""
+    bin_dir = tmp_path / "sbin"
+    bin_dir.mkdir()
+    log, counter = tmp_path / "sbatch.log", tmp_path / "sbatch.n"
+    exe = bin_dir / "sbatch"
+    exe.write_text(f"""#!/bin/sh
+n=$(( $(cat {counter} 2>/dev/null || echo 0) + 1 )); echo $n > {counter}
+if [ "$n" = "${{FAKE_SBATCH_FAIL_AT:-0}}" ]; then echo "sbatch: error: invalid partition" >&2; exit 1; fi
+echo "$*" >> {log}
+echo $((1000 + n))
+""")
+    exe.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    return log
+
+
+def three_jobs():
+    from tau3mu_gnn.pipeline.slurm import Job
+
+    return [Job("limit_2.0", "limit", ("limit", "--cut", "2.0")),
+            Job("limit_3.9", "limit", ("limit", "--cut", "3.9")),
+            Job("summary", "summary", ("summary",), after=("limit_2.0", "limit_3.9"), dependency="afterany")]
+
+
+def test_submit_jobs_dependencies(load, user, tmp_path, fake_sbatch):
+    from tau3mu_gnn.pipeline.slurm import JobEnv, submit_jobs
+
+    ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
+    assert ids == {"limit_2.0": "1001", "limit_3.9": "1002", "summary": "1003"}
+    calls = fake_sbatch.read_text().splitlines()
+    assert calls[0] == f"--parsable {tmp_path / 'logs' / 'limit_2.0.sh'}"
+    assert calls[2] == f"--parsable --dependency=afterany:1001:1002 {tmp_path / 'logs' / 'summary.sh'}"
+    assert (tmp_path / "logs" / "summary.sh").read_text().startswith("#!/bin/bash")
+
+
+def test_submit_jobs_dry_run(load, user, tmp_path, fake_sbatch, capsys):
+    from tau3mu_gnn.pipeline.slurm import JobEnv, submit_jobs
+
+    ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs",
+                      JobEnv.from_environment(ENV), dry_run=True)
+    assert ids == {"limit_2.0": "DRYRUN-1", "limit_3.9": "DRYRUN-2", "summary": "DRYRUN-3"}
+    assert not fake_sbatch.exists()
+    out = capsys.readouterr().out
+    assert f"sbatch --parsable --dependency=afterany:DRYRUN-1:DRYRUN-2 {tmp_path / 'logs' / 'summary.sh'}" in out
+    assert (tmp_path / "logs" / "limit_3.9.sh").is_file()
+
+
+def test_submit_jobs_failure_lists_submitted(load, user, tmp_path, fake_sbatch, monkeypatch):
+    from tau3mu_gnn.pipeline.slurm import JobEnv, SubmitError, submit_jobs
+
+    monkeypatch.setenv("FAKE_SBATCH_FAIL_AT", "2")
+    with pytest.raises(SubmitError) as e:
+        submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
+    msg = str(e.value)
+    assert "limit_3.9" in msg and "invalid partition" in msg and "scancel 1001" in msg
+
+
+def test_submit_jobs_unknown_dependency(load, user, tmp_path, fake_sbatch):
+    from tau3mu_gnn.pipeline.slurm import Job, JobEnv, submit_jobs
+
+    with pytest.raises(ValueError, match="skim"):
+        submit_jobs(load(user), [Job("bdt", "bdt", ("bdt",), after=("skim",))], "/o/v", tmp_path,
+                    JobEnv.from_environment(ENV))
+
+
+def test_generated_script_runs(tmp_path, monkeypatch):
+    """Run a generated script with bash (no SLURM): conda activation, scratch, job CLI, log copy, cleanup.
+    Uses the real env of this shell and the real repo defaults; the job is a debug 'summary'."""
+    import json
+
+    from tau3mu_gnn.pipeline.config import load_config
+    from tau3mu_gnn.pipeline.slurm import Job, JobEnv, render_script
+
+    if not (os.environ.get("CONDA_PREFIX") and os.environ.get("CONDA_EXE")):
+        pytest.skip("needs an active conda env")
+    cfg_file = tmp_path / "user.yaml"
+    cfg_file.write_text(f"""analysis_name: script_test
+channel: W
+paths: {{output_base: {tmp_path / 'out'}, log_dir: {tmp_path / 'logs_root'}}}
+inputs: {{signal: [/data/s.root], background: [/data/b.root], already_resonance_skimmed: true}}
+limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
+""")
+    cfg = load_config(cfg_file)
+    src = tmp_path / "out" / "script_test" / "phase_c_vs1"
+    (src / "cut_3.9").mkdir(parents=True)
+    (src / "cut_3.9" / "limit.json").write_text(json.dumps({"cut": 3.9, "limit": 1.25, "limitErr": 0.0}))
+    version_dir = str(tmp_path / "out" / "script_test" / "debug" / "summary_vs1")
+    log_folder = tmp_path / "logs"
+    log_folder.mkdir()
+    job = Job("summary", "summary", ("summary", "--config", str(cfg_file), "--phase-dir", version_dir,
+                                     "--source", str(src), "--no-manifest"))
+    script = tmp_path / "summary.sh"
+    script.write_text(render_script(cfg, job, version_dir, log_folder, JobEnv.from_environment(),
+                                    scratch_root=str(tmp_path / "scratch")))
+    out = log_folder / "summary-77.out"
+    with open(out, "w") as fo:
+        subprocess.run(["bash", str(script)], env={**os.environ, "SLURM_JOB_ID": "77"}, stdout=fo,
+                       stderr=subprocess.STDOUT, check=True, timeout=300)
+    assert json.loads((Path(version_dir) / "limits.json").read_text())["best_cut"] == 3.9
+    assert (Path(version_dir) / "logs" / "summary-77.out").is_file()            # log copied by the trap
+    assert not (tmp_path / "scratch" / "77").exists()                             # scratch removed

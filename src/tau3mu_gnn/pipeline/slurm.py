@@ -120,3 +120,35 @@ def check_proxy(cfg: Config, jobs: Sequence[Job], environ: Mapping[str, str] = o
                         capture_output=True).returncode
     if rc != 0:
         raise ProxyError(f"no VOMS proxy valid for {hours} h (the longest job of this submission). Run: {PROXY_HINT}")
+
+
+def submit_jobs(cfg: Config, jobs: Sequence[Job], version_dir: str, log_folder: Path, env: JobEnv,
+                dry_run: bool = False) -> dict[str, str]:
+    """Write one script per job into log_folder and submit them in order (or print them with dry_run).
+    Returns job name -> SLURM job ID ('DRYRUN-<n>' in a dry run)."""
+    log_folder = Path(log_folder)
+    log_folder.mkdir(parents=True, exist_ok=True)
+    names = [j.name for j in jobs]
+    for i, j in enumerate(jobs):
+        unknown = [a for a in j.after if a not in names[:i]]
+        if unknown:
+            raise ValueError(f"job {j.name} waits for {unknown}, which are not submitted before it")
+    ids: dict[str, str] = {}
+    for n, job in enumerate(jobs, start=1):
+        script = log_folder / f"{job.name}.sh"
+        script.write_text(render_script(cfg, job, version_dir, log_folder, env))
+        cmd = ["sbatch", "--parsable"]
+        if job.after:
+            cmd.append(f"--dependency={job.dependency}:" + ":".join(ids[a] for a in job.after))
+        cmd.append(str(script))
+        if dry_run:
+            print(" ".join(cmd))
+            ids[job.name] = f"DRYRUN-{n}"
+            continue
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            done = " ".join(ids.values())
+            hint = f" Already submitted: {ids}; cancel them with: scancel {done}" if ids else ""
+            raise SubmitError(f"sbatch failed for job {job.name}: {res.stderr.strip()}.{hint}")
+        ids[job.name] = res.stdout.strip().split(";")[0]
+    return ids
