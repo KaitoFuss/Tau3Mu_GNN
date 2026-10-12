@@ -11,7 +11,7 @@ A user with one config file runs three phase commands, one after the other. Each
 python -m tau3mu_gnn.pipeline.cli phase-a --config my.yaml [--dry-run]
 python -m tau3mu_gnn.pipeline.cli phase-b --config my.yaml [--from phase_a_vsN] [--dry-run]
 python -m tau3mu_gnn.pipeline.cli phase-c --config my.yaml [--from phase_b_vsN] [--dry-run]
-python -m tau3mu_gnn.pipeline.cli stage <skim|bdt|gnn|eval|limit|summary> --config my.yaml [--cut X] [--from ...] [--dry-run]
+python -m tau3mu_gnn.pipeline.cli stage <skim|bdt|gnn|eval|limit|summary> --config my.yaml [--cut X] [--sample S] [--from ...] [--dry-run]
 ```
 
 The bash wrapper `tau3mu-run` (env activation) is step 10. The `all` command is step 10b.
@@ -112,7 +112,7 @@ Stage folder names inside a phase are as above (`1_skim`, `2_bdt`, `3_gnn`, `4_e
 - Both phase B GNN jobs and every phase C limit job run `check_upstream` (they all start at once; each must stop if the upstream is bad).
 - Stage 3 gets a `samples` argument (`run(cfg, inputs, out_dir, samples=SAMPLES)`), so signal and background run as two jobs.
 - Phase C summary: if `summarize` raises (no cut has a limit), no manifest → phase C version incomplete.
-- `stage <name>`: one job with the same body as the phase job(s) of that stage, output in `debug/<stage>_vsN/`, no manifest. `stage gnn` scores both samples in one job. `stage limit --cut X` (X must be in `limit.gnn_score_cut`). `stage summary --from phase_c_vsN` re-summarizes the `cut_*/` of that phase C version into the debug folder.
+- `stage <name>`: one job with the same body as the phase job(s) of that stage, output in `debug/<stage>_vsN/`, no manifest. `stage gnn --sample <signal|background>` scores one sample (required argument). `stage limit --cut X` (X must be in `limit.gnn_score_cut`). `stage summary --from phase_c_vsN` re-summarizes the `cut_*/` of that phase C version into the debug folder.
 
 **Job body** (`pipeline/jobs.py`, one function per job, signature `(cfg, phase_dir, upstream_dir, **job_args)`):
 1. first job(s) of B / C: `check_upstream`;
@@ -143,7 +143,7 @@ cd "$JOB_SCRATCH"
 - `<python>` = absolute path of the Python that ran the submit command (`sys.executable`). The env is not activated in the job; `combine` is found next to that Python (step 8). `paths.conda_env` stays a step 10 topic.
 - The log copy in `cleanup` misses the last lines written after it; accepted.
 - `slurm.py`: `submit(script, dependency=None) -> job_id` runs `sbatch --parsable`; dependency strings `afterok:1:2`, `afterany:...`. `--dry-run`: write scripts, print the `sbatch` commands with placeholder IDs, submit nothing.
-- **Proxy check** at submit time (only when `output_base` is dCache): `X509_USER_PROXY` set and the file is not under `/tmp` (nodes cannot see it); `voms-proxy-info --exists --valid <H>:00` with H = longest `time` of the phase's jobs, in hours. On failure: error with `voms-proxy-init --voms cms --valid 192:00`. (Phase B needs ≥ 168 h.)
+- **Proxy check** at submit time (only when `output_base` is dCache): `X509_USER_PROXY` set and the file is not under `/tmp` (nodes cannot see it); `voms-proxy-info --exists --valid <H>:00` with H = longest `time` of the phase's jobs, in hours. On failure: error with `voms-proxy-init --voms cms --valid 192:00`. (With the sec. 8 times, phase B needs ≥ 48 h. If times are raised, the check follows.)
 - After submit: print phase folder, log folder and job IDs.
 
 ## 8. Config changes
@@ -155,16 +155,17 @@ cd "$JOB_SCRATCH"
 slurm:
   account: t3
   jobs:
-    skim:           {partition: standard, mem: 128G, time: "1-00:00:00", cpus: 4}
-    bdt:            {partition: standard, mem: 64G,  time: "1-00:00:00", cpus: 1}
-    gnn_signal:     {partition: long,     mem: 64G,  time: "2-00:00:00", cpus: 1}
-    gnn_background: {partition: long,     mem: 64G,  time: "7-00:00:00", cpus: 1}
-    eval:           {partition: standard, mem: 32G,  time: "0-12:00:00", cpus: 1}
-    limit:          {partition: standard, mem: 128G, time: "0-12:00:00", cpus: 1}
-    summary:        {partition: short,    mem: 4G,   time: "0-01:00:00", cpus: 1}
+    skim:           {partition: standard, mem: 128G, time: "0-03:00:00", cpus: 4}
+    bdt:            {partition: standard, mem: 64G,  time: "0-06:00:00", cpus: 1}
+    gnn_signal:     {partition: long,     mem: 64G,  time: "1-00:00:00", cpus: 1}
+    gnn_background: {partition: long,     mem: 64G,  time: "2-00:00:00", cpus: 1}
+    eval:           {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
+    limit:          {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
+    summary:        {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
 ```
 
-- `stage gnn` (both samples in one job) uses `gnn_background` resources.
+- `stage gnn --sample <signal|background>` uses the resources of `gnn_signal` / `gnn_background`.
+- Times are first values (Kaito, 2026-10-12); raise them in this file if jobs hit the limit.
 - `Config.output_dir` stays `<output_base>/<analysis_name>`; phase folders are below it.
 - `configs/example_W.yaml`: add `paths.log_dir`.
 - The `slurm:` section is read in 9a (config) but used only in 9b.
