@@ -94,7 +94,11 @@ def _number_list(v):
     items = v if isinstance(v, list) else [v]
     if not items:
         raise ValueError("must be a number or a non-empty list of numbers")
-    return tuple(_number(i) for i in items)
+    numbers = tuple(_number(i) for i in items)
+    duplicates = sorted({x for x in numbers if numbers.count(x) > 1})
+    if duplicates:
+        raise ValueError(f"has duplicate values {duplicates}")
+    return numbers
 
 
 def _range(v):

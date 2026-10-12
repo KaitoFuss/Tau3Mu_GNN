@@ -86,6 +86,13 @@ def test_number_list_scalar_and_list():
         c._number_list([3.5, "x"])
 
 
+def test_number_list_rejects_duplicates():
+    with pytest.raises(ValueError, match="duplicate"):
+        c._number_list([3.9, 4.5, 3.9])
+    with pytest.raises(ValueError, match="duplicate"):
+        c._number_list([4, 4.0])          # same cut, same cut_4.0/ folder
+
+
 def test_range():
     assert c._range([1.62, 1.98]) == (1.62, 1.98)
     for bad in [[1.98, 1.62], [1.0], "1,2"]:
