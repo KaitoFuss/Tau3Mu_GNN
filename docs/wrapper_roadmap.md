@@ -105,28 +105,31 @@ From `jobs/gnn_score_creation/create_score_W_*.sh` and `jobs/analysis/create_dat
 - **Hand-off between phases**: each phase writes to a fixed folder under the config's output dir, plus a small manifest (list of output files + snapshot of the config used). The next phase reads the manifest, checks the files exist, and compares the upstream settings to the current config. These checks run **inside the first job of the phase** (at run time), not at submit time, because with `all` the upstream outputs do not exist yet when the job is submitted.
 - Each stage is a plain Python function/CLI. It knows **nothing** about SLURM, HTCondor or dCache.
 - A separate, thin **scheduler layer** submits the stages of **one phase** as SLURM jobs, with dependencies inside the phase (`sbatch --dependency=afterok:...`). Independent jobs run in parallel (e.g. signal and background GNN inference). Phases are **not** auto-chained; the user starts the next phase. Later an HTCondor layer can replace this layer without touching the stages.
-- **Storage**: every job works in node-local `/scratch/$USER/$SLURM_JOB_ID`. At the end it copies its outputs with `xrdcp` to `<output_dir>` (from config, e.g. on dCache) and cleans scratch. Copy logic is **one shared helper**, not repeated per stage.
-- **Output layout** (everything is kept, all under one dir):
+- **Storage**: every job works in node-local `/scratch/$USER/$SLURM_JOB_ID`. At the end it copies its outputs with `xrdcp` to `<output_dir>` (from config, e.g. on dCache) and cleans scratch. Copy logic is **one shared helper**, not repeated per stage. Read through `/pnfs`, write with `xrdcp` (`pipeline/storage.py`). A local `output_base` also works.
+- **Output layout** (everything is kept; every phase run is a new version, see step 9):
 
 ```
-<output_dir>/
-├── config_used.yaml
-├── logs/                         # all SLURM .out/.err
-├── phase_a/
+<output_base>/<analysis_name>/                  results (dCache or local)
+├── phase_a_vs1/
 │   ├── manifest.json
-│   ├── 0_resonance_skim/
-│   ├── 1_skim/
-│   └── 2_bdt/                    # ROOT files with BDT ISO score
-├── phase_b/
-│   ├── manifest.json
-│   ├── 3_gnn/                    # ROOT files with GNN_score
-│   └── 4_eval/                   # sculpting plots, ROC vs BDT
-└── phase_c/
-    ├── manifest.json
-    ├── cut_<value>/              # datacard, Combine output, fit plots
-    ├── limits.json               # cut → limit table, best cut marked
-    ├── limits.txt                # same table for people, best cut marked with *
-    └── limits.png                # limit vs cut, best cut marked
+│   ├── config_used.yaml                        user file + defaults as loaded (merged view)
+│   ├── 0_resonance_skim/                       only if stage 0 copies (non-empty branch map)
+│   ├── 1_skim/{signal,background}.root
+│   ├── 2_bdt/...                               stage 2 outputs (ROOT + pickle)
+│   └── logs/<job>-<jobid>.{out,err}
+├── phase_b_vs1/
+│   ├── manifest.json, config_used.yaml, logs/
+│   ├── 3_gnn/{signal,background}_with_gnn_scores.root, raw_scores_and_tau_mass_{signal,background}.npz
+│   └── 4_eval/*.png
+├── phase_c_vs1/
+│   ├── manifest.json, config_used.yaml, logs/
+│   ├── cut_<cut>/...                           stage 5 per cut (step 8)
+│   └── limits.{json,txt,png}                   summarize (step 8b)
+└── debug/<stage>_vsN/                          single-stage runs, config_used.yaml + logs/, no manifest
+
+<paths.log_dir>/<analysis_name>/<phase or debug stage>_vsN/
+├── <job>.sh                                    generated job scripts
+└── <job>-<jobid>.{out,err}                     SLURM logs
 ```
 
 - **Branch map**: applied **once**, in stage 0 (also when the resonance skim itself is skipped), through shared helpers in `pipeline/branches.py` (`check_input_branches`, `rename_columns`). It renames his raw names → Kaito's raw names (`Slimmed_TauTo3Mu_*`, `Slimmed_PFCands_*`, `TauPlusMET_*`, `run`, `luminosityBlock`, `event`; list in `pipeline/branches.py`). All later stages run unchanged on Kaito's names. The prefix change `Slimmed_*` → `Selected_*` stays inside the skimmer.
@@ -142,7 +145,7 @@ channel: W                              # user file only; selects analysis_defau
 
 paths:
   output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
-  # run folder = <output_base>/<analysis_name>_vsN (version added in step 9)
+  log_dir: /work/$USER/tau3mu_logs   # job scripts + SLURM logs (local disk)
   conda_env:  /work/<user>/miniforge3/envs/Tau3Mu
 
 inputs:
@@ -176,16 +179,14 @@ limit:
   fit_range: [1.62, 1.98]
   cl: 0.90
 
-slurm:
-  bdt:      {partition: standard, mem: 64G}
-  gnn_bkg:  {partition: long, mem: 64G, time: 7-00:00:00}
-  limit:    {partition: standard, mem: 128G}
 ```
+
+`slurm:` (account + per-job partition / mem / time / cpus) is in the frozen defaults file (step 9, D7).
 
 **Split into two files** (decided):
 
-- `analysis_defaults_<channel>.yaml` (in repo, frozen): `gnn.*`, `bdt.classifier`, `skim.*`, `gnn.bdt_preselection_cut`, `limit.mass_window`, `limit.fit_range`, `limit.cl`.
-- `my_analysis.yaml` (user, short): `analysis_name`, `channel`, `paths`, `inputs`, `branch_map`, `limit.signal_weight`, `limit.gnn_score_cut`, `slurm`.
+- `analysis_defaults_<channel>.yaml` (in repo, frozen): `gnn.*`, `bdt.classifier`, `skim.*`, `gnn.bdt_preselection_cut`, `limit.mass_window`, `limit.fit_range`, `limit.cl`, `slurm`.
+- `my_analysis.yaml` (user, short): `analysis_name`, `channel`, `paths` (incl. `paths.log_dir`), `inputs`, `branch_map`, `limit.signal_weight`, `limit.gnn_score_cut`.
 - The defaults file is a **separate config file that is not meant to be changed**. There is no override mechanism. A frozen key in the user file counts as an unknown key → crash.
 
 Config rules: missing required key → crash. Unknown key → crash (catches typos). Defaults only where marked.
@@ -200,6 +201,8 @@ src/tau3mu_gnn/pipeline/
 ├── config.py       # load defaults + user file, merge, validate
 ├── branches.py     # required branches, input checks, RDataFrame rename
 ├── manifest.py     # write/read manifest, stale-settings check
+├── jobs.py         # job bodies, python -m tau3mu_gnn.pipeline.jobs
+├── runs.py         # phase versions <phase>_vsN, upstream choice
 ├── storage.py      # scratch dir + xrdcp to output_dir
 ├── slurm.py        # submit jobs, dependencies (later: condor.py)
 └── stages/         # one thin file per stage 0-5
@@ -240,7 +243,8 @@ Each step is small, testable, and keeps the old job scripts working.
 7. ✅ Stage "model eval": refactor the `ModelEval` modes used here (`tau_hist_fpr`, `tau_hist`, `ROC_comp_full`) into functions; inputs from config. Done in PR #17 (both old notes solved: ISO only; the stage passes explicit npz paths, no suffix).
 8. ✅ Stage "limit": refactor `datacard_creation_GNN_permuted` + `readout_limit` into functions; inputs from config. Regression check: cut 3.9 → 1.2890625. Done: `pipeline/stages/limit.py` (one cut per call → `cut_<cut>/` + `limit.json`), `make_datacard` / `run_combine` / `read_limit`, old CLIs kept. Regression job 54814 on the stored inputs: 1.2890625. The step 5 open item (limit with the **new** stage 2/3 outputs) stays open → step 11.
 8b. ✅ Cut scan: config `gnn_score_cut` takes one value or a list. One Combine job per cut, in parallel. A final job writes a table (cut → expected limit) and marks the best cut. Done: `summarize` (`limits.json` / `limits.txt` / `limits.png` in `phase_c/`), `run_scan` (local loop). Missing cut = `missing` row, best from the rest. SLURM fan-out (one job per cut, summary job with `afterany`) → step 9.
-9. Driver: phase sub-commands (A, B, C), run-single-stage (stages 0 + 1 always together, one job), manifest write/read, input checks, stale-settings warning. **Run versioning**: phase A creates `<output_base>/<analysis_name>_vsN` (N = next free, same logic as `TrainingUtils.py` unique-name helper). Phases B and C use the latest `_vsN` by default; `--run <analysis_name>_vsN` picks another. Phase C cut scans add `cut_<value>/` folders inside the same run, no new version. Phase C: one job per cut (stage 5 `run`), then `summarize` with `--dependency=afterany`.
+9. Driver, spec `docs/superpowers/specs/2026-10-12-step9-driver-design.md`. 9a ✅ (no SLURM): config `paths.log_dir` + frozen `slurm:`; `storage.py`, `manifest.py`, `runs.py`, `jobs.py`; stage 3 per sample; `summarize(write_dir=)`. Every phase run makes a new version `<phase>_vsN`; single-stage runs in `debug/<stage>_vsN`.
+9b. SLURM layer: job script template, `slurm.py` (`sbatch --parsable`, dependencies, `--dry-run`), proxy check, `cli.py` (phase-a/b/c, stage). Check: small-input run A → B → C on T3 (Kaito queues).
 10. Bash entry point + README section for the new user.
 10b. `all` command: submits A, B and C at once. Each phase command takes `--after <JOBID>` and prints the job ID of its **last** job. `all` passes A's last job ID to B and B's to C (`--dependency=afterok:<JOBID>`). If a job fails, the later jobs never start.
 11. Dry run on a clean account / clean checkout.
@@ -318,3 +322,5 @@ Tracked here. Answers move to section 8.
 | 2026-10-12 | Step 8: `make_datacard` (explicit files, output folder), `analysis/combine.py` (`run_combine`: the two old `combine` commands; finds `combine` next to the env python), `read_limit`. Old CLIs kept as `main()`. Stage 5 `pipeline/stages/limit.py`: one cut per call (must be in `limit.gnn_score_cut`), inputs = stage 3 ROOT files, writes `<out_dir>/cut_<cut>/` with datacard, Combine output + logs, `limit.json`. Fails before work if `combine` is missing; raises if Combine writes no median limit. Local toy regression: datacard byte-identical, limit equal. |
 | 2026-10-12 | Step 8 regression job 54814 (14 min, MaxRSS 73 GB): old CLI (c4bccac) + old `combine` commands vs new stage 5, stored W inputs (`<model>/selected_*_with_scores_bdt_full_with_scores.root`), cut 3.9: PASS. `datacard.txt` byte-identical (also to the 2026-08-24 reference), limit 1.2890625 old = new = reference, temp trees and `datacard.root` workspace identical. Note: these are the old (pre step 5) score files, so the step 5 open item is not closed by this job. Note: the workspace `data_obs` has 2 entries in the fit range (44 data events pass the cut in total); the background fit runs on 2 events. |
 | 2026-10-12 | Step 8b decisions (Kaito): (1) missing cut → row marked, best from the rest; raise only if no cut has a limit (summary job uses `afterany` in step 9). (2) Outputs `limits.json` + `limits.txt` + `limits.png`. (3) Regression: tests only (no physics change). Also: duplicate cuts rejected in the config; stage 5 removes an old `limit.json` before a rerun; NaN limit = missing; tie → smaller cut. |
+| 2026-10-12 | Step 9 design (Kaito), spec `docs/superpowers/specs/2026-10-12-step9-driver-design.md`: D1 split 9a/9b; D2 dCache read via /pnfs, write via xrdcp; D3 no local phase runs; D4 every phase run → new `<phase>_vsN` (supersedes run folder `_vsN` and 'cut scans in the same run'); D5 single-stage runs in `debug/`; D6 `paths.log_dir` + log copy next to results; D7 slurm resources in the frozen defaults file (supersedes `slurm` in the user file); D8 job scripts + `sbatch --parsable`; D9 9b check = small-input run. |
+| 2026-10-12 | Step 9a done: config `paths.log_dir` + frozen `slurm:` (account + per-job partition/mem/time/cpus) in `configs/analysis_defaults_W.yaml`. `pipeline/storage.py` (root:// <-> /pnfs, xrdcp/xrdfs or local copy). `manifest.py` (`config_dict`, `phase_settings`, write/read manifest, `check_upstream`: missing manifest or files → `UpstreamError`, changed settings → warning). `runs.py` (versions, `next_version`, `create_version` + `config_used.yaml`, `pick_upstream`: highest complete version or `--from`). `jobs.py` (skim, bdt, gnn per sample, evaluation, limit per cut, summary; `python -m tau3mu_gnn.pipeline.jobs`). Stage 3 takes `samples` and has `output_files`; `summarize(write_dir=)`. Tests: `tests/pipeline` 234 passed, incl. a real Combine run as phase C jobs on toy files. |
