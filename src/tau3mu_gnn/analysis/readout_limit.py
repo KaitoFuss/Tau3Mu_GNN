@@ -49,7 +49,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if FINE_TUNE:
         MODEL = f"{MODEL}_{FINE_TUNE}"
 
-    limits = read_limit(Path(args.path) / ASYMPTOTIC_OUTPUT)
+    limits = read_limit(f"{args.path}/{ASYMPTOTIC_OUTPUT}")  # string join keeps root:// URLs intact
 
     json_path = f"{OLD_OUTPUT_ROOT}/{CHANNEL}_limits.json"
     if os.path.exists(json_path):

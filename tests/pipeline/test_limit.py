@@ -121,6 +121,17 @@ def test_old_cli_builds_old_paths(monkeypatch, tmp_path):
     assert (tmp_path / "output" / "m" / "mass_3.9_with_bdt_cut.pdf").is_file()
 
 
+def test_old_cli_missing_output_folder_does_not_fail(monkeypatch, tmp_path):
+    """Old ROOT SaveAs only printed an error for a missing output/<model>/; the old job (set -e) must go on."""
+    from tau3mu_gnn.analysis import datacard_creation_GNN_permuted as dc
+
+    monkeypatch.setattr(dc, "make_datacard", lambda *a, **kw: (tmp_path / "mass.pdf").write_bytes(b"%PDF"))
+    monkeypatch.setattr(dc, "OLD_OUTPUT_ROOT", str(tmp_path / "output"))
+    monkeypatch.chdir(tmp_path)
+    dc.main(["--model", "new_model", "--channel", "W", "--cut", "3.9"])
+    assert (tmp_path / "mass.pdf").is_file()
+
+
 needs_combine = pytest.mark.skipif(
     shutil.which("combine") is None and not (Path(sys.executable).parent / "combine").is_file(),
     reason="CMS Combine not installed")
@@ -200,6 +211,17 @@ def test_readout_old_cli_updates_json(monkeypatch, tmp_path):
     data = json.loads((tmp_path / "W_limits.json").read_text())
     assert list(data["W"]["m"]) == ["3.9", "5.0"]          # sorted by cut
     assert data["W"]["m"]["3.9"] == {"limit": 1.5, "limitErr": 0.0}
+
+
+def test_readout_old_cli_keeps_xrootd_path(monkeypatch, tmp_path):
+    """Old code joined --path as a string: root://host//pnfs/... must reach ROOT unchanged."""
+    from tau3mu_gnn.analysis import readout_limit as rl
+
+    seen = []
+    monkeypatch.setattr(rl, "read_limit", lambda p: seen.append(p) or {})
+    monkeypatch.setattr(rl, "OLD_OUTPUT_ROOT", str(tmp_path))
+    rl.main(["--model", "m", "--channel", "W", "--cut", "3.9", "--path", "root://t3dcachedb03.psi.ch:1094//pnfs/x"])
+    assert str(seen[0]) == f"root://t3dcachedb03.psi.ch:1094//pnfs/x/{rl.ASYMPTOTIC_OUTPUT}"
 
 
 def stage_cfg(load, user, cuts=(3.9,)):

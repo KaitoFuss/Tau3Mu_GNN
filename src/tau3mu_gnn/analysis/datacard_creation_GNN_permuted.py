@@ -374,7 +374,11 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     make_datacard(sig, bkg, float(args.cut), OLD_SIGNAL_WEIGHT[channel], ".")
     pdf_tail = "_with_bdt_cut" if "bdt" in suffix else ""
-    shutil.copyfile("mass.pdf", f"{OLD_OUTPUT_ROOT}/{model}/mass_{args.cut}{pdf_tail}.pdf")
+    target = f"{OLD_OUTPUT_ROOT}/{model}/mass_{args.cut}{pdf_tail}.pdf"
+    try:
+        shutil.copyfile("mass.pdf", target)
+    except OSError as e:  # the old ROOT SaveAs only printed an error; the job goes on
+        print(f"Warning: could not copy mass.pdf to {target}: {e}")
 
 
 if __name__ == "__main__":
