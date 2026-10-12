@@ -79,6 +79,11 @@ def test_datacard_text_matches_result(toy_inputs, tmp_path):
     assert f"rate                                    {res.signal_rate:.4f}        {res.nbkg:.4f}" in text
     assert f"slope      param   {res.slope:.4f} {res.slope_err:.4f}" in text
     assert "shapes signal        inclusive       datacard.root w:sig" in text
+    # byte layout of the old datacard, trailing spaces included
+    for line in ("lumi          lnN                       1.025               -   ",
+                 "unc_1         lnN                       1.05                -   ",
+                 "unc_2         lnN                       1.2                 -   "):
+        assert line in text.splitlines()
 
 
 def test_data_tree_is_blinded(toy_inputs, tmp_path):
