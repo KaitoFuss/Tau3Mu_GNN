@@ -114,3 +114,53 @@ def test_old_cli_builds_old_paths(monkeypatch, tmp_path):
     assert calls["bkg"] == [f"{base}/background_W/m/selected_data_skimmed_no_resonances_with_scores_bdt_full_with_scores.root"]
     assert calls["cut"] == 3.9 and calls["weight"] == 0.000019 and calls["out_dir"] == "."
     assert (tmp_path / "output" / "m" / "mass_3.9_with_bdt_cut.pdf").is_file()
+
+
+needs_combine = pytest.mark.skipif(
+    shutil.which("combine") is None and not (Path(sys.executable).parent / "combine").is_file(),
+    reason="CMS Combine not installed")
+
+
+def test_combine_executable_next_to_python(monkeypatch, tmp_path):
+    from tau3mu_gnn.analysis import combine as cb
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    (fake_bin / "combine").write_text("#!/bin/sh\n")
+    (fake_bin / "combine").chmod(0o755)
+    monkeypatch.setenv("PATH", "/nonexistent")
+    monkeypatch.setattr(cb.sys, "executable", str(fake_bin / "python"))
+    assert cb.combine_executable() == fake_bin / "combine"
+
+
+def test_combine_executable_missing(monkeypatch, tmp_path):
+    from tau3mu_gnn.analysis import combine as cb
+
+    monkeypatch.setenv("PATH", "/nonexistent")
+    monkeypatch.setattr(cb.sys, "executable", str(tmp_path / "python"))
+    with pytest.raises(FileNotFoundError, match="combine"):
+        cb.combine_executable()
+
+
+def test_run_combine_failure_raises_and_keeps_log(monkeypatch, tmp_path):
+    from tau3mu_gnn.analysis import combine as cb
+
+    fake = tmp_path / "combine"
+    fake.write_text("#!/bin/sh\necho 'bad datacard' >&2\nexit 3\n")
+    fake.chmod(0o755)
+    monkeypatch.setattr(cb, "combine_executable", lambda: fake)
+    with pytest.raises(subprocess.CalledProcessError):
+        cb.run_combine(tmp_path, 0.9)
+    assert "bad datacard" in (tmp_path / "combine_fitdiagnostics.log").read_text()
+
+
+@needs_combine
+def test_run_combine_on_toy_card(toy_inputs, tmp_path):
+    from tau3mu_gnn.analysis.combine import ASYMPTOTIC_OUTPUT, run_combine
+    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+
+    out = tmp_path / "card"
+    make_datacard([toy_inputs[0]], [toy_inputs[1]], 3.9, SIG_WEIGHT, out)
+    result = run_combine(out, 0.9)
+    assert result == out / ASYMPTOTIC_OUTPUT and result.is_file()
+    assert (out / "combine_asymptotic.log").read_text()
