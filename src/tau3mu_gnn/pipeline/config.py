@@ -18,6 +18,8 @@ from typing import Any, Callable, Mapping
 
 import yaml
 
+from tau3mu_gnn.pipeline import storage
+
 SUPPORTED_CHANNELS = ("W",)
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -129,17 +131,34 @@ def _user_path(v):
     return v
 
 
+def _abs_or_url(v):
+    """Absolute path, or an xrootd URL storage accepts. A relative path would be resolved inside
+    the job scratch dir (jobs cd there), and a mistyped URL would pass for a relative path."""
+    v = _user_path(v)
+    if v.startswith("/"):
+        return v
+    if storage.is_remote(v):
+        try:
+            storage.local_path(v)
+            return v
+        except ValueError:
+            pass
+    raise ValueError(f"must be an absolute path or root://host[:port]//path, got {v!r}")
+
+
 def _user_path_list(v):
     items = [v] if isinstance(v, str) else v
     if not isinstance(items, list) or not items:
         raise ValueError(f"must be a path or a non-empty list of paths, got {v!r}")
-    return tuple(_user_path(i) for i in items)
+    return tuple(_abs_or_url(i) for i in items)
 
 
 def _local_path(v):
     v = _user_path(v)
     if v.startswith("root://") or v.startswith("/pnfs"):
         raise ValueError(f"must be a local disk path (SLURM cannot write logs to dCache), got {v!r}")
+    if not v.startswith("/"):
+        raise ValueError(f"must be an absolute path, got {v!r}")
     return v
 
 
@@ -194,7 +213,7 @@ class _Field:
 USER_FIELDS: dict[str, _Field] = {
     "analysis_name": _Field(_name),
     "channel": _Field(_channel),
-    "paths.output_base": _Field(_user_path),
+    "paths.output_base": _Field(_abs_or_url),
     "paths.log_dir": _Field(_local_path),
     "inputs.signal": _Field(_user_path_list),
     "inputs.background": _Field(_user_path_list),

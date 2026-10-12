@@ -272,3 +272,37 @@ def test_slurm_jobs_validation(load, user, fake_repo, change, match):
     _defaults_with(fake_repo, change)
     with pytest.raises(ConfigError, match=match):
         load(user)
+
+
+@pytest.mark.parametrize("bad", [
+    "out/tau3mu", "root://host/pnfs/x", "roots://host//pnfs/x", "root:/host//pnfs/x"])
+def test_output_base_must_be_absolute_or_valid_url(load, user, bad):
+    user["paths"]["output_base"] = bad
+    with pytest.raises(ConfigError, match="paths.output_base"):
+        load(user)
+
+
+@pytest.mark.parametrize("good", ["root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/x", "/work/x"])
+def test_output_base_valid_forms_load(load, user, good):
+    user["paths"]["output_base"] = good
+    assert load(user).paths.output_base == good
+
+
+@pytest.mark.parametrize("key", ["signal", "background"])
+@pytest.mark.parametrize("bad", ["data/sig.root", "root://host/pnfs/x.root"])
+def test_input_entries_must_be_absolute_or_valid_url(load, user, key, bad):
+    user["inputs"][key] = ["/data/ok.root", bad]
+    with pytest.raises(ConfigError, match=f"inputs.{key}"):
+        load(user)
+
+
+def test_input_valid_url_loads(load, user):
+    url = "root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/x/*.root"
+    user["inputs"]["signal"] = [url]
+    assert load(user).inputs.signal == (url,)
+
+
+def test_log_dir_must_be_absolute(load, user):
+    user["paths"]["log_dir"] = "logs"
+    with pytest.raises(ConfigError, match="paths.log_dir"):
+        load(user)
