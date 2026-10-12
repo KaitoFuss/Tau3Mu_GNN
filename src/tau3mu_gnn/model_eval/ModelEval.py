@@ -367,46 +367,51 @@ def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targ
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
+def load_gnn_npz(bkg_npz, sig_npz=None):
+    """(background scores, background tau mass, signal scores or None) from stage 3 npz files.
+    With sig_npz (FPR plots): NaN scores removed."""
+    bkg = np.load(bkg_npz, allow_pickle=True)
+    scores, tau_mass = bkg["scores"], bkg["tau_mass"]
+    if sig_npz is None:
+        return scores, tau_mass, None
+    scores_signal = np.load(sig_npz, allow_pickle=True)["scores"]
+    nan_mask = ~np.isnan(scores)
+    return scores[nan_mask], tau_mass[nan_mask], scores_signal[~np.isnan(scores_signal)]
+
+
 def tau_score_hist(root, mode, title, tau_channel, plot_mode, view, bdt_score_cut):
+    """Old CLI: input files and plot name from root, plot_mode, view and bdt_score_cut."""
     normalize = view == "normalized"
     use_fpr = plot_mode.endswith("fpr")
-    suffix = "_with_bdt_cut" if bdt_score_cut else "" 
+    suffix = "_with_bdt_cut" if bdt_score_cut else ""
     if plot_mode.startswith("tau_hist") and not plot_mode.startswith("tau_hist_after"):
         model = "GNN"
-
-        data = np.load(root + f"raw_scores_and_tau_mass_background{suffix}.npz", allow_pickle=True)
-        scores = data["scores"]
-        f_tau_mass = data["tau_mass"]
-
-        if use_fpr:
-            signal = np.load(root + f'raw_scores_and_tau_mass_signal{suffix}.npz', allow_pickle=True)
-            scores_signal = signal["scores"]
-            nan_mask = ~np.isnan(scores)
-            scores = scores[nan_mask]
-            f_tau_mass = f_tau_mass[nan_mask]
-            scores_signal = scores_signal[~np.isnan(scores_signal)]
-
-            labels = np.concatenate([np.ones(len(scores_signal)), np.zeros(len(scores))])
-            scores_all = np.concatenate([scores_signal, scores])
-
-            fpr, tpr, thresh_model = roc_curve(labels, scores_all)
-
+        sig_npz = root + f"raw_scores_and_tau_mass_signal{suffix}.npz" if use_fpr else None
+        scores, f_tau_mass, scores_signal = load_gnn_npz(root + f"raw_scores_and_tau_mass_background{suffix}.npz",
+                                                         sig_npz)
     elif plot_mode.startswith("tau_hist_after"):
         model = "BDT"
-
         data = load_pkl(root, "tau_score_corr.pkl")[0]
         scores = data["GNN_score_bkg"]
         f_tau_mass = data["tau_mass"]
-
-        if use_fpr:
-            scores_signal = data["GNN_score_sig"]
-            scores_all = np.concatenate([scores_signal, scores])
-            labels = np.concatenate([np.ones(len(scores_signal)), np.zeros(len(scores))])
-            fpr, tpr, thresh_model = roc_curve(labels, scores_all)
-
+        scores_signal = data["GNN_score_sig"] if use_fpr else None
     else:
         raise ValueError(f"Unknown plot_mode: {plot_mode}")
 
+    name_suffix = ("_normalized" if normalize else "") + suffix
+    after = "_after" if plot_mode.startswith("tau_hist_after") else ""
+    save_name = f"{mode}{after}_tau_hist{'_fpr' if use_fpr else ''}{name_suffix}.png"
+    plot_tau_hist(scores, f_tau_mass, scores_signal, os.path.join(root, save_name), model, mode, title,
+                  tau_channel, normalize)
+
+
+def plot_tau_hist(scores, f_tau_mass, scores_signal, out_png, model, mode, title, tau_channel, normalize):
+    """Background tau mass for several score cuts. scores_signal given: cuts at fixed FPR, else fixed cuts."""
+    use_fpr = scores_signal is not None
+    if use_fpr:
+        labels = np.concatenate([np.ones(len(scores_signal)), np.zeros(len(scores))])
+        scores_all = np.concatenate([scores_signal, scores])
+        fpr, tpr, thresh_model = roc_curve(labels, scores_all)
 
     print("length of inferenced bkg data set is ", len(scores))
     if use_fpr:
@@ -479,25 +484,10 @@ def tau_score_hist(root, mode, title, tau_channel, plot_mode, view, bdt_score_cu
     else:
         plt.title(f"Fitted Tau Mass Distribution with Different Score Cuts of {model} score:\n {tau_channel} channel {mode}, {title}") 
 
-    suffix = "_normalized" if normalize else ""
-    suffix += "_with_bdt_cut" if bdt_score_cut else "" 
-    if plot_mode.startswith("tau_hist_after"):
-        if use_fpr:
-            save_name = f'{mode}_after_tau_hist_fpr{suffix}.png'
-        else:
-            save_name = f'{mode}_after_tau_hist{suffix}.png'
-    else:
-        if use_fpr:
-            save_name = f'{mode}_tau_hist_fpr{suffix}.png'
-        else:
-            save_name = f'{mode}_tau_hist{suffix}.png'
-
-    plt.savefig(os.path.join(root, save_name), dpi=400)
+    plt.savefig(out_png, dpi=400)
     plt.close()
 
-    print(f"{save_name} has been saved.")
-
-    return
+    print(f"{os.path.basename(out_png)} has been saved.")
 
 
 def load_and_filter_root(model, channel, score_cut):
