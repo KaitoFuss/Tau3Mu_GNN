@@ -154,3 +154,13 @@ def test_same_run_and_event_different_lumi(tmp_path, load, user):
     outputs, _ = _run(tmp_path, load, user, sig_data=sig)
     scores = uproot.open(outputs["signal"])["Events"]["bdt_ISO"].array(library="np")
     np.testing.assert_allclose(scores, [0.1, 0.3, 0.5], rtol=1e-6)
+
+
+def test_duplicate_event_keys_fail_before_output(tmp_path, load, user):
+    from tau3mu_gnn.utils.score_merge import DuplicateEventError
+
+    sig = _events(SIG_PTS)
+    sig["event"] = np.array([10, 10, 11], dtype=np.uint64)  # lumi is 1 everywhere
+    with pytest.raises(DuplicateEventError, match="signal.root"):
+        _run(tmp_path, load, user, sig_data=sig)
+    assert not (tmp_path / "2_bdt").exists()

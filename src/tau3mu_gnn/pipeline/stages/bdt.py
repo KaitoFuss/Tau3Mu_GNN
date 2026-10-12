@@ -12,6 +12,7 @@ from typing import Mapping
 from tau3mu_gnn.bdt_training.bdt_inputs import input_branch_names
 from tau3mu_gnn.pipeline.branches import check_stage_inputs
 from tau3mu_gnn.pipeline.config import Config
+from tau3mu_gnn.utils.score_merge import check_unique_keys
 
 log = logging.getLogger(__name__)
 
@@ -20,8 +21,11 @@ PICKLE_NAME = "tau_score_corr.pkl"
 
 
 def check_inputs(inputs: Mapping[str, str | Path], tree_name: str, channel: str) -> None:
-    """Raise BranchError listing every BDT branch missing in any input file. Reads branch names only."""
+    """Raise BranchError listing every BDT branch missing in any input file, or DuplicateEventError if two
+    events of a file have the same (run, luminosityBlock, event). Reads branch names and the key branches only."""
     check_stage_inputs({s: inputs[s] for s in SAMPLES}, tree_name, input_branch_names(channel), "BDT")
+    for sample in SAMPLES:
+        check_unique_keys(inputs[sample], tree_name)
 
 
 def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> dict[str, Path]:

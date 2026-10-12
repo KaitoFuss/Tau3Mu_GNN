@@ -240,3 +240,13 @@ def test_same_run_and_event_different_lumi(tmp_path):
     np.testing.assert_array_equal(uproot.open(out)["Events"]["GNN_score"].array(library="np"),
                                   np.float32([100.0, 300.0, 500.0]))
     np.testing.assert_allclose(npz["scores"], [100.0, 300.0, 500.0])
+
+
+def test_duplicate_event_keys_fail_before_output(tmp_path, monkeypatch, load, user):
+    from tau3mu_gnn.utils.score_merge import DuplicateEventError
+
+    sig = gnn_events(CANDS, BDT, PF_ETAS)
+    sig["event"][:2] = 10  # lumi is 1 everywhere
+    with pytest.raises(DuplicateEventError, match="signal_with_bdt_scores.root"):
+        _stage(tmp_path, monkeypatch, load, user, sig=sig)
+    assert not (tmp_path / "3_gnn").exists()
