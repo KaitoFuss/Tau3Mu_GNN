@@ -1,8 +1,7 @@
-"""Branches that BDT_ScoreProducer loads, per channel.
-
-Kept apart from the script so tests can import them: BDT_ScoreProducer runs on import.
-"""
+"""Branches that BDT_ScoreProducer loads, per channel."""
 from __future__ import annotations
+
+import re
 
 
 def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str], list[str]]:
@@ -83,3 +82,10 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
         ]
 
     return features, branches
+
+
+def input_branch_names(tau_channel: str, prefix: str = "Selected_") -> set[str]:
+    """Branch names that the loaded expressions read, e.g.
+    'Muon_pt[Selected_TauTo3Mu_mu3_idx]' -> {'Muon_pt', 'Selected_TauTo3Mu_mu3_idx'}."""
+    _, branches = bdt_branches(tau_channel, prefix)
+    return {name for expr in branches for name in re.findall(r"[A-Za-z_]\w*", expr)}
