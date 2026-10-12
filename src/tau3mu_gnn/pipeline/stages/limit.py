@@ -114,4 +114,29 @@ def _table(summary: dict) -> str:
 
 
 def _plot(summary: dict, png: Path) -> None:
-    """Task 3."""
+    """Median expected limit vs GNN score cut. Best cut: star + text label. Missing cuts: gray dotted lines."""
+    from matplotlib.figure import Figure  # no pyplot: no display backend needed on batch nodes
+
+    found = [r for r in summary["rows"] if r["limit"] is not None]
+    fig = Figure(figsize=(6, 4))
+    ax = fig.add_subplot()
+    ax.plot([r["cut"] for r in found], [r["limit"] for r in found], "-o", color="#2a6fdb", linewidth=2,
+            markersize=8)
+    ax.plot([summary["best_cut"]], [summary["best_limit"]], "*", color="#2a6fdb", markersize=18,
+            markeredgecolor="white", markeredgewidth=1.5)
+    ax.annotate(f"best: cut {summary['best_cut']}, limit {summary['best_limit']:.4g}",
+                (summary["best_cut"], summary["best_limit"]), textcoords="offset points", xytext=(0, -22),
+                ha="center", color="#222222", fontsize=9)
+    for cut in summary["missing"]:
+        ax.axvline(cut, color="#9a9a9a", linestyle=":", linewidth=1)
+        ax.annotate("missing", (cut, 1), xycoords=("data", "axes fraction"), textcoords="offset points",
+                    xytext=(3, -12), color="#6b6b6b", fontsize=8)
+    ax.set_xlabel("GNN score cut")
+    ax.set_ylabel(f"median expected limit ({summary['cl']:.0%} CL)")
+    ax.grid(True, color="#e6e6e6", linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.margins(x=0.1, y=0.25)
+    fig.tight_layout()
+    fig.savefig(png, dpi=150)

@@ -119,3 +119,23 @@ def test_summary_json_of_other_cut_raises(load, user, tmp_path):
     write_limit(tmp_path, 4.5, 1.3, folder_cut=3.9)
     with pytest.raises(ValueError, match="4.5"):
         limit.summarize(cfg, tmp_path)
+
+
+def test_summary_plot(load, user, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = scan_cfg(load, user, [2.0, 3.9, 4.5])
+    write_limit(tmp_path, 2.0, 1.7)
+    write_limit(tmp_path, 3.9, 1.3)                      # 4.5 missing: drawn as a dotted line
+    limit.summarize(cfg, tmp_path)
+    png = (tmp_path / "limits.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and len(png) > 5000
+
+
+def test_summary_plot_single_cut(load, user, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = scan_cfg(load, user, [3.9])                     # default config: one cut, still a valid plot
+    write_limit(tmp_path, 3.9, 1.2890625)
+    limit.summarize(cfg, tmp_path)
+    assert (tmp_path / "limits.png").read_bytes()[:4] == b"\x89PNG"
