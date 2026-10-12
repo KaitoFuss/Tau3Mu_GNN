@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Mapping
 
@@ -20,6 +21,7 @@ log = logging.getLogger(__name__)
 
 INPUTS = ("signal", "background")
 REQUIRED_BRANCHES = ("GNN_score", "Selected_TauTo3Mu_fitted_mass")
+SUMMARY_FILES = {"json": "limits.json", "txt": "limits.txt", "png": "limits.png"}
 
 
 def cut_dir_name(cut: float) -> str:
@@ -56,3 +58,60 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path, cut:
     limit_json = card_dir / "limit.json"
     limit_json.write_text(json.dumps(result, indent=2) + "\n")
     return {**result, "dir": card_dir, "datacard": card.datacard, "limit_json": limit_json}
+
+
+def summarize(cfg: Config, out_dir: str | Path) -> dict:
+    """Table of the cut scan: reads <out_dir>/cut_<cut>/limit.json for each cut of limit.gnn_score_cut.
+
+    A cut without a finite limit is a missing row (warning). Best cut = lowest limit, the smaller cut on a tie.
+    Writes <out_dir>/limits.json, limits.txt, limits.png. Raises RuntimeError if no cut has a limit.
+    """
+    out_dir = Path(out_dir)
+    rows = [_read_cut(out_dir, cut) for cut in sorted(cfg.limit.gnn_score_cut)]
+    found = [r for r in rows if r["limit"] is not None]
+    if not found:
+        raise RuntimeError(f"no limit for any cut {sorted(cfg.limit.gnn_score_cut)} in {out_dir}; "
+                           f"see the cut_<cut>/combine_*.log files")
+    missing = [r["cut"] for r in rows if r["limit"] is None]
+    if missing:
+        log.warning("cut scan: no limit for cut(s) %s; see the cut_<cut>/combine_*.log files", missing)
+    best = min(found, key=lambda r: r["limit"])
+    for r in rows:
+        r["best"] = r is best
+    summary = {"cl": cfg.limit.cl, "best_cut": best["cut"], "best_limit": best["limit"],
+               "missing": missing, "rows": rows}
+    files = {k: out_dir / name for k, name in SUMMARY_FILES.items()}
+    files["json"].write_text(json.dumps(summary, indent=2) + "\n")
+    files["txt"].write_text(_table(summary))
+    _plot(summary, files["png"])
+    log.info("cut scan: best cut %s, limit %s -> %s", best["cut"], best["limit"], files["json"])
+    return {**summary, "files": files}
+
+
+def _read_cut(out_dir: Path, cut: float) -> dict:
+    """One row from cut_<cut>/limit.json. No file or a non-finite limit -> limit None."""
+    path = out_dir / cut_dir_name(cut) / "limit.json"
+    if not path.is_file():
+        return {"cut": cut, "limit": None, "limitErr": None}
+    try:
+        data = json.loads(path.read_text())
+        row = {"cut": float(data["cut"]), "limit": float(data["limit"]), "limitErr": float(data["limitErr"])}
+    except (ValueError, KeyError, TypeError) as e:
+        raise ValueError(f"{path} is not a stage 5 limit.json: {e!r}") from e
+    if row["cut"] != cut:
+        raise ValueError(f"{path} is for cut {row['cut']}, expected {cut}")
+    if not math.isfinite(row["limit"]):
+        return {"cut": cut, "limit": None, "limitErr": None}
+    return row
+
+
+def _table(summary: dict) -> str:
+    lines = [f"# median expected limit at CL {summary['cl']}; * = best cut", f"  {'cut':<10} limit"]
+    for r in summary["rows"]:
+        value = "missing" if r["limit"] is None else repr(r["limit"])
+        lines.append(f"{'*' if r['best'] else ' '} {r['cut']!r:<10} {value}")
+    return "\n".join(lines) + "\n"
+
+
+def _plot(summary: dict, png: Path) -> None:
+    """Task 3."""
