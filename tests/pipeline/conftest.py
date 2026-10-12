@@ -34,12 +34,17 @@ TOY_DEFAULTS = {
         "bdt_preselection_cut": 0.8,
     },
     "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.62, 1.98], "cl": 0.9},
+    "slurm": {
+        "account": "t3",
+        "jobs": {name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
+                 for name in ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")},
+    },
 }
 
 TOY_USER = {
     "analysis_name": "toy_run",
     "channel": "W",
-    "paths": {"output_base": "/tmp/toy_out"},
+    "paths": {"output_base": "/tmp/toy_out", "log_dir": "/tmp/toy_logs"},
     "inputs": {
         "signal": ["/data/sig.root"],
         "background": ["/data/bkg_*.root"],

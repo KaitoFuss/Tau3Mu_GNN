@@ -24,3 +24,14 @@ limit:                         # stage 5, mass fit + Combine
   mass_window: 0.060           # GeV, half-width of the blinded signal window
   fit_range: [1.62, 1.98]      # GeV
   cl: 0.90                     # confidence level of the expected limit
+
+slurm:                         # SLURM resources per job (step 9). Times: first values (Kaito, 2026-10-12);
+  account: t3                  # raise them here if jobs hit the limit.
+  jobs:
+    skim:           {partition: standard, mem: 128G, time: "0-03:00:00", cpus: 4}
+    bdt:            {partition: standard, mem: 64G,  time: "0-06:00:00", cpus: 1}
+    gnn_signal:     {partition: long,     mem: 64G,  time: "1-00:00:00", cpus: 1}
+    gnn_background: {partition: long,     mem: 64G,  time: "2-00:00:00", cpus: 1}
+    eval:           {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
+    limit:          {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
+    summary:        {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}

@@ -97,6 +97,7 @@ analysis_name: toy_run
 channel: W
 paths:
   output_base: /tmp/toy_out
+  log_dir: /tmp/toy_logs
 inputs:
   signal: [/data/sig.root]
   background: [/data/bkg.root]
@@ -207,3 +208,66 @@ def test_channel_not_allowed_in_defaults(load, user, fake_repo):
 def test_output_dir_from_base_and_analysis_name(load, user, base, expected):
     user["paths"]["output_base"] = base
     assert load(user).output_dir == expected
+
+
+def test_log_dir_and_slurm(load, user):
+    cfg = load(user)
+    assert cfg.paths.log_dir == "/tmp/toy_logs"
+    assert cfg.slurm.account == "t3"
+    assert set(cfg.slurm.jobs) == {"skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary"}
+    job = cfg.slurm.jobs["limit"]
+    assert (job.partition, job.mem, job.time, job.cpus) == ("standard", "4G", "0-01:00:00", 1)
+
+
+def test_log_dir_required(load, user):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    del user["paths"]["log_dir"]
+    with pytest.raises(ConfigError, match="paths.log_dir"):
+        load(user)
+
+
+@pytest.mark.parametrize("bad", ["root://t3dcachedb03.psi.ch:1094//pnfs/x", "/pnfs/psi.ch/x"])
+def test_log_dir_must_be_local(load, user, bad):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    user["paths"]["log_dir"] = bad
+    with pytest.raises(ConfigError, match="log_dir"):
+        load(user)
+
+
+def test_slurm_in_user_file_is_frozen(load, user):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    user["slurm"] = {"account": "t3"}
+    with pytest.raises(ConfigError, match="frozen"):
+        load(user)
+
+
+def _defaults_with(fake_repo, change):
+    import copy
+
+    import yaml
+    from conftest import TOY_DEFAULTS
+
+    d = copy.deepcopy(TOY_DEFAULTS)
+    change(d["slurm"]["jobs"])
+    (fake_repo / "configs" / "analysis_defaults_W.yaml").write_text(yaml.safe_dump(d))
+
+
+@pytest.mark.parametrize("change, match", [
+    (lambda j: j.pop("eval"), "missing job 'eval'"),
+    (lambda j: j.update(gnn_bkg=dict(j["bdt"])), "unknown job 'gnn_bkg'"),
+    (lambda j: j["bdt"].update(memory="4G"), "unknown key 'memory'"),
+    (lambda j: j["bdt"].pop("time"), "missing key 'time'"),
+    (lambda j: j["bdt"].update(mem="64 GB"), "mem"),
+    (lambda j: j["bdt"].update(time="7 days"), "time"),
+    (lambda j: j["bdt"].update(cpus=0), "cpus"),
+    (lambda j: j["bdt"].update(cpus=True), "cpus"),
+])
+def test_slurm_jobs_validation(load, user, fake_repo, change, match):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    _defaults_with(fake_repo, change)
+    with pytest.raises(ConfigError, match=match):
+        load(user)
