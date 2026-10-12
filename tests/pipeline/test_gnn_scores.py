@@ -230,3 +230,13 @@ def test_existing_gnn_score_fails(tmp_path, monkeypatch, load, user):
     bkg["GNN_score"] = np.full(1, 0.3)
     with pytest.raises(BranchError, match="GNN_score"):
         _stage(tmp_path, monkeypatch, load, user, bkg=bkg)
+
+
+def test_same_run_and_event_different_lumi(tmp_path):
+    data = gnn_events([[100.0], [300.0], [500.0]], [0.9, 0.9, 0.9])
+    data["luminosityBlock"] = np.array([1, 2, 1], dtype=np.uint32)
+    data["event"] = np.array([10, 10, 11], dtype=np.uint64)
+    (out,), npz = _score(tmp_path, [data])
+    np.testing.assert_array_equal(uproot.open(out)["Events"]["GNN_score"].array(library="np"),
+                                  np.float32([100.0, 300.0, 500.0]))
+    np.testing.assert_allclose(npz["scores"], [100.0, 300.0, 500.0])
