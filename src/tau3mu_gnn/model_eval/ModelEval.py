@@ -102,53 +102,54 @@ def plot_roc_bdt(data, root_dir, thresholds_bench, title, tau_channel):
     plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
     plt.close()
 
-def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut):
+SIDEBAND_MASS, SIDEBAND_HALF_WIDTH, SIDEBAND_RANGE = 1.78, 0.08, (1.6, 2.0)
 
-    suffix = "_with_bdt_cut" if bdt_score_cut else "" 
-    ax = plt.gca()
+
+def sideband_mask(tau_mass):
+    return ((np.abs(tau_mass - SIDEBAND_MASS) > SIDEBAND_HALF_WIDTH)
+            & (np.abs(tau_mass) > SIDEBAND_RANGE[0]) & (np.abs(tau_mass) < SIDEBAND_RANGE[1]))
+
+
+def load_pickle(path):
+    with open(path, "rb") as f:
+        return CPU_Unpickler(f).load()
+
+
+def plot_roc_full(gnn_curves, bdt_pickle, out_png, fpr_targets, title, iso_cut=0.8):
+    """ROC of each GNN (label, signal npz, background npz) and of the ISO BDT (scores > iso_cut).
+    Background: mass sidebands only. Returns (fprs, tprs, threshs, labels) for plot_sic."""
     first_ROC = True
     tpr_targets = []
     fprs = []
     tprs = []
     threshs = []
-    
-    for i in range(len(gnn_data_locs)-1):
-        gnn_data_loc = gnn_data_locs[i]
-        gnn_sig = np.load(gnn_data_loc + f'raw_scores_and_tau_mass_signal{suffix}.npz', allow_pickle=True)
-        gnn_bkg = np.load(gnn_data_loc + f'raw_scores_and_tau_mass_background{suffix}.npz', allow_pickle=True)
+    labels = []
+
+    for label, sig_npz, bkg_npz in gnn_curves:
+        gnn_sig = np.load(sig_npz, allow_pickle=True)
+        gnn_bkg = np.load(bkg_npz, allow_pickle=True)
 
         gnn_sig_scores = gnn_sig["scores"]
-        gnn_bkg_scores = gnn_bkg["scores"]
-        
-        tau_mass = gnn_bkg["tau_mass"]
-        sideband_mask = (
-            (np.abs(tau_mass - 1.78) > 0.08)
-            & (np.abs(tau_mass) > 1.6)
-            & (np.abs(tau_mass) < 2.0)
-        )
-        gnn_bkg_scores = gnn_bkg_scores[sideband_mask]
-        
+        gnn_bkg_scores = gnn_bkg["scores"][sideband_mask(gnn_bkg["tau_mass"])]
+
         gnn_sig_scores = gnn_sig_scores[~np.isnan(gnn_sig_scores)]
         gnn_bkg_scores = gnn_bkg_scores[~np.isnan(gnn_bkg_scores)]
 
-        print(gnn_data_loc)
+        print(bkg_npz)
         print(f"Size of signal dataset is {len(gnn_sig_scores)}.")
         print(f"Size of background dataset is {len(gnn_bkg_scores)}.")
 
-        labels = np.concatenate([np.ones(len(gnn_sig_scores)), np.zeros(len(gnn_bkg_scores))])
+        y = np.concatenate([np.ones(len(gnn_sig_scores)), np.zeros(len(gnn_bkg_scores))])
         scores_all = np.concatenate([gnn_sig_scores, gnn_bkg_scores])
 
-        fpr, tpr, thresh_model = roc_curve(labels, scores_all)
+        fpr, tpr, thresh_model = roc_curve(y, scores_all)
         auc_full = auc(fpr, tpr)
 
-        if archs and i < len(archs):
-            line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}, AUC: {auc_full:.3f}")
-            fprs.append(fpr)
-            tprs.append(tpr)
-            threshs.append(thresh_model)
-        else:
-            continue
-            # line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"GNN for BDT $\lambda$ = {lambdas[i]}, AUC: {auc_full:.3f}")
+        line, = plt.plot(fpr, tpr, linewidth=0.9, label=f"{label}, AUC: {auc_full:.3f}")
+        fprs.append(fpr)
+        tprs.append(tpr)
+        threshs.append(thresh_model)
+        labels.append(label)
         curve_color = line.get_color()
 
         for k, fpr_cut in enumerate(fpr_targets):
@@ -163,37 +164,19 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
                 tpr_target = tpr_targets[k]
                 thresh_idx_model = min(range(len(tpr)), key=lambda j: abs(tpr[j] - tpr_target))
                 x_model, y_model = fpr[thresh_idx_model], tpr[thresh_idx_model]
-            
+
             plt.scatter(x_model, y_model, s=20, color=curve_color)
             plt.text(x_model * 1.1, y_model, f"{thresh_model[thresh_idx_model]:.5f}", fontsize=6, color=curve_color)
-        
+
         first_ROC = False
 
-    if bdt_data_loc is not None:
-        data = load_pkl(bdt_data_loc, "tau_score_corr.pkl")[0]
-        tau_mass = data["tau_mass"]
-        sideband_mask = (
-            (np.abs(tau_mass - 1.78) > 0.08)
-            & (np.abs(tau_mass) > 1.6)
-            & (np.abs(tau_mass) < 2.0)
-        )
-        GNN_bkg = data["GNN_score_bkg"]
-        GNN_sig = data["GNN_score_sig"]
-        GNN_scores = np.concatenate([GNN_sig, GNN_bkg])
-        GNN_labels = np.concatenate([np.ones(len(GNN_sig)), np.zeros(len(GNN_bkg))])
-
-        fpr_bdt, tpr_bdt, thresh_bdt = roc_curve(GNN_labels, GNN_scores)
-        auc_bdt = auc(fpr_bdt, tpr_bdt)
-
-        fprs.append(fpr_bdt)
-        tprs.append(tpr_bdt)
-        threshs.append(thresh_bdt)
-
-        ISO_bkg = data["ISO_score_bkg"][sideband_mask]
+    if bdt_pickle is not None:
+        data = load_pickle(bdt_pickle)
+        ISO_bkg = data["ISO_score_bkg"][sideband_mask(data["tau_mass"])]
         ISO_sig = data["ISO_score_sig"]
 
-        ISO_bkg = ISO_bkg[ISO_bkg > 0.8]
-        ISO_sig = ISO_sig[ISO_sig > 0.8]
+        ISO_bkg = ISO_bkg[ISO_bkg > iso_cut]
+        ISO_sig = ISO_sig[ISO_sig > iso_cut]
 
         ISO_scores = np.concatenate([ISO_sig, ISO_bkg])
         ISO_labels = np.concatenate([np.ones(len(ISO_sig)), np.zeros(len(ISO_bkg))])
@@ -204,25 +187,17 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
         fprs.append(fpr_bench)
         tprs.append(tpr_bench)
         threshs.append(thresh_benchmark)
-        
-        # bdt_line, = plt.plot(fpr_bdt, tpr_bdt, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[-1]}, AUC: {auc_bdt:.3f}")
-        bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {auc_bench:.3f}")
+        labels.append("BDT ISO")
 
-        # bdt_color = bdt_line.get_color()
+        bench_line, = plt.plot(fpr_bench, tpr_bench, linewidth=0.9, label=f"BDT ISO, AUC: {auc_bench:.3f}")
         bench_color = bench_line.get_color()
 
         for i, _ in enumerate(fpr_targets):
             tpr_target = tpr_targets[i]
 
-            thresh_idx_model = min(range(len(tpr_bdt)), key=lambda j: abs(tpr_bdt[j] - tpr_target))
-            x_model, y_model = fpr_bdt[thresh_idx_model], tpr_bdt[thresh_idx_model]
-                
-            # plt.scatter(x_model, y_model, s=20, color=bdt_color)
-            # plt.text(x_model * 1.1, y_model, f"{thresh_bdt[thresh_idx_model]:.5f}", fontsize=6, color=bdt_color)
-
             thresh_idx_model = min(range(len(tpr_bench)), key=lambda j: abs(tpr_bench[j] - tpr_target))
             x_model, y_model = fpr_bench[thresh_idx_model], tpr_bench[thresh_idx_model]
-                
+
             plt.scatter(x_model, y_model, s=20, color=bench_color)
             plt.text(x_model * 1.1, y_model, f"{thresh_benchmark[thresh_idx_model]:.5f}", fontsize=6, color=bench_color)
 
@@ -232,30 +207,22 @@ def plot_roc_gnn_arch_comparison_full(gnn_data_locs, bdt_data_loc, root_dir, fpr
     plt.ylabel("True Positive Rate")
     plt.xscale('log')
     plt.xlim(1e-5, 1)
-    plt.title(f"ROC Curves: different GNN archs vs BDT with for {tau_channel} channel")
+    plt.title(title)
 
-    output_plot_name = f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}{suffix}_full.png"
-    print(f"{output_plot_name} has been saved.")
-    plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
+    print(f"{os.path.basename(out_png)} has been saved.")
+    plt.savefig(out_png, dpi=400)
     plt.close()
-    
-    return fprs, tprs, threshs
 
-def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut):
-    suffix = "_with_bdt_cut" if bdt_score_cut else "" 
-    bdt = True
-    for i, (fpr, tpr, thresh) in enumerate(zip(fprs, tprs, threshs)):
+    return fprs, tprs, threshs, labels
+
+
+def plot_sic(fprs, tprs, threshs, labels, out_png, title):
+    """SIC = TPR / sqrt(FPR) of each curve from plot_roc_full, with the maximum marked."""
+    for fpr, tpr, thresh, label in zip(fprs, tprs, threshs, labels):
         #calculate sic
         sic = np.zeros_like(tpr, dtype=float)
         np.divide(tpr, np.sqrt(fpr), out=sic, where=fpr != 0)
-        if archs and i < len(archs):
-            line, = plt.plot(tpr, sic, linewidth=0.9, label=f"{archs[i].replace('vs', '')} $\lambda$ = {lambdas[i]}")
-        elif bdt:
-            # line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT $\lambda$ = {lambdas[i]}")    
-            bdt = False
-            continue
-        else:
-            line, = plt.plot(tpr, sic, linewidth=0.9, label=f"BDT ISO")    
+        line, = plt.plot(tpr, sic, linewidth=0.9, label=label)
         curve_color = line.get_color()
 
         # find maximum SIC and corresponding threshold
@@ -273,16 +240,13 @@ def plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lam
     plt.legend(fontsize=7)
     plt.xlabel("True Positive Rate")
     plt.ylabel("SIC")
-    # plt.xscale('log')
     plt.axhline(y=1, color='gray', linestyle='--')
-    plt.title(f"SIC scores: different GNN archs and BDT with GNN score for {tau_channel} channel")
+    plt.title(title)
 
-    output_plot_name = f"GNNs_SIC_comparison_{tau_channel}_sculpt_{sculpt_degree}{suffix}_full.png"
-    print(f"{output_plot_name} has been saved.")
-    plt.savefig(os.path.join(root_dir, output_plot_name), dpi=400)
+    print(f"{os.path.basename(out_png)} has been saved.")
+    plt.savefig(out_png, dpi=400)
     plt.close()
-    
-    return fprs, tprs, threshs
+
 
 def plot_roc_gnn_arch_comparison(gnn_data_locs, bdt_data_loc, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs):
 
@@ -640,9 +604,19 @@ if __name__ == "__main__":
     elif plot_mode == "ROC_comp_full":
         root_dir = "/work/kfuss/SVJ_GNN/output/comparison_plots"
         fpr_targets = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
-        fprs, tprs, threshs = plot_roc_gnn_arch_comparison_full(gnn_archs_location, bdt_location, root_dir, fpr_targets, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut)
-        plot_sic_full(fprs, tprs, threshs, root_dir, tau_channel, sculpt_degree, lambdas, archs, bdt_score_cut)
-    
+        suffix = "_with_bdt_cut" if bdt_score_cut else ""
+        # the last location is the BDT one; GNN locations without an archs label are not plotted (as before)
+        gnn_curves = [(f"{arch.replace('vs', '')} $\\lambda$ = {lam}",
+                       loc + f"raw_scores_and_tau_mass_signal{suffix}.npz",
+                       loc + f"raw_scores_and_tau_mass_background{suffix}.npz")
+                      for loc, arch, lam in zip(gnn_archs_location[:-1], archs or [], lambdas or [])]
+        bdt_pickle = None if bdt_location is None else os.path.join(bdt_location, "tau_score_corr.pkl")
+        curves = plot_roc_full(gnn_curves, bdt_pickle,
+                               os.path.join(root_dir, f"GNNs_ROC_log_comparison_{tau_channel}_sculpt_{sculpt_degree}{suffix}_full.png"),
+                               fpr_targets, f"ROC Curves: different GNN archs vs BDT with for {tau_channel} channel")
+        plot_sic(*curves, os.path.join(root_dir, f"GNNs_SIC_comparison_{tau_channel}_sculpt_{sculpt_degree}{suffix}_full.png"),
+                 f"SIC scores: different GNN archs and BDT with GNN score for {tau_channel} channel")
+
     elif plot_mode == "score_cut":
         data = load_and_filter_root(model, tau_channel, cut)
         data = load_and_filter_npz(model, tau_channel, cut)

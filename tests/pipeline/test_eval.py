@@ -55,3 +55,26 @@ def test_old_cli_tau_hist_names(tmp_path, plot_mode, view, bdt_cut, name):
     toy_npz(tmp_path, "_with_bdt_cut" if bdt_cut else "")
     me.tau_score_hist(str(tmp_path) + "/", "final_layer", "t", "W", plot_mode, view, bdt_cut)
     assert (tmp_path / name).is_file()
+
+
+FPR_TARGETS = [5e-2, 1e-2, 5e-3, 1e-3]
+
+
+@pytest.mark.parametrize("extra_gnn_keys", [False, True])
+def test_roc_and_sic(tmp_path, extra_gnn_keys):
+    s, b = toy_npz(tmp_path)
+    pkl = toy_pickle(tmp_path / "bdt" / "tau_score_corr.pkl", extra_gnn_keys)
+    curves = me.plot_roc_full([("GNN toy", s, b)], pkl, tmp_path / "roc.png", FPR_TARGETS, "t")
+    assert curves[3] == ["GNN toy", "BDT ISO"]
+    me.plot_sic(*curves, tmp_path / "sic.png", "t")
+    assert (tmp_path / "roc.png").is_file() and (tmp_path / "sic.png").is_file()
+
+
+@pytest.mark.parametrize("cut", [0.5, 0.9])
+def test_iso_cut(tmp_path, cut):
+    s, b = toy_npz(tmp_path)
+    pkl = toy_pickle(tmp_path / "bdt" / "tau_score_corr.pkl")
+    _, _, threshs, _ = me.plot_roc_full([("GNN toy", s, b)], pkl, tmp_path / "roc.png", FPR_TARGETS, "t",
+                                        iso_cut=cut)
+    iso = threshs[-1]
+    assert iso[np.isfinite(iso)].min() > cut
