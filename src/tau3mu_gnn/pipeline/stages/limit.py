@@ -80,14 +80,17 @@ def run_scan(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path)
     return summarize(cfg, out_dir)
 
 
-def summarize(cfg: Config, out_dir: str | Path) -> dict:
+def summarize(cfg: Config, out_dir: str | Path, write_dir: str | Path | None = None) -> dict:
     """Table of the cut scan: reads <out_dir>/cut_<cut>/limit.json for each cut of limit.gnn_score_cut.
 
     A cut without a finite limit is a missing row (warning). Best cut = lowest limit, the smaller cut on a tie.
-    Writes <out_dir>/limits.json, limits.txt, limits.png. Raises RuntimeError if no cut has a limit.
+    Writes limits.json, limits.txt, limits.png into write_dir (default out_dir). Raises RuntimeError if no cut
+    has a limit.
     """
     out_dir = Path(out_dir)
-    files = {k: out_dir / name for k, name in SUMMARY_FILES.items()}
+    write_dir = Path(write_dir) if write_dir is not None else out_dir
+    write_dir.mkdir(parents=True, exist_ok=True)
+    files = {k: write_dir / name for k, name in SUMMARY_FILES.items()}
     for f in files.values():
         f.unlink(missing_ok=True)  # a failed summary must not leave the table of an earlier scan
     rows = [_read_cut(out_dir, cut) for cut in sorted(cfg.limit.gnn_score_cut)]

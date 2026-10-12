@@ -252,3 +252,15 @@ def test_failed_summary_removes_old_summary_files(load, user, tmp_path):
         limit.summarize(scan_cfg(load, user, [3.9]), tmp_path)
     for name in limit.SUMMARY_FILES.values():
         assert not (tmp_path / name).exists(), name
+
+
+def test_summary_write_dir(load, user, tmp_path):
+    """Phase C job: cut_*/ on dCache (read via /pnfs), table written to scratch."""
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = scan_cfg(load, user, [3.9])
+    write_limit(tmp_path / "phase", 3.9, 1.3)
+    scratch = tmp_path / "scratch"
+    s = limit.summarize(cfg, tmp_path / "phase", write_dir=scratch)
+    assert s["files"]["json"] == scratch / "limits.json" and (scratch / "limits.png").is_file()
+    assert not (tmp_path / "phase" / "limits.json").exists()
