@@ -2,13 +2,15 @@
 
 Writes <out_dir>/cut_<cut>/: the datacard files (datacard.txt/.root, mass.pdf, temp trees), the Combine
 outputs and logs, and limit.json ({"cut", "limit", "limitErr"}: median expected limit at CL = limit.cl).
-Step 8b runs one call per cut of limit.gnn_score_cut and writes the table.
+Cut scan (step 8b): one run() per cut of limit.gnn_score_cut, then summarize() writes <out_dir>/limits.json,
+limits.txt and limits.png (best cut = lowest limit). run_scan() does both in one process.
 """
 from __future__ import annotations
 
 import json
 import logging
 import math
+import subprocess
 from pathlib import Path
 from typing import Mapping
 
@@ -46,6 +48,7 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path, cut:
     from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
 
     card_dir = Path(out_dir) / cut_dir_name(cut)
+    (card_dir / "limit.json").unlink(missing_ok=True)  # a failed rerun must not leave the old limit
     log.info("stage 5 limit: cut %s, %s -> %s", cut, {s: str(inputs[s]) for s in INPUTS}, card_dir)
     card = make_datacard([inputs["signal"]], [inputs["background"]], cut, lim.signal_weight, card_dir,
                          tau_mass=lim.tau_mass, mass_window=lim.mass_window, fit_range=lim.fit_range,
@@ -58,6 +61,23 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path, cut:
     limit_json = card_dir / "limit.json"
     limit_json.write_text(json.dumps(result, indent=2) + "\n")
     return {**result, "dir": card_dir, "datacard": card.datacard, "limit_json": limit_json}
+
+
+def run_scan(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> dict:
+    """All cuts of limit.gnn_score_cut one after the other in this process, then summarize. For local runs;
+    the driver (step 9) sends one job per cut and a final summarize job instead.
+
+    Missing inputs or a missing Combine stop before the first cut. A cut whose Combine fails (non-zero exit or
+    no median limit) is logged and becomes a missing row. Other errors stop the scan.
+    """
+    check_inputs(inputs, cfg.inputs.tree_name)
+    combine_executable()
+    for cut in cfg.limit.gnn_score_cut:
+        try:
+            run(cfg, inputs, out_dir, cut)
+        except (RuntimeError, subprocess.CalledProcessError) as e:
+            log.error("cut scan: cut %s failed: %s", cut, e)
+    return summarize(cfg, out_dir)
 
 
 def summarize(cfg: Config, out_dir: str | Path) -> dict:

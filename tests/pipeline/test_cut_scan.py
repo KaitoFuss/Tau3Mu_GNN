@@ -1,7 +1,11 @@
 import json
 import math
+import subprocess
+from pathlib import Path
 
 import pytest
+
+from test_limit import needs_combine, toy_inputs  # noqa: F401  (fixture reused)
 
 
 def scan_cfg(load, user, cuts):
@@ -139,3 +143,88 @@ def test_summary_plot_single_cut(load, user, tmp_path):
     write_limit(tmp_path, 3.9, 1.2890625)
     limit.summarize(cfg, tmp_path)
     assert (tmp_path / "limits.png").read_bytes()[:4] == b"\x89PNG"
+
+
+def test_rerun_removes_old_limit_json(load, user, toy_inputs, monkeypatch, tmp_path):
+    """A failed rerun must not leave the limit of the earlier run in the table."""
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = scan_cfg(load, user, [3.9])
+    old = write_limit(tmp_path / "out", 3.9, 1.0)
+    monkeypatch.setattr(limit, "combine_executable", lambda: Path("/bin/true"))
+    monkeypatch.setattr(limit, "run_combine", lambda d, cl: Path(d) / "x.root")
+    monkeypatch.setattr(limit, "read_limit", lambda p: {})
+    with pytest.raises(RuntimeError):
+        limit.run(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "out", 3.9)
+    assert not old.exists()
+
+
+def fake_run_factory(failing):
+    calls = []
+
+    def fake_run(cfg, inputs, out_dir, cut):
+        calls.append(cut)
+        if cut in failing:
+            raise subprocess.CalledProcessError(1, ["combine"])
+        write_limit(Path(out_dir), cut, 1.0 + abs(cut - 3.9))
+    return fake_run, calls
+
+
+def test_run_scan_all_cuts_then_summary(load, user, monkeypatch, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = scan_cfg(load, user, [2.0, 3.9, 4.5])
+    fake_run, calls = fake_run_factory(failing={4.5})
+    monkeypatch.setattr(limit, "check_inputs", lambda inputs, tree: None)
+    monkeypatch.setattr(limit, "combine_executable", lambda: Path("/bin/true"))
+    monkeypatch.setattr(limit, "run", fake_run)
+
+    s = limit.run_scan(cfg, {"signal": "s.root", "background": "b.root"}, tmp_path)
+
+    assert calls == [2.0, 3.9, 4.5]                      # a failed cut does not stop the scan
+    assert s["best_cut"] == 3.9 and s["missing"] == [4.5]
+    assert (tmp_path / "limits.json").is_file()
+
+
+def test_run_scan_no_combine_fails_before_any_cut(load, user, monkeypatch, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    def missing():
+        raise FileNotFoundError("CMS Combine not found")
+
+    fake_run, calls = fake_run_factory(failing=set())
+    monkeypatch.setattr(limit, "check_inputs", lambda inputs, tree: None)
+    monkeypatch.setattr(limit, "combine_executable", missing)
+    monkeypatch.setattr(limit, "run", fake_run)
+    with pytest.raises(FileNotFoundError, match="Combine"):
+        limit.run_scan(scan_cfg(load, user, [2.0, 3.9]), {"signal": "s", "background": "b"}, tmp_path / "out")
+    assert calls == [] and not (tmp_path / "out").exists()
+
+
+def test_run_scan_other_errors_stop_the_scan(load, user, monkeypatch, tmp_path):
+    """Only a Combine failure is a 'missing' cut; a bug (e.g. ValueError) must not be hidden."""
+    from tau3mu_gnn.pipeline.stages import limit
+
+    def broken(cfg, inputs, out_dir, cut):
+        raise ValueError("bug")
+
+    monkeypatch.setattr(limit, "check_inputs", lambda inputs, tree: None)
+    monkeypatch.setattr(limit, "combine_executable", lambda: Path("/bin/true"))
+    monkeypatch.setattr(limit, "run", broken)
+    with pytest.raises(ValueError, match="bug"):
+        limit.run_scan(scan_cfg(load, user, [3.9]), {"signal": "s", "background": "b"}, tmp_path)
+
+
+@needs_combine
+def test_run_scan_end_to_end(load, user, toy_inputs, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    user["limit"]["signal_weight"] = 0.5
+    cfg = scan_cfg(load, user, [2.0, 3.9])
+    s = limit.run_scan(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "phase_c")
+    for cut in (2.0, 3.9):
+        per_cut = json.loads((tmp_path / "phase_c" / f"cut_{cut}" / "limit.json").read_text())
+        row = next(r for r in s["rows"] if r["cut"] == cut)
+        assert row["limit"] == per_cut["limit"]
+    for name in limit.SUMMARY_FILES.values():
+        assert (tmp_path / "phase_c" / name).is_file(), name
