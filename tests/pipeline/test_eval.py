@@ -78,3 +78,52 @@ def test_iso_cut(tmp_path, cut):
                                         iso_cut=cut)
     iso = threshs[-1]
     assert iso[np.isfinite(iso)].min() > cut
+
+
+# ---------------------------------------------------------------- stage 4
+
+def _stage_inputs(tmp_path):
+    s, b = toy_npz(tmp_path / "3_gnn")
+    return {"signal_scores": s, "background_scores": b,
+            "scores_pickle": toy_pickle(tmp_path / "2_bdt" / "tau_score_corr.pkl")}
+
+
+def test_stage_writes_all_plots(tmp_path, load, user):
+    from tau3mu_gnn.pipeline.stages import evaluation as eval_stage
+
+    out_dir = tmp_path / "4_eval"
+    outputs = eval_stage.run(load(user), _stage_inputs(tmp_path), out_dir)
+    assert outputs == {name: out_dir / f"{name}.png" for name in eval_stage.PLOTS}
+    assert sorted(p.name for p in out_dir.iterdir()) == sorted(f"{n}.png" for n in eval_stage.PLOTS)
+
+
+def test_missing_inputs_fail_before_plots(tmp_path, load, user):
+    from tau3mu_gnn.pipeline.stages import evaluation as eval_stage
+
+    inputs = _stage_inputs(tmp_path)
+    inputs["signal_scores"].unlink()
+    inputs["scores_pickle"].unlink()
+    with pytest.raises(FileNotFoundError) as err:
+        eval_stage.run(load(user), inputs, tmp_path / "4_eval")
+    assert "raw_scores_and_tau_mass_signal.npz" in str(err.value) and "tau_score_corr.pkl" in str(err.value)
+    assert not (tmp_path / "4_eval").exists()
+
+
+def test_npz_without_key_fails(tmp_path, load, user):
+    from tau3mu_gnn.pipeline.stages import evaluation as eval_stage
+
+    inputs = _stage_inputs(tmp_path)
+    np.savez_compressed(inputs["background_scores"], scores=np.zeros(3))
+    with pytest.raises(ValueError, match="tau_mass"):
+        eval_stage.run(load(user), inputs, tmp_path / "4_eval")
+    assert not (tmp_path / "4_eval").exists()
+
+
+def test_pickle_without_key_fails(tmp_path, load, user):
+    from tau3mu_gnn.pipeline.stages import evaluation as eval_stage
+
+    inputs = _stage_inputs(tmp_path)
+    with open(inputs["scores_pickle"], "wb") as f:
+        pickle.dump({"ISO_score_sig": pd.Series([0.9])}, f)
+    with pytest.raises(ValueError, match="ISO_score_bkg"):
+        eval_stage.run(load(user), inputs, tmp_path / "4_eval")
