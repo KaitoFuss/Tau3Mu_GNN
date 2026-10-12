@@ -164,3 +164,34 @@ def test_run_combine_on_toy_card(toy_inputs, tmp_path):
     result = run_combine(out, 0.9)
     assert result == out / ASYMPTOTIC_OUTPUT and result.is_file()
     assert (out / "combine_asymptotic.log").read_text()
+
+
+def write_limit_tree(path, quantiles, limits):
+    return write_tree(path, {"quantileExpected": np.array(quantiles, dtype=np.float32),
+                             "limit": np.array(limits, dtype=np.float64),
+                             "limitErr": np.zeros(len(limits))}, tree="limit")
+
+
+def test_read_limit_median(tmp_path):
+    from tau3mu_gnn.analysis.readout_limit import read_limit
+
+    f = write_limit_tree(tmp_path / "c.root", [0.025, 0.16, 0.5, 0.84, 0.975], [0.6, 0.9, 1.2890625, 1.8, 2.5])
+    assert read_limit(f) == {"limit": 1.2890625, "limitErr": 0.0}
+
+
+def test_read_limit_no_median(tmp_path):
+    from tau3mu_gnn.analysis.readout_limit import read_limit
+
+    assert read_limit(write_limit_tree(tmp_path / "c.root", [0.16, 0.84], [0.9, 1.8])) == {}
+
+
+def test_readout_old_cli_updates_json(monkeypatch, tmp_path):
+    from tau3mu_gnn.analysis import readout_limit as rl
+
+    write_limit_tree(tmp_path / rl.ASYMPTOTIC_OUTPUT, [0.5], [1.5])
+    monkeypatch.setattr(rl, "OLD_OUTPUT_ROOT", str(tmp_path))
+    (tmp_path / "W_limits.json").write_text(json.dumps({"W": {"m": {"5.0": {"limit": 2.0, "limitErr": 0.0}}}}))
+    rl.main(["--model", "m", "--channel", "W", "--cut", "3.9", "--path", str(tmp_path)])
+    data = json.loads((tmp_path / "W_limits.json").read_text())
+    assert list(data["W"]["m"]) == ["3.9", "5.0"]          # sorted by cut
+    assert data["W"]["m"]["3.9"] == {"limit": 1.5, "limitErr": 0.0}
