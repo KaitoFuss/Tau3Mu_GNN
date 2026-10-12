@@ -11,64 +11,51 @@ By default, systematic uncertainties are incorporated in combine's fit and profi
 
 Reworked to use RDataFrame for selection, independent of RooFit.
 download pseudo data root trees from https://cernbox.cern.ch/s/NbNdJ3DmRHBOEUr
+
+make_datacard() is the function (used by pipeline stage 5); main() is the old CLI.
 '''
+from __future__ import annotations
+
+import argparse
+import logging
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Sequence
 
 import ROOT
-import argparse
-import json
 
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(True)
 ROOT.TH1.SetDefaultSumw2()
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--model", required=True)
-parser.add_argument("--channel", required=True)
-parser.add_argument("--cut", required=True)
-parser.add_argument("--file_suffix", default="_with_scores")
-args = parser.parse_args()
+log = logging.getLogger(__name__)
 
-FILE_SUFFIX = args.file_suffix
-MODEL = args.model
-CHANNEL = args.channel
-CUT = args.cut
+# Fixed fit values (value, min, max), as in the old script
+MASS_VAR_RANGE = (1.6, 2.0)            # GeV, range of the RooRealVar mass
+WEIGHT_RANGE = (0, 100)
+MEAN_START = (1.78, 1.7, 1.9)
+WIDTH_START = (0.02, 0, 0.1)
+SLOPE_START = (-0.001, -1e6, 1e6)
+NBKG_START = (1000, 0, 550000)
+NBINS = 60                             # needed just for plotting, fits are all unbinned
+BLINDED = True                         # don't show (nor fit!) data in the signal mass window
 
-if CHANNEL == "W":
-    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_signal_skimmed_no_resonances{FILE_SUFFIX}.root"
-    BKG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances{FILE_SUFFIX}.root"
-elif CHANNEL == "HF":
-    SIG_ROOT_FILE = f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_{CHANNEL}/{MODEL}/selected_ds_large_signal_skimmed_no_resonances{FILE_SUFFIX}.root"
-    BKG_ROOT_FILE = [
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part1{FILE_SUFFIX}.root",
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part2{FILE_SUFFIX}.root",
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part3{FILE_SUFFIX}.root",
-                        f"/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_{CHANNEL}/{MODEL}/selected_data_skimmed_no_resonances_part4{FILE_SUFFIX}.root",
-                    ]
+OLD_OUTPUT_ROOT = "/work/kfuss/SVJ_GNN/output"
+OLD_DATA_ROOT = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data"
+OLD_SIGNAL_WEIGHT = {"W": 0.000019, "HF": 0.000152}
 
-SCORE_CUT = CUT
 
-if CHANNEL == "W":
-    SIGNAL_WEIGHT = '0.000019'
-elif CHANNEL == "HF":
-    SIGNAL_WEIGHT = '0.000152'
+@dataclass(frozen=True)
+class DatacardResult:
+    datacard: Path          # <out_dir>/datacard.txt
+    n_signal: int           # signal entries after the GNN cut (RDataFrame count)
+    n_data: int             # data entries after the GNN cut and the blind cut
+    signal_rate: float      # fullmc.sumEntries()
+    nbkg: float
+    slope: float
+    slope_err: float
 
-MASS_BRANCH_NAME = f"Selected_TauTo3Mu_fitted_mass"
-
-mass_window = 0.060 # GeV
-tau_mass = 1.78 # GeV
-fit_range_lo  , fit_range_hi   = 1.62, 1.98 # GeV
-mass_window_lo, mass_window_hi = tau_mass-mass_window, tau_mass+mass_window
-
-nbins = 60 # needed just for plotting, fits are all unbinned
-
-blinded = True # don't show (nor fit!) data in the signal mass window
-
-##########################################################################################
-##      Selection definitions
-##########################################################################################
-selection = f"GNN_score > {SCORE_CUT}" # no selection for this example, but leave it in place for ref
-signal_weight = SIGNAL_WEIGHT # arbitrary weight to scale the signal. Can be one of the branches of the tree
-blind_cut = f'abs(mass - 1.78) > 0.06'  # blinding cut for sidebands only
 
 ##########################################################################################
 ##      Helper function: Apply selection and create filtered TTrees
@@ -76,21 +63,21 @@ blind_cut = f'abs(mass - 1.78) > 0.06'  # blinding cut for sidebands only
 def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output_file, output_tree_name, weight_expr=None, extra_filter=None):
     """
     Apply selection and weights using RDataFrame.
-    
+
     Args:
-        input_file: path to input ROOT file
+        input_file: path to input ROOT file (or list of paths)
         tree_name: name of input tree
         selection_expr: selection expression (string)
         weight_expr: weight expression (string)
         output_file: path to output ROOT file
         output_tree_name: name for output tree
-    
+
     Returns:
         Filtered RDataFrame
     """
     # Create RDataFrame from input tree
     df = ROOT.RDataFrame(tree_name, input_file)
-    
+
     # Apply selection filter
     df_filtered = df.Filter(selection_expr)
 
@@ -98,264 +85,233 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
     if extra_filter:
         print("Applying blinding cut: {}".format(extra_filter))
         df_filtered = df_filtered.Filter(extra_filter)
-    
+
     # Define a weight column if weight expression is not '1'
     if weight_expr:
         df_filtered = df_filtered.Define('weight', weight_expr)
     else:
         df_filtered = df_filtered.Define('weight', '1')
-    
+
     # Snapshot to create a new tree (pass filename string, not TFile object)
     cols = [c for c in df_filtered.GetColumnNames() if c != 'Selected_TauTo3Mu_fitted_mass']
     df_filtered.Snapshot(output_tree_name, output_file, cols)
-    
+
     return df_filtered
 
-##########################################################################################
-##      Step 1: Read input trees and apply selections using RDataFrame
-##########################################################################################
-print("="*80)
-print("Step 1: Applying selections with RDataFrame")
-print("="*80)
 
-# Define temporary filename
-temp_data_filename = 'temp_data_selected.root'
-temp_mc_filename = 'temp_mc_selected.root'
+def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Path], cut: float,
+                  signal_weight: float, out_dir: str | Path, tau_mass: float = 1.78,
+                  mass_window: float = 0.060, fit_range: tuple[float, float] = (1.62, 1.98),
+                  tree_name: str = "Events") -> DatacardResult:
+    """Select GNN_score > cut, fit signal (Gaussian) and sideband data (exponential), write into out_dir:
+    temp_mc_selected.root, temp_data_selected.root, mass.pdf, datacard.root, datacard.txt."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sig_files = [str(f) for f in sig_files]
+    bkg_files = [str(f) for f in bkg_files]
 
-# Process signal MC
-print("Processing signal MC with selection: {}".format(selection))
-df_signal = apply_selection_and_weight_rdf(
-    SIG_ROOT_FILE,
-    'Events',
-    selection,
-    temp_mc_filename,
-    'Events',
-    signal_weight,
-)
-n_signal_events = df_signal.Count().GetValue()
-print("Signal events after selection: {}".format(n_signal_events))
+    fit_range_lo, fit_range_hi = fit_range
+    mass_window_lo, mass_window_hi = tau_mass - mass_window, tau_mass + mass_window
 
-# Process data
-print("Processing data with selection: {}".format(selection))
-# if blinded:
-#     print("Applying blinding cut: {}".format(blind_cut))
-#     data_selection = '{} && {}'.format(selection, blind_cut)
-# else:
-#     data_selection = selection
-    
-df_data = apply_selection_and_weight_rdf(
-    BKG_ROOT_FILE, 'Events', selection, temp_data_filename, 'Events',
-    extra_filter=blind_cut if blinded else None
-)
-n_data_events = df_data.Count().GetValue()
-print("Data events after selection: {}".format(n_data_events))
+    ##########################################################################################
+    ##      Selection definitions
+    ##########################################################################################
+    selection = f"GNN_score > {cut}"
+    signal_weight = f"{signal_weight}" # weight to scale the signal. Can be one of the branches of the tree
+    blind_cut = f'abs(mass - {tau_mass}) > {mass_window}'  # blinding cut for sidebands only
 
-# import ipdb ; ipdb.set_trace()
+    ##########################################################################################
+    ##      Step 1: Read input trees and apply selections using RDataFrame
+    ##########################################################################################
+    print("="*80)
+    print("Step 1: Applying selections with RDataFrame")
+    print("="*80)
 
-##########################################################################################
-##      Step 2: Read selected trees back into TChains
-##########################################################################################
-print("="*80)
-print("Step 2: Loading selected trees")
-print("="*80)
+    temp_data_filename = str(out_dir / 'temp_data_selected.root')
+    temp_mc_filename = str(out_dir / 'temp_mc_selected.root')
 
-mc_chain = ROOT.TChain('Events')
-mc_chain.AddFile(temp_mc_filename)
+    # Process signal MC
+    print("Processing signal MC with selection: {}".format(selection))
+    df_signal = apply_selection_and_weight_rdf(
+        sig_files,
+        tree_name,
+        selection,
+        temp_mc_filename,
+        'Events',
+        signal_weight,
+    )
+    n_signal_events = df_signal.Count().GetValue()
+    print("Signal events after selection: {}".format(n_signal_events))
 
-data_chain = ROOT.TChain('Events')
-data_chain.AddFile(temp_data_filename)
+    # Process data
+    print("Processing data with selection: {}".format(selection))
+    df_data = apply_selection_and_weight_rdf(
+        bkg_files, tree_name, selection, temp_data_filename, 'Events',
+        extra_filter=blind_cut if BLINDED else None
+    )
+    n_data_events = df_data.Count().GetValue()
+    print("Data events after selection: {}".format(n_data_events))
 
-##########################################################################################
-##      Step 3: Define RooFit variables and PDFs
-##########################################################################################
-print("="*80)
-print("Step 3: Setting up RooFit variables and PDFs")
-print("="*80)
+    ##########################################################################################
+    ##      Step 2: Read selected trees back into TChains
+    ##########################################################################################
+    print("="*80)
+    print("Step 2: Loading selected trees")
+    print("="*80)
 
-mass   = ROOT.RooRealVar('mass'  , '3-#mu mass'  , 1.6,   2, 'GeV' )
-# length = ROOT.RooRealVar('length', 'decay length', 0  ,  10, '#mum')
-weight = ROOT.RooRealVar('weight', 'weight'      , 0  , 100, ''    ) # this is bloody important, don't remove, else it will fail to apply weight SILENTLY!
+    mc_chain = ROOT.TChain('Events')
+    mc_chain.AddFile(temp_mc_filename)
 
-# define sidebands. The bkg only fit will be run ONLY on the sidebands
-mass.setRange('left' , fit_range_lo  , mass_window_lo)
-mass.setRange('right', mass_window_hi, fit_range_hi  )
+    data_chain = ROOT.TChain('Events')
+    data_chain.AddFile(temp_data_filename)
 
-# signal PDF
-mean  = ROOT.RooRealVar('mean' , 'mean' , 1.78, 1.7, 1.9)
-width = ROOT.RooRealVar('width', 'width', 0.02,    0, 0.1)
-gaus  = ROOT.RooGaussian('sig_gaus', 'sig_gaus', mass, mean, width)
+    ##########################################################################################
+    ##      Step 3: Define RooFit variables and PDFs
+    ##########################################################################################
+    print("="*80)
+    print("Step 3: Setting up RooFit variables and PDFs")
+    print("="*80)
 
-# background PDF
-slope = ROOT.RooRealVar('slope', 'slope', -0.001, -1e6, 1e6)
-expo  = ROOT.RooExponential('bkg_expo', 'bkg_expo', mass, slope)
+    mass   = ROOT.RooRealVar('mass'  , '3-#mu mass'  , *MASS_VAR_RANGE, 'GeV' )
+    weight = ROOT.RooRealVar('weight', 'weight'      , *WEIGHT_RANGE, ''    ) # this is bloody important, don't remove, else it will fail to apply weight SILENTLY!
 
-# with open(f'/work/kfuss/SVJ_GNN/output/{MODEL}/shape_params.json') as f:
-#     bkg_params = json.load(f)
+    # define sidebands. The bkg only fit will be run ONLY on the sidebands
+    mass.setRange('left' , fit_range_lo  , mass_window_lo)
+    mass.setRange('right', mass_window_hi, fit_range_hi  )
 
-# poly_order = bkg_params['poly_order']
-# # if poly_order > 4:
-# #     raise ValueError(f"Polynomial order {poly_order} not supported.")
+    # signal PDF
+    mean  = ROOT.RooRealVar('mean' , 'mean' , *MEAN_START)
+    width = ROOT.RooRealVar('width', 'width', *WIDTH_START)
+    gaus  = ROOT.RooGaussian('sig_gaus', 'sig_gaus', mass, mean, width)
 
-# coeff_vars = []
-# for i in range(1, poly_order + 1):
-#     val = bkg_params[f'c{i}']
-#     err = bkg_params[f'c{i}_err']
-#     lo, hi = (val - 10*err, val + 10*err) if err > 0 else (-1, 1)
-#     var = ROOT.RooRealVar(f'c{i}', f'c{i}', val, lo, hi)
-#     var.setConstant()
-#     coeff_vars.append(var)
+    # background PDF
+    slope = ROOT.RooRealVar('slope', 'slope', *SLOPE_START)
+    expo  = ROOT.RooExponential('bkg_expo', 'bkg_expo', mass, slope)
 
-# cheby = ROOT.RooChebychev('bkg_cheby', 'bkg_cheby', mass, ROOT.RooArgList(*coeff_vars))
+    # number of background events
+    nbkg = ROOT.RooRealVar('nbkg', 'nbkg', *NBKG_START)
+    expomodel = ROOT.RooAddPdf('bkg_extended_expo', 'bkg_extended_expo', ROOT.RooArgList(expo), ROOT.RooArgList(nbkg))
 
-# number of background events
-nbkg = ROOT.RooRealVar('nbkg', 'nbkg', 1000, 0, 550000)
-expomodel = ROOT.RooAddPdf('bkg_extended_expo', 'bkg_extended_expo', ROOT.RooArgList(expo), ROOT.RooArgList(nbkg))
-# chebymodel = ROOT.RooAddPdf('bkg_extended_cheby', 'bkg_extended_cheby', ROOT.RooArgList(cheby), ROOT.RooArgList(nbkg))
+    thevars = ROOT.RooArgSet()
+    thevars.add(mass)
+    thevars.add(weight) # this is bloody important, don't remove, else it will fail to apply weight SILENTLY!
 
-thevars = ROOT.RooArgSet()
-thevars.add(mass)
-# thevars.add(length)
-thevars.add(weight) # this is bloody important, don't remove, else it will fail to apply weight SILENTLY!
+    ##########################################################################################
+    ##      Step 4: Create RooDataSet from selected trees (no further selection in RooFit)
+    ##########################################################################################
+    print("="*80)
+    print("Step 4: Creating RooDataSet from pre-selected trees")
+    print("="*80)
 
-##########################################################################################
-##      Step 4: Create RooDataSet from selected trees (no further selection in RooFit)
-##########################################################################################
-print("="*80)
-print("Step 4: Creating RooDataSet from pre-selected trees")
-print("="*80)
+    # Selection is '1' here because we already applied selection with RDataFrame
+    fullmc = ROOT.RooDataSet('mc', 'mc', thevars,
+        ROOT.RooFit.Import(mc_chain),
+        ROOT.RooFit.Cut('1'),
+        ROOT.RooFit.WeightVar('weight')
+    )
+    fulldata = ROOT.RooDataSet('data', 'data', thevars,
+        ROOT.RooFit.Import(data_chain),
+        ROOT.RooFit.Cut('1'),
+        ROOT.RooFit.WeightVar('weight')
+    )
 
-# Selection is '1' here because we already applied selection with RDataFrame
-fullmc = ROOT.RooDataSet('mc', 'mc', thevars,
-    ROOT.RooFit.Import(mc_chain),
-    ROOT.RooFit.Cut('1'),
-    ROOT.RooFit.WeightVar('weight')
-)
-fulldata = ROOT.RooDataSet('data', 'data', thevars,
-    ROOT.RooFit.Import(data_chain),
-    ROOT.RooFit.Cut('1'),
-    ROOT.RooFit.WeightVar('weight')
-)
+    print("MC   dataset number of entries, sum weights: {},\t{}".format(fullmc  .numEntries(), fullmc  .sumEntries() ))
+    print("Data dataset number of entries, sum weights: {},\t{}".format(fulldata.numEntries(), fulldata.sumEntries() ))
 
-print("MC   dataset number of entries, sum weights: {},\t{}".format(fullmc  .numEntries(), fullmc  .sumEntries() ))
-print("Data dataset number of entries, sum weights: {},\t{}".format(fulldata.numEntries(), fulldata.sumEntries() ))
+    ##########################################################################################
+    ##      Step 5: Fit and plot
+    ##########################################################################################
+    print("="*80)
+    print("Step 5: Fitting and plotting")
+    print("="*80)
 
-# import ipdb ; ipdb.set_trace()
+    frame = mass.frame()
+    frame.SetTitle('')
 
-##########################################################################################
-##      Step 5: Fit and plot
-##########################################################################################
-print("="*80)
-print("Step 5: Fitting and plotting")
-print("="*80)
+    fullmc.plotOn(
+        frame,
+        ROOT.RooFit.Binning(NBINS),
+        ROOT.RooFit.DrawOption('B'),
+        ROOT.RooFit.XErrorSize(0),
+        ROOT.RooFit.LineWidth(2),
+        ROOT.RooFit.FillColor(ROOT.kRed),
+        ROOT.RooFit.FillStyle(3003),
+    )
 
-frame = mass.frame()
-frame.SetTitle('')
+    results_gaus = gaus.fitTo(
+        fullmc,
+        ROOT.RooFit.Range(mass_window_lo, mass_window_hi),
+        ROOT.RooFit.Save()
+    )
 
-fullmc.plotOn(
-    frame, 
-    ROOT.RooFit.Binning(nbins), 
-    ROOT.RooFit.DrawOption('B'), 
-    # ROOT.RooFit.DataError(ROOT.RooAbsData.None), 
-    ROOT.RooFit.XErrorSize(0), 
-    ROOT.RooFit.LineWidth(2),
-    ROOT.RooFit.FillColor(ROOT.kRed),
-    ROOT.RooFit.FillStyle(3003),                
-)
+    gaus.plotOn(
+        frame,
+        ROOT.RooFit.LineColor(ROOT.kRed)
+    )
 
-results_gaus = gaus.fitTo(
-    fullmc, 
-    ROOT.RooFit.Range(mass_window_lo, mass_window_hi), 
-    ROOT.RooFit.Save()
-)
+    fulldata.plotOn(
+        frame,
+        ROOT.RooFit.Binning(NBINS),
+        ROOT.RooFit.MarkerSize(1.)
+    )
 
-gaus.plotOn(
-    frame, 
-    ROOT.RooFit.LineColor(ROOT.kRed)
-)
+    # fit background with exponential model
+    results_expo = expomodel.fitTo(fulldata, ROOT.RooFit.Range('left,right'), ROOT.RooFit.Save())
+    expo.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlack))     # this is the fit in the entire mass range
+    if nbkg.getVal() > 0.99 * NBKG_START[2]:
+        log.warning("nbkg = %.1f is at its upper limit %g; the background yield is clipped",
+                    nbkg.getVal(), NBKG_START[2])
 
-fulldata.plotOn(
-    frame, 
-    ROOT.RooFit.Binning(nbins), 
-    ROOT.RooFit.MarkerSize(1.)
-)
+    frame.Draw()
+    ROOT.gPad.SaveAs(str(out_dir / 'mass.pdf'))
 
-# fit background with exponential model
-results_expo = expomodel.fitTo(fulldata, ROOT.RooFit.Range('left,right'), ROOT.RooFit.Save())
-expo.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlack))     # this is the fit in the entire mass range
-# chebymodel.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlue)) # sideband only fit
+    ##########################################################################################
+    ##      Step 6: Create output workspace and datacard
+    ##########################################################################################
+    print("="*80)
+    print("Step 6: Creating workspace and datacard")
+    print("="*80)
 
-frame.Draw()
-ROOT.gPad.SaveAs('mass.pdf')
-if "bdt" in FILE_SUFFIX:
-    ROOT.gPad.SaveAs(f'/work/kfuss/SVJ_GNN/output/{MODEL}/mass_{CUT}_with_bdt_cut.pdf')
-else:
-    ROOT.gPad.SaveAs(f'/work/kfuss/SVJ_GNN/output/{MODEL}/mass_{CUT}.pdf')
-##########################################################################################
-##      Step 6: Create output workspace and datacard
-##########################################################################################
-print("="*80)
-print("Step 6: Creating workspace and datacard")
-print("="*80)
+    # create output file containing the unbinned dataset, after selection
+    output = ROOT.TFile.Open(str(out_dir / 'datacard.root'), 'recreate')
+    seldata = ROOT.RooDataSet('data', 'data', thevars,
+        ROOT.RooFit.Import(data_chain),
+        ROOT.RooFit.Cut('1'),
+    )
 
-# create output file containing the unbinned dataset, after selection
-output = ROOT.TFile.Open('datacard.root', 'recreate')
-seldata = ROOT.RooDataSet('data', 'data', thevars,
-    ROOT.RooFit.Import(data_chain), 
-    ROOT.RooFit.Cut('1'),
-)
+    print('Dumping data')
+    data = ROOT.RooDataSet(
+        'data_obs',
+        'data_obs',
+        seldata,
+        ROOT.RooArgSet(mass)
+    )
 
-print('Dumping data')
-data = ROOT.RooDataSet(
-    'data_obs', 
-    'data_obs',
-    seldata, 
-    ROOT.RooArgSet(mass)
-)
+    # create workspace
+    print('Creating workspace')
+    w = ROOT.RooWorkspace('w')
 
-# create workspace
-print('Creating workspace')
-w = ROOT.RooWorkspace('w')
+    # background
+    w.factory('mass[%f, %f]' % (fit_range_lo, fit_range_hi))
+    w.factory("Exponential::bkg(mass, slope[%f,%f,%f])" % (slope.getVal(), slope.getError(), slope.getError()))
 
-# background
-def safe_range(var, n_sigma=10):
-    val = var.getVal()
-    err = var.getError()
-    if err <= 0:
-        return (-1, 1)
-    return (val - n_sigma * err, val + n_sigma * err)
+    # dump signal with fixed shape (the final fit will only vary the normalisation)
+    w.factory('mean[%f]' % mean.getVal())
+    w.factory('sigma[%f]' % width.getVal())
+    w.factory('RooGaussian::sig(mass, mean, sigma)')
 
-# coeff_str = ', '.join(
-#     'c{i}[{val}, {lo}, {hi}]'.format(
-#         i   = i,
-#         val = coeff_vars[i-1].getVal(),
-#         lo  = safe_range(coeff_vars[i-1])[0],
-#         hi  = safe_range(coeff_vars[i-1])[1],
-#     )
-#     for i in range(1, poly_order + 1)
-# )
+    # in order to fix the shape, loop over the variables and fix mean and sigma
+    for var in w.allVars():
+        if var.GetName() in ['mean', 'sigma']:
+            var.setConstant()
 
-w.factory('mass[%f, %f]' % (fit_range_lo, fit_range_hi))
-w.factory("Exponential::bkg(mass, slope[%f,%f,%f])" % (slope.getVal(), slope.getError(), slope.getError()))
-# w.factory(f'RooChebychev::bkg(mass, {{{coeff_str}}})')
-# w.factory("RooChebychev::bkg(mass, c2[%f,%f,%f])" % (c2.getVal(), c2.getError(), c2.getError()))
+    getattr(w, 'import')(data)
+    w.Write()
+    output.Close()
 
-# dump signal with fixed shape (the final fit will only vary the normalisation)
-w.factory('mean[%f]' % mean.getVal())
-w.factory('sigma[%f]' % width.getVal())
-w.factory('RooGaussian::sig(mass, mean, sigma)')
-
-# in order to fix the shape, loop over the variables and fix mean and sigma 
-for var in w.allVars():
-    if var.GetName() in ['mean', 'sigma']: # or var.GetName().startswith('c'):
-        var.setConstant()
-
-getattr(w, 'import')(data)
-w.Write()
-output.Close()
-
-# dump the text datacard
-with open('datacard.txt', 'w') as card:
-    card.write(
+    # dump the text datacard
+    with open(out_dir / 'datacard.txt', 'w') as card:
+        card.write(
 '''imax 1 number of bins
 jmax * number of processes minus 1
 kmax * number of nuisance parameters
@@ -372,21 +328,54 @@ process                                 signal              background
 process                                 0                   1
 rate                                    {signal:.4f}        {bkg:.4f}
 --------------------------------------------------------------------------------
-lumi          lnN                       1.025               -   
-unc_1         lnN                       1.05                -   
-unc_2         lnN                       1.2                 -   
+lumi          lnN                       1.025               -
+unc_1         lnN                       1.05                -
+unc_2         lnN                       1.2                 -
 --------------------------------------------------------------------------------
 bkg        rateParam                 inclusive        background      1.
 slope      param   {slopeval:.4f} {slopeerr:.4f}
 '''.format(
-        obs      = int(n_data_events) if not blinded else -1,
-        signal   = fullmc.sumEntries(),
-        bkg      = nbkg.getVal(),
-        slopeval = slope.getVal(), 
-        slopeerr = slope.getError(),
+            obs      = int(n_data_events) if not BLINDED else -1,
+            signal   = fullmc.sumEntries(),
+            bkg      = nbkg.getVal(),
+            slopeval = slope.getVal(),
+            slopeerr = slope.getError(),
+        )
     )
-)
 
-print("="*80)
-print("Done! Output files: datacard.root, datacard.txt, mass.pdf")
-print("="*80)
+    print("="*80)
+    print(f"Done! Output files in {out_dir}: datacard.root, datacard.txt, mass.pdf")
+    print("="*80)
+
+    return DatacardResult(datacard=out_dir / 'datacard.txt', n_signal=int(n_signal_events),
+                          n_data=int(n_data_events), signal_rate=fullmc.sumEntries(), nbkg=nbkg.getVal(),
+                          slope=slope.getVal(), slope_err=slope.getError())
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Old CLI: hard-coded input files per model and channel, outputs into the current directory."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--channel", required=True)
+    parser.add_argument("--cut", required=True)
+    parser.add_argument("--file_suffix", default="_with_scores")
+    args = parser.parse_args(argv)
+
+    suffix, model, channel = args.file_suffix, args.model, args.channel
+    if channel == "W":
+        sig = [f"{OLD_DATA_ROOT}/signal_{channel}/{model}/selected_signal_skimmed_no_resonances{suffix}.root"]
+        bkg = [f"{OLD_DATA_ROOT}/background_{channel}/{model}/selected_data_skimmed_no_resonances{suffix}.root"]
+    elif channel == "HF":
+        sig = [f"{OLD_DATA_ROOT}/signal_{channel}/{model}/selected_ds_large_signal_skimmed_no_resonances{suffix}.root"]
+        bkg = [f"{OLD_DATA_ROOT}/background_{channel}/{model}/selected_data_skimmed_no_resonances_part{i}{suffix}.root"
+               for i in range(1, 5)]
+    else:
+        parser.error(f"unknown channel {channel!r} (W or HF)")
+
+    make_datacard(sig, bkg, float(args.cut), OLD_SIGNAL_WEIGHT[channel], ".")
+    pdf_tail = "_with_bdt_cut" if "bdt" in suffix else ""
+    shutil.copyfile("mass.pdf", f"{OLD_OUTPUT_ROOT}/{model}/mass_{args.cut}{pdf_tail}.pdf")
+
+
+if __name__ == "__main__":
+    main()
