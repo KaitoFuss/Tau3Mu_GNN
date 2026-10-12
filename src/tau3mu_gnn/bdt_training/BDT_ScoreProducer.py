@@ -7,7 +7,6 @@ frozen ISO classifier, and writes for each input file a copy with the branch bdt
 import argparse
 import os
 import pickle
-from array import array
 from pathlib import Path
 from typing import Mapping
 
@@ -17,6 +16,7 @@ import pandas as pd
 import uproot
 
 from tau3mu_gnn.bdt_training.bdt_inputs import bdt_branches
+from tau3mu_gnn.utils.score_merge import KEYS, scores_in_entry_order, write_with_score
 
 PREFIX = "Selected_"
 
@@ -30,7 +30,7 @@ def deltaphi(phi1, phi2):
 
 
 def _load(files, tree_name, branches, label):
-    """One row per event (first candidate), so the (run, event) index in _write_with_scores is unique."""
+    """One row per event (first candidate), so the (run, luminosityBlock, event) keys in _write_with_scores are unique."""
     all_chunks = []
     print(f"Going to load {label} events")
     for file in files:
@@ -139,99 +139,13 @@ def _add_features(sig, bkg, features, tau_channel, prefix):
 
 
 def _write_with_scores(df, in_file, out_file, tree_name):
-    """Copy in_file to out_file (without GNN_score) and add bdt_ISO, matched by (run, event)."""
-    import ROOT
-
+    """Copy in_file to out_file (without GNN_score) and add bdt_ISO, matched by (run, luminosityBlock, event)."""
     print(f"Processing {in_file}")
-    root_path = str(out_file)
-    root_path_sc_only = root_path.removesuffix(".root") + "_scores_only.root"
-
-    runs = []
-    lumis = []
-    events = []
-    scores_ISO = []
-
-    for _, row in df.iterrows():
-        runs.append(row["run"])
-        lumis.append(row["luminosityBlock"])
-        events.append(row["event"])
-        scores_ISO.append(row["bdt_ISO"])
-
-    runs = np.array(runs, dtype=np.uint32)
-    lumis = np.array(lumis, dtype=np.uint32)
-    events = np.array(events, dtype=np.uint64)
-    scores_ISO = np.array(scores_ISO, dtype=np.float64)
-
-    scores_to_save = {
-        "run": runs,
-        "luminosityBlock": lumis,
-        "event": events,
-        "bdt_ISO": scores_ISO,
-    }
-
-    branches = {k: v.dtype for k, v in scores_to_save.items()}
-
-    print(f"Saving scores only to {root_path_sc_only}")
-
-    with uproot.recreate(root_path_sc_only, compression=uproot.ZLIB(4)) as f:
-        # Create a new TTree in the file
-        tree = f.mktree(tree_name, branches)
-        tree.extend(scores_to_save)  # Fill the tree with data
-
-    print(f"Merging scores with events {root_path}")
-
-    fin = ROOT.TFile.Open(in_file)
-    t1 = fin.Get(tree_name)
-    has_gnn_score = bool(t1.GetBranch("GNN_score"))  # old inputs only; kept out of the output
-    if has_gnn_score:
-        t1.SetBranchStatus("GNN_score", 0)
-
-    friend_file = ROOT.TFile.Open(root_path_sc_only)
-    t2 = friend_file.Get(tree_name)
-
-    t2.BuildIndex("run", "event")
-
-    # Write merged tree
-    fout = ROOT.TFile.Open(root_path, "RECREATE")
-    t_merged = t1.CloneTree(0) # empty tree
-    if has_gnn_score:
-        t1.SetBranchStatus("GNN_score", 1)
-
-    # Prepare buffer for bdt_ISO
-    iso_score = array('f', [0.])
-
-    t_merged.Branch("bdt_ISO", iso_score, "bdt_ISO/F")
-
-    count = 0
-    # Loop over t1
-    for i in range(t1.GetEntries()):
-        t1.GetEntry(i)
-
-        # entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-        entry2 = t2.GetEntryNumberWithIndex(t1.run, t1.event)
-
-        if entry2 >= 0:
-            t2.GetEntry(entry2) 
-            iso_score[0] = t2.bdt_ISO
-            count += 1
-        else:
-            iso_score[0] = -1.
-
-        t_merged.Fill()
-
-    print(f"Wrote in total {count} valid BDT scores in to ROOT file")
-    t_merged.Write()
-    fout.Close()
-
-    fin.Close()
-    friend_file.Close()
-
-    # print(f"ROOT file merging time: {end - start:.3f}")
-    print(f"Merged score and event root files to {root_path}")
-
-    os.remove(root_path_sc_only)
-
-    print(f"Deleted temporary file {root_path_sc_only}")
+    with uproot.open(in_file) as f:
+        entry_keys = f[tree_name].arrays(KEYS, library="pd")
+    scores = scores_in_entry_order(entry_keys, df[KEYS], df["bdt_ISO"])
+    write_with_score(in_file, out_file, tree_name, "bdt_ISO", scores, drop=["GNN_score"])
+    print(f"Wrote in total {int(np.sum(scores != -1.))} valid BDT scores in to ROOT file {out_file}")
 
 
 def score_events(signal: Mapping[str, str], background: Mapping[str, str], classifier: str | Path,
