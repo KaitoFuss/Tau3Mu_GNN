@@ -264,6 +264,7 @@ def _defaults_with(fake_repo, change):
     (lambda j: j["bdt"].update(time="7 days"), "time"),
     (lambda j: j["bdt"].update(cpus=0), "cpus"),
     (lambda j: j["bdt"].update(cpus=True), "cpus"),
+    (lambda j: j.update(eval=None), "must be a mapping"),
 ])
 def test_slurm_jobs_validation(load, user, fake_repo, change, match):
     from tau3mu_gnn.pipeline.config import ConfigError

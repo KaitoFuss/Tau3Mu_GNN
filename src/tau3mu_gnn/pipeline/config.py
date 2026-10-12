@@ -156,9 +156,9 @@ def _slurm_jobs(v):
     reasons += [f"unknown job '{j}'" for j in v if j not in SLURM_JOBS]
     jobs = {}
     for name in SLURM_JOBS:
-        spec = v.get(name)
-        if spec is None:
+        if name not in v:
             continue
+        spec = v[name]
         if not isinstance(spec, dict):
             reasons.append(f"job '{name}' must be a mapping, got {spec!r}")
             continue
