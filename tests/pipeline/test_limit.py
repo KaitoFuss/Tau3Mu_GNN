@@ -195,3 +195,67 @@ def test_readout_old_cli_updates_json(monkeypatch, tmp_path):
     data = json.loads((tmp_path / "W_limits.json").read_text())
     assert list(data["W"]["m"]) == ["3.9", "5.0"]          # sorted by cut
     assert data["W"]["m"]["3.9"] == {"limit": 1.5, "limitErr": 0.0}
+
+
+def stage_cfg(load, user, cuts=(3.9,)):
+    user["limit"]["signal_weight"] = SIG_WEIGHT
+    user["limit"]["gnn_score_cut"] = list(cuts)
+    return load(user)
+
+
+def test_stage_rejects_cut_not_in_config(load, user, toy_inputs, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = stage_cfg(load, user)
+    with pytest.raises(ValueError, match="4.5"):
+        limit.run(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "out", 4.5)
+    assert not (tmp_path / "out").exists()
+
+
+def test_stage_missing_gnn_score(load, user, tmp_path):
+    from conftest import make_root_file
+    from tau3mu_gnn.pipeline.branches import BranchError
+    from tau3mu_gnn.pipeline.stages import limit
+
+    bad = make_root_file(tmp_path / "bkg.root", ["Selected_TauTo3Mu_fitted_mass"])
+    with pytest.raises(BranchError, match="GNN_score"):
+        limit.run(stage_cfg(load, user), {"signal": bad, "background": bad}, tmp_path / "out", 3.9)
+
+
+def test_stage_no_combine_fails_before_work(load, user, toy_inputs, monkeypatch, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    def missing():
+        raise FileNotFoundError("CMS Combine not found")
+
+    monkeypatch.setattr(limit, "combine_executable", missing)
+    with pytest.raises(FileNotFoundError, match="Combine"):
+        limit.run(stage_cfg(load, user), {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "out", 3.9)
+    assert not (tmp_path / "out").exists()
+
+
+def test_stage_no_median_limit_raises(load, user, toy_inputs, monkeypatch, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    monkeypatch.setattr(limit, "combine_executable", lambda: Path("/bin/true"))
+    monkeypatch.setattr(limit, "run_combine", lambda d, cl: Path(d) / "x.root")
+    monkeypatch.setattr(limit, "read_limit", lambda p: {})
+    with pytest.raises(RuntimeError, match="combine_asymptotic.log"):
+        limit.run(stage_cfg(load, user), {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "out", 3.9)
+    assert not (tmp_path / "out" / "cut_3.9" / "limit.json").exists()
+
+
+@needs_combine
+def test_stage_end_to_end(load, user, toy_inputs, tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = stage_cfg(load, user, cuts=(2.0, 3.9))
+    res = limit.run(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "phase_c", 3.9)
+    d = tmp_path / "phase_c" / "cut_3.9"
+    assert res["dir"] == d and res["datacard"] == d / "datacard.txt"
+    for name in ("datacard.txt", "datacard.root", "mass.pdf", "temp_mc_selected.root", "temp_data_selected.root",
+                 "higgsCombineTest.AsymptoticLimits.mH120.root", "combine_asymptotic.log", "limit.json"):
+        assert (d / name).is_file(), name
+    saved = json.loads((d / "limit.json").read_text())
+    assert saved == {"cut": 3.9, "limit": res["limit"], "limitErr": res["limitErr"]}
+    assert res["limit"] > 0
