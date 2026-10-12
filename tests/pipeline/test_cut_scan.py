@@ -228,3 +228,27 @@ def test_run_scan_end_to_end(load, user, toy_inputs, tmp_path):
         assert row["limit"] == per_cut["limit"]
     for name in limit.SUMMARY_FILES.values():
         assert (tmp_path / "phase_c" / name).is_file(), name
+
+
+def test_rerun_with_bad_inputs_removes_old_limit_json(load, user, tmp_path):
+    """A rerun that fails on its inputs (before any datacard work) must not leave the old limit either."""
+    from tau3mu_gnn.pipeline.branches import BranchError
+    from tau3mu_gnn.pipeline.stages import limit
+
+    cfg = scan_cfg(load, user, [3.9])
+    old = write_limit(tmp_path / "out", 3.9, 1.0)
+    with pytest.raises(BranchError, match="gone.root"):
+        limit.run(cfg, {"signal": tmp_path / "gone.root", "background": tmp_path / "gone.root"}, tmp_path / "out", 3.9)
+    assert not old.exists()
+
+
+def test_failed_summary_removes_old_summary_files(load, user, tmp_path):
+    """No cut has a limit: the limits.* files of an earlier scan must not stay and look valid."""
+    from tau3mu_gnn.pipeline.stages import limit
+
+    for name in limit.SUMMARY_FILES.values():
+        (tmp_path / name).write_text("old")
+    with pytest.raises(RuntimeError):
+        limit.summarize(scan_cfg(load, user, [3.9]), tmp_path)
+    for name in limit.SUMMARY_FILES.values():
+        assert not (tmp_path / name).exists(), name

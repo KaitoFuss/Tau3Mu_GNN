@@ -43,12 +43,12 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path, cut:
     lim = cfg.limit
     if cut not in lim.gnn_score_cut:
         raise ValueError(f"cut {cut} is not in limit.gnn_score_cut {list(lim.gnn_score_cut)}")
+    card_dir = Path(out_dir) / cut_dir_name(cut)
+    (card_dir / "limit.json").unlink(missing_ok=True)  # a failed rerun must not leave the old limit
     check_inputs(inputs, cfg.inputs.tree_name)
     combine_executable()  # fail before the datacard work if Combine is missing
     from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
 
-    card_dir = Path(out_dir) / cut_dir_name(cut)
-    (card_dir / "limit.json").unlink(missing_ok=True)  # a failed rerun must not leave the old limit
     log.info("stage 5 limit: cut %s, %s -> %s", cut, {s: str(inputs[s]) for s in INPUTS}, card_dir)
     card = make_datacard([inputs["signal"]], [inputs["background"]], cut, lim.signal_weight, card_dir,
                          tau_mass=lim.tau_mass, mass_window=lim.mass_window, fit_range=lim.fit_range,
@@ -87,6 +87,9 @@ def summarize(cfg: Config, out_dir: str | Path) -> dict:
     Writes <out_dir>/limits.json, limits.txt, limits.png. Raises RuntimeError if no cut has a limit.
     """
     out_dir = Path(out_dir)
+    files = {k: out_dir / name for k, name in SUMMARY_FILES.items()}
+    for f in files.values():
+        f.unlink(missing_ok=True)  # a failed summary must not leave the table of an earlier scan
     rows = [_read_cut(out_dir, cut) for cut in sorted(cfg.limit.gnn_score_cut)]
     found = [r for r in rows if r["limit"] is not None]
     if not found:
@@ -100,7 +103,6 @@ def summarize(cfg: Config, out_dir: str | Path) -> dict:
         r["best"] = r is best
     summary = {"cl": cfg.limit.cl, "best_cut": best["cut"], "best_limit": best["limit"],
                "missing": missing, "rows": rows}
-    files = {k: out_dir / name for k, name in SUMMARY_FILES.items()}
     files["json"].write_text(json.dumps(summary, indent=2) + "\n")
     files["txt"].write_text(_table(summary))
     _plot(summary, files["png"])
