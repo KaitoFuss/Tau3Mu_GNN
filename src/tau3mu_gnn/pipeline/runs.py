@@ -47,26 +47,32 @@ def create_version(cfg: Config, prefix: str, parent=None) -> str:
     return path
 
 
+def pick_version(cfg: Config, phase: str, from_: str | None = None, complete: bool = True) -> str:
+    """Full path of a version of `phase`: from_ if given, else the highest one. With complete=True only
+    versions with a manifest count (failed or running ones are skipped with a warning)."""
+    base = cfg.output_dir
+    if from_ is not None:
+        if _number(from_, phase) is None:
+            raise UpstreamError(f"--from {from_!r}: needs a {phase}_vsN version")
+        if not storage.exists(storage.join(base, from_)):
+            raise UpstreamError(f"--from {from_!r}: not found in {base}")
+        if complete and not is_complete(base, from_):
+            raise UpstreamError(f"--from {from_!r}: no manifest (failed or still running)")
+        return storage.join(base, from_)
+    names = versions(base, phase)
+    pool = [n for n in names if is_complete(base, n)] if complete else names
+    if not pool:
+        kind = "complete " if complete else ""
+        raise UpstreamError(f"no {kind}{phase} version in {base}; run {phase.replace('_', '-')} first")
+    newer = names[names.index(pool[-1]) + 1:]
+    if newer:
+        log.warning("%s have no manifest (failed or still running); using %s", ", ".join(newer), pool[-1])
+    return storage.join(base, pool[-1])
+
+
 def pick_upstream(cfg: Config, phase: str, from_: str | None = None) -> str:
-    """Full path of the upstream version for `phase`: from_ if given (must be complete), else the highest
-    complete version. Raise UpstreamError if there is none."""
+    """Full path of the upstream version for `phase` (complete only). Raise UpstreamError if there is none."""
     up = UPSTREAM[phase]
     if up is None:
         raise ValueError(f"{phase} has no upstream phase")
-    base = cfg.output_dir
-    if from_ is not None:
-        if _number(from_, up) is None:
-            raise UpstreamError(f"--from {from_!r}: {phase} needs a {up}_vsN version")
-        if not storage.exists(storage.join(base, from_)):
-            raise UpstreamError(f"--from {from_!r}: not found in {base}")
-        if not is_complete(base, from_):
-            raise UpstreamError(f"--from {from_!r}: no manifest (failed or still running)")
-        return storage.join(base, from_)
-    names = versions(base, up)
-    complete = [n for n in names if is_complete(base, n)]
-    if not complete:
-        raise UpstreamError(f"no complete {up} version in {base}; run {up.replace('_', '-')} first")
-    newer = names[names.index(complete[-1]) + 1:]
-    if newer:
-        log.warning("%s have no manifest (failed or still running); using %s", ", ".join(newer), complete[-1])
-    return storage.join(base, complete[-1])
+    return pick_version(cfg, up, from_)

@@ -222,3 +222,39 @@ def test_limit_and_summary_jobs_real_stage(cfg, scratch, toy_inputs, tmp_path):
     m = read_manifest(c)
     assert m["missing"] == [] and set(m["outputs"]) >= {"limit_2.0", "limit_3.9", "limits_json"}
     assert (Path(c) / "cut_3.9" / "datacard.txt").is_file()
+
+
+def test_eval_job_checks_upstream_phase(cfg, scratch, fake_stages):
+    """Debug 'stage eval' with --upstream pointing at a phase B folder: clear error, not KeyError."""
+    from tau3mu_gnn.pipeline import jobs
+    from tau3mu_gnn.pipeline.manifest import UpstreamError
+
+    run_phase_a(cfg)
+    b = run_phase_b(cfg)
+    with pytest.raises(UpstreamError, match="phase_a"):
+        jobs.evaluation(cfg, b, b, source_dir=b, manifest=False)
+
+
+def test_summary_debug_without_upstream(cfg, scratch, fake_stages, monkeypatch):
+    from tau3mu_gnn.pipeline import jobs, runs
+
+    run_phase_a(cfg)
+    run_phase_b(cfg)
+    up = runs.pick_upstream(cfg, "phase_c")
+    c = runs.create_version(cfg, "phase_c")
+    for cut in cfg.limit.gnn_score_cut:
+        jobs.limit(cfg, c, up, cut)
+    d = runs.create_version(cfg, "summary", parent=f"{cfg.output_dir}/debug")
+    monkeypatch.setattr(jobs, "load_config", lambda path: cfg)
+    jobs.main(["summary", "--config", "x.yaml", "--phase-dir", d, "--source", c, "--no-manifest"])
+    assert (Path(d) / "limits.json").is_file() and not (Path(d) / "manifest.json").exists()
+    with pytest.raises(SystemExit):
+        jobs.main(["summary", "--config", "x.yaml", "--phase-dir", d])        # manifest needs --upstream
+
+
+def test_job_logs_what_it_does(cfg, scratch, fake_stages, caplog):
+    import logging
+
+    caplog.set_level(logging.INFO)
+    a = run_phase_a(cfg)
+    assert "job skim" in caplog.text and "job bdt" in caplog.text and a in caplog.text
