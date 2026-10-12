@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 import uproot
 
+from conftest import write_tree
 from tau3mu_gnn.bdt_training.bdt_inputs import input_branch_names
 from tau3mu_gnn.pipeline.branches import BranchError
 from tau3mu_gnn.pipeline.stages import bdt as bdt_stage
@@ -49,14 +50,6 @@ def _events(pts, first_event=10, gnn_score=False, drop=()):
     return data
 
 
-def _write(path, data):
-    # mktree: a TTree like the real inputs (f["Events"] = data writes an RNTuple in uproot 5.7)
-    with uproot.recreate(path) as f:
-        f.mktree("Events", {k: ak.type(v) if isinstance(v, ak.Array) else v.dtype for k, v in data.items()})
-        f["Events"].extend(data)
-    return path
-
-
 # event 0: two candidates (first one must be used), event 1: one, event 2: none
 SIG_PTS = [[100.0, 900.0], [300.0], []]
 BKG_PTS = [[50.0], [], [700.0, 20.0]]
@@ -65,8 +58,8 @@ BKG_PTS = [[50.0], [], [700.0, 20.0]]
 def _run(tmp_path, load, user, sig_data=None, bkg_data=None):
     cfg = load(user)
     _write_classifier(cfg.bdt.classifier)  # replaces the placeholder file of fake_repo
-    sig = _write(tmp_path / "signal.root", sig_data or _events(SIG_PTS))
-    bkg = _write(tmp_path / "background.root", bkg_data or _events(BKG_PTS, first_event=20, gnn_score=True))
+    sig = write_tree(tmp_path / "signal.root", sig_data or _events(SIG_PTS))
+    bkg = write_tree(tmp_path / "background.root", bkg_data or _events(BKG_PTS, first_event=20, gnn_score=True))
     out_dir = tmp_path / "2_bdt"
     return bdt_stage.run(cfg, {"signal": sig, "background": bkg}, out_dir), out_dir
 
@@ -125,8 +118,8 @@ def test_several_files_per_sample(tmp_path):
     from tau3mu_gnn.bdt_training.BDT_ScoreProducer import score_events
 
     clf = _write_classifier(tmp_path / "clf.pck")
-    sig = _write(tmp_path / "s.root", _events(SIG_PTS))
-    bkg = {str(_write(tmp_path / f"b{i}.root", _events(BKG_PTS, first_event=20 + 10 * i))): str(tmp_path / f"b{i}_out.root")
+    sig = write_tree(tmp_path / "s.root", _events(SIG_PTS))
+    bkg = {str(write_tree(tmp_path / f"b{i}.root", _events(BKG_PTS, first_event=20 + 10 * i))): str(tmp_path / f"b{i}_out.root")
            for i in (0, 1)}
     score_events({str(sig): str(tmp_path / "s_out.root")}, bkg, clf, "W", tmp_path / "scores.pkl")
     for out in bkg.values():
