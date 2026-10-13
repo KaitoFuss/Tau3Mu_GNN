@@ -12,7 +12,7 @@
 
 **Tech Stack:** Python 3.11 (Tau3Mu env), bash, SLURM 25.11 (`sbatch --parsable`), pytest with fake `sbatch` / `voms-proxy-info` executables. No new dependency.
 
-**Spec:** `docs/superpowers/specs/2026-10-12-step9-driver-design.md` (sec. 1 CLI, 4 versions, 6 jobs, 7 job script + submission, 10 errors, 11 tests "9b"). Decisions added 2026-10-12 (Kaito): **E1** the job script activates the conda env of the submitting shell (`source <conda base>/bin/activate <env prefix>`); **E2** the small-input check uses 20k signal / 1M background events, cuts `[2.0, 3.9]`.
+**Spec:** `docs/superpowers/specs/2026-10-12-step9-driver-design.md` (sec. 1 CLI, 4 versions, 6 jobs, 7 job script + submission, 10 errors, 11 tests "9b"). Decisions added 2026-10-12 (Kaito): **D10** the job script activates the conda env of the submitting shell (`source <conda base>/bin/activate <env prefix>`); **D11** the small-input check uses 20k signal / 1M background events, cuts `[2.0, 3.9]`.
 
 ## Global Constraints
 
@@ -24,7 +24,7 @@
 - Job names in `slurm.jobs` (frozen defaults): `skim, bdt, gnn_signal, gnn_background, eval, limit, summary`.
 - Phase jobs (spec sec. 6): A = `skim` → `bdt` (`afterok`); B = `gnn_signal`, `gnn_background` → `eval` (`afterok` both); C = `limit_<cut>` per cut → `summary` (`afterany` all). Only `bdt`, `eval`, `summary` write the manifest.
 - SLURM job name: `<analysis_name>.<version name>.<job name>` (e.g. `toy_run.phase_b_vs2.gnn_signal`). Script file: `<log folder>/<job name>.sh`. Logs: `<log folder>/<job name>-%j.out|.err`. Log folder: `<paths.log_dir>/<analysis_name>/<version name>` (debug: `<paths.log_dir>/<analysis_name>/debug/<stage>_vsN`).
-- Job script (spec sec. 7 + E1): `set -eo pipefail` (no `-u`: conda activate scripts read unset variables); `source <conda base>/bin/activate <env prefix>`; `export PYTHONPATH=<src dir of the submitting tau3mu_gnn>`; scratch `/scratch/$USER/$SLURM_JOB_ID`, `TMPDIR` there; `trap cleanup EXIT` copies the job's own `.out`/`.err` to `<version dir>/logs/` (best effort) and removes scratch; `cd` scratch; `<python> -m tau3mu_gnn.pipeline.jobs <args>`. All substituted values shell-quoted (`shlex.quote`).
+- Job script (spec sec. 7 + D10): `set -eo pipefail` (no `-u`: conda activate scripts read unset variables); `source <conda base>/bin/activate <env prefix>`; `export PYTHONPATH=<src dir of the submitting tau3mu_gnn>`; scratch `/scratch/$USER/$SLURM_JOB_ID`, `TMPDIR` there; `trap cleanup EXIT` copies the job's own `.out`/`.err` to `<version dir>/logs/` (best effort) and removes scratch; `cd` scratch; `<python> -m tau3mu_gnn.pipeline.jobs <args>`. All substituted values shell-quoted (`shlex.quote`).
 - Conda env: from the submitting shell: `CONDA_PREFIX` (env prefix) and `CONDA_EXE` (conda base = `Path(CONDA_EXE).parents[1]`). Missing → error at submit: "activate the conda env first (conda activate Tau3Mu)".
 - Proxy check only if `output_base` is `root://`: `X509_USER_PROXY` set and not under `/tmp`; `voms-proxy-info --exists --valid <H>:00` with H = ceil(longest `time` of the jobs to submit, in hours). Failure → error naming `voms-proxy-init --voms cms --valid 192:00`.
 - `--dry-run`: all checks run; the version name is computed but **no** version folder and no `config_used.yaml` are made; job scripts are written to the log folder; the `sbatch` commands are printed with placeholder IDs `DRYRUN-1`, `DRYRUN-2`, ...; nothing is submitted.
@@ -48,7 +48,7 @@
 | `src/tau3mu_gnn/pipeline/driver.py` (create) | phase / stage job lists, `submit_phase`, `submit_stage` |
 | `src/tau3mu_gnn/pipeline/cli.py` (create) | argparse front end |
 | `tests/pipeline/test_runs.py`, `test_jobs.py` (modify); `test_slurm.py`, `test_driver.py`, `test_cli.py` (create) | tests |
-| `docs/wrapper_roadmap.md` (modify) | 9b done, E1/E2 |
+| `docs/wrapper_roadmap.md` (modify) | 9b done, D10/D11 |
 | `regression/step9b/` in `/work/kfuss/SVJ_GNN/.claude/worktrees/pipeline-wrapper/` (create, **not committed**) | small inputs job, small config, run instructions |
 
 ---
@@ -62,7 +62,7 @@
 **Interfaces:**
 - Produces: `runs.pick_version(cfg, phase, from_=None, complete=True) -> str` (full path); `pick_upstream(cfg, phase, from_=None)` = `pick_version(cfg, UPSTREAM[phase], from_)` (same messages as before). `jobs.main`: `summary` needs `--upstream` only without `--no-manifest`; `jobs.summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True)` (raise `ValueError` if `manifest` and `upstream_dir is None`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/pipeline/test_runs.py`:
 
@@ -122,9 +122,9 @@ def test_job_logs_what_it_does(cfg, scratch, fake_stages, caplog):
     assert "job skim" in caplog.text and "job bdt" in caplog.text and a in caplog.text
 ```
 
-- [ ] **Step 2: Run, expect FAIL** — `$PYTEST/test_runs.py $PYTEST/test_jobs.py -q -k "pick_version or upstream_phase or debug_without or logs_what"` (ImportError `pick_version`; KeyError instead of UpstreamError; SystemExit for the debug summary; no log text).
+- [x] **Step 2: Run, expect FAIL** — `$PYTEST/test_runs.py $PYTEST/test_jobs.py -q -k "pick_version or upstream_phase or debug_without or logs_what"` (ImportError `pick_version`; KeyError instead of UpstreamError; SystemExit for the debug summary; no log text).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `runs.py` — replace `pick_upstream` with:
 
@@ -166,9 +166,9 @@ def pick_upstream(cfg: Config, phase: str, from_: str | None = None) -> str:
 - `main`: replace the `need` dict entry `"summary": ("upstream",)` by computing after parsing: `if a.job == "summary" and not a.no_manifest: need = ("upstream",)`.
 - Log lines (module logger `log`): at the start of each job function `log.info("job %s: %s", "<job>", phase_dir)` plus the relevant upstream / sample / cut (e.g. `log.info("job gnn: %s, sample %s, upstream %s", phase_dir, sample, upstream_dir)`); before each `storage.put(...)`: `log.info("copy %s -> %s", <src>, <dest>)`.
 
-- [ ] **Step 4: Run `$PYTEST/test_runs.py $PYTEST/test_jobs.py -q`, expect PASS** (old tests unchanged and passing)
+- [x] **Step 4: Run `$PYTEST/test_runs.py $PYTEST/test_jobs.py -q`, expect PASS** (old tests unchanged and passing)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 /usr/bin/git add src/tau3mu_gnn/pipeline/runs.py src/tau3mu_gnn/pipeline/jobs.py tests/pipeline/test_runs.py tests/pipeline/test_jobs.py
@@ -194,7 +194,7 @@ def pick_upstream(cfg: Config, phase: str, from_: str | None = None) -> str:
   - `render_script(cfg, job, version_dir: str, log_folder: Path, env: JobEnv, scratch_root: str = "/scratch/$USER") -> str`
   - `check_proxy(cfg, jobs, environ=os.environ) -> None` (raises `ProxyError`; no-op for a local `output_base`)
 
-- [ ] **Step 1: Write the failing tests** — `tests/pipeline/test_slurm.py`
+- [x] **Step 1: Write the failing tests** — `tests/pipeline/test_slurm.py`
 
 ```python
 import os
@@ -353,9 +353,9 @@ def test_proxy_not_needed_for_local_output(load, user, fake_voms):
     assert not fake_voms.exists()
 ```
 
-- [ ] **Step 2: Run, expect FAIL** (`ModuleNotFoundError: tau3mu_gnn.pipeline.slurm`) — `$PYTEST/test_slurm.py -q`
+- [x] **Step 2: Run, expect FAIL** (`ModuleNotFoundError: tau3mu_gnn.pipeline.slurm`) — `$PYTEST/test_slurm.py -q`
 
-- [ ] **Step 3: Implement** `src/tau3mu_gnn/pipeline/slurm.py` (first part; `submit_jobs` is Task 3)
+- [x] **Step 3: Implement** `src/tau3mu_gnn/pipeline/slurm.py` (first part; `submit_jobs` is Task 3)
 
 ```python
 """SLURM layer: one bash script per job, submitted with sbatch (step 9b).
@@ -484,9 +484,9 @@ def check_proxy(cfg: Config, jobs: Sequence[Job], environ: Mapping[str, str] = o
 
 Note: the last script line must be exactly `<python> -m tau3mu_gnn.pipeline.jobs <args>` (test). `shlex.quote` leaves `/c/base/envs/T/bin/python` unquoted.
 
-- [ ] **Step 4: Run `$PYTEST/test_slurm.py -q`, expect PASS**
+- [x] **Step 4: Run `$PYTEST/test_slurm.py -q`, expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 /usr/bin/git add src/tau3mu_gnn/pipeline/slurm.py tests/pipeline/test_slurm.py
@@ -505,7 +505,7 @@ Note: the last script line must be exactly `<python> -m tau3mu_gnn.pipeline.jobs
 - Consumes: Task 2 (`Job`, `JobEnv`, `render_script`, `SubmitError`).
 - Produces: `submit_jobs(cfg, jobs, version_dir, log_folder, env, dry_run=False) -> dict[str, str]` (job name → SLURM ID, or `DRYRUN-<n>`). Writes `<log_folder>/<job name>.sh` for every job (also in dry-run). Jobs are submitted in list order; a job's `after` names must appear earlier in the list. Dependency option: `--dependency=<dependency>:<id1>:<id2>...`. Dry-run prints one line per job: `sbatch --parsable [--dependency=...] <script>`.
 
-- [ ] **Step 1: Write the failing tests** (append to `tests/pipeline/test_slurm.py`)
+- [x] **Step 1: Write the failing tests** (append to `tests/pipeline/test_slurm.py`)
 
 ```python
 @pytest.fixture
@@ -613,9 +613,9 @@ limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
     assert not (tmp_path / "scratch" / "77").exists()                             # scratch removed
 ```
 
-- [ ] **Step 2: Run, expect FAIL** (`ImportError: submit_jobs`; the script test fails only if the script is wrong — it may pass already; if so, note it in the report) — `$PYTEST/test_slurm.py -q`
+- [x] **Step 2: Run, expect FAIL** (`ImportError: submit_jobs`; the script test fails only if the script is wrong — it may pass already; if so, note it in the report) — `$PYTEST/test_slurm.py -q`
 
-- [ ] **Step 3: Implement** (append to `slurm.py`)
+- [x] **Step 3: Implement** (append to `slurm.py`)
 
 ```python
 def submit_jobs(cfg: Config, jobs: Sequence[Job], version_dir: str, log_folder: Path, env: JobEnv,
@@ -652,9 +652,9 @@ def submit_jobs(cfg: Config, jobs: Sequence[Job], version_dir: str, log_folder: 
 
 (`--parsable` prints `<id>` or `<id>;<cluster>`.)
 
-- [ ] **Step 4: Run `$PYTEST/test_slurm.py -q`, expect PASS** (the script test runs if the test shell has an active conda env; run the suite from an activated `Tau3Mu` shell: `source /work/kfuss/miniforge3/bin/activate Tau3Mu` before `$PYTEST`, and say in the report whether it ran)
+- [x] **Step 4: Run `$PYTEST/test_slurm.py -q`, expect PASS** (the script test runs if the test shell has an active conda env; run the suite from an activated `Tau3Mu` shell: `source /work/kfuss/miniforge3/bin/activate Tau3Mu` before `$PYTEST`, and say in the report whether it ran)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 /usr/bin/git add src/tau3mu_gnn/pipeline/slurm.py tests/pipeline/test_slurm.py
@@ -693,7 +693,7 @@ Job lists (`base = ["--config", str(cfg.user_file), "--phase-dir", version_dir]`
   - The stage job's name is the stage name, except `gnn` → `gnn_<sample>` and `limit` → `limit_<cut>`.
 - Log folder: `Path(cfg.paths.log_dir) / cfg.analysis_name / <version name>`; debug: `... / "debug" / <stage>_vsN`.
 
-- [ ] **Step 1: Write the failing tests** — `tests/pipeline/test_driver.py`
+- [x] **Step 1: Write the failing tests** — `tests/pipeline/test_driver.py`
 
 ```python
 import json
@@ -841,9 +841,9 @@ def test_stage_summary_uses_incomplete_phase_c(cfg, env, fake_sbatch):
     assert last.endswith(f"--source {cfg.output_dir}/phase_c_vs1 --no-manifest")
 ```
 
-- [ ] **Step 2: Run, expect FAIL** (`ModuleNotFoundError: tau3mu_gnn.pipeline.driver`) — `$PYTEST/test_driver.py -q`
+- [x] **Step 2: Run, expect FAIL** (`ModuleNotFoundError: tau3mu_gnn.pipeline.driver`) — `$PYTEST/test_driver.py -q`
 
-- [ ] **Step 3: Implement** `src/tau3mu_gnn/pipeline/driver.py`
+- [x] **Step 3: Implement** `src/tau3mu_gnn/pipeline/driver.py`
 
 ```python
 """Phase and single-stage submission (step 9b): pick the upstream version, make the next version folder,
@@ -961,9 +961,9 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 
 Note: `stage eval` args order must match the test: `--upstream A --source B --no-manifest` (the code above adds `--upstream` before `--source`). `stage limit`: `--upstream B --cut 3.9`.
 
-- [ ] **Step 4: Run `$PYTEST/test_driver.py -q`, expect PASS**
+- [x] **Step 4: Run `$PYTEST/test_driver.py -q`, expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 /usr/bin/git add src/tau3mu_gnn/pipeline/driver.py tests/pipeline/test_driver.py
@@ -982,7 +982,7 @@ Note: `stage eval` args order must match the test: `--upstream A --source B --no
 - Consumes: `load_config`, `ConfigError`, `driver.submit_phase`, `driver.submit_stage`, `driver.STAGES`, `UpstreamError`, `SubmitError`.
 - Produces: `main(argv=None) -> int` (0 ok, 1 known error); `python -m tau3mu_gnn.pipeline.cli`.
 
-- [ ] **Step 1: Write the failing tests** — `tests/pipeline/test_cli.py`
+- [x] **Step 1: Write the failing tests** — `tests/pipeline/test_cli.py`
 
 ```python
 import pytest
@@ -1042,9 +1042,9 @@ def test_config_error_exit_1(tmp_path, capsys):
     assert "cannot read config file" in capsys.readouterr().err
 ```
 
-- [ ] **Step 2: Run, expect FAIL** (`ModuleNotFoundError`) — `$PYTEST/test_cli.py -q`
+- [x] **Step 2: Run, expect FAIL** (`ModuleNotFoundError`) — `$PYTEST/test_cli.py -q`
 
-- [ ] **Step 3: Implement** `src/tau3mu_gnn/pipeline/cli.py`
+- [x] **Step 3: Implement** `src/tau3mu_gnn/pipeline/cli.py`
 
 ```python
 """tau3mu pipeline driver: submit the SLURM jobs of one phase or one stage.
@@ -1110,9 +1110,9 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 4: Run the full suite (from an activated Tau3Mu shell) `$PYTEST -q`, expect PASS**
+- [x] **Step 4: Run the full suite (from an activated Tau3Mu shell) `$PYTEST -q`, expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 /usr/bin/git add src/tau3mu_gnn/pipeline/cli.py tests/pipeline/test_cli.py
@@ -1127,12 +1127,12 @@ if __name__ == "__main__":
 - Modify: `docs/wrapper_roadmap.md`
 - Create (not committed): `/work/kfuss/SVJ_GNN/.claude/worktrees/pipeline-wrapper/regression/step9b/make_small_inputs.py`, `make_small_inputs.sh`, `small_W.yaml`, `README.md`
 
-- [ ] **Step 1: Roadmap**
-  - Step 9b line: prefix ✅ and append `Done: slurm.py (job scripts, sbatch --parsable + dependencies, --dry-run, proxy check), driver.py, cli.py (python -m tau3mu_gnn.pipeline.cli). Jobs activate the conda env of the submitting shell (E1). Real check: small-input run (pending, Kaito queues).`
-  - Decision log row (2026-10-12): `Step 9b decisions (Kaito): E1 the job script activates the conda env of the submitting shell (CONDA_PREFIX, CONDA_EXE; error at submit if none). E2 small-input check: 20k signal / 1M background, cuts [2.0, 3.9]. Also: --dry-run makes no version folder; debug 'stage summary' may use an incomplete phase C version.`
+- [x] **Step 1: Roadmap**
+  - Step 9b line: prefix ✅ and append `Done: slurm.py (job scripts, sbatch --parsable + dependencies, --dry-run, proxy check), driver.py, cli.py (python -m tau3mu_gnn.pipeline.cli). Jobs activate the conda env of the submitting shell (D10). Real check: small-input run (pending, Kaito queues).`
+  - Decision log row (2026-10-12): `Step 9b decisions (Kaito): D10 the job script activates the conda env of the submitting shell (CONDA_PREFIX, CONDA_EXE; error at submit if none). D11 small-input check: 20k signal / 1M background, cuts [2.0, 3.9]. Also: --dry-run makes no version folder; debug 'stage summary' may use an incomplete phase C version.`
   - Commit: `/usr/bin/git add docs/wrapper_roadmap.md docs/superpowers/plans/2026-10-12-step9b-slurm.md` then `/usr/bin/git commit -m "docs(roadmap): step 9b"`.
 
-- [ ] **Step 2: Small-input files** (folder `/work/kfuss/SVJ_GNN/.claude/worktrees/pipeline-wrapper/regression/step9b/`, never committed)
+- [x] **Step 2: Small-input files** (folder `/work/kfuss/SVJ_GNN/.claude/worktrees/pipeline-wrapper/regression/step9b/`, never committed)
 
 `make_small_inputs.py`:
 
@@ -1178,4 +1178,4 @@ limit:
 4. After phase A: `phase-b`, then `phase-c` (same pattern).
 5. Pass criteria (spec D9): all jobs COMPLETED (`sacct -j <ids>`); `phase_a_vs1`, `phase_b_vs1`, `phase_c_vs1` with `manifest.json`; `limits.json` in `phase_c_vs1`; `logs/` copies in each version; optional: a second `phase-b` gives `phase_b_vs2` and `phase-c` then reports it as upstream.
 
-- [ ] **Step 3:** Run `$PYTEST -q` (activated shell), expect PASS. Do **not** submit anything.
+- [x] **Step 3:** Run `$PYTEST -q` (activated shell), expect PASS. Do **not** submit anything.
