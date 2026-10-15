@@ -22,3 +22,10 @@ def test_example_w_matches_production_settings(monkeypatch):
     assert cfg.limit.mass_window == 0.060
     assert cfg.limit.fit_range == (1.62, 1.98)
     assert cfg.limit.cl == 0.90
+    assert cfg.paths.log_dir == "/work/tester/tau3mu_logs"
+    jobs = cfg.slurm.jobs
+    assert cfg.slurm.account == "t3"
+    assert (jobs["skim"].partition, jobs["skim"].mem, jobs["skim"].time, jobs["skim"].cpus) == \
+        ("standard", "128G", "0-03:00:00", 4)
+    assert (jobs["gnn_background"].partition, jobs["gnn_background"].time) == ("long", "2-00:00:00")
+    assert jobs["limit"].time == "0-01:30:00" and jobs["summary"].partition == "short"

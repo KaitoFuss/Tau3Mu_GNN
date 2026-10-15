@@ -18,6 +18,8 @@ from typing import Any, Callable, Mapping
 
 import yaml
 
+from tau3mu_gnn.pipeline import storage
+
 SUPPORTED_CHANNELS = ("W",)
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -129,11 +131,77 @@ def _user_path(v):
     return v
 
 
+def _abs_or_url(v):
+    """Absolute path, or an xrootd URL storage accepts. A relative path would be resolved inside
+    the job scratch dir (jobs cd there), and a mistyped URL would pass for a relative path."""
+    v = _user_path(v)
+    if v.startswith("/"):
+        return v
+    if storage.is_remote(v):
+        try:
+            storage.local_path(v)
+            return v
+        except ValueError:
+            pass
+    raise ValueError(f"must be an absolute path or root://host[:port]//path, got {v!r}")
+
+
 def _user_path_list(v):
     items = [v] if isinstance(v, str) else v
     if not isinstance(items, list) or not items:
         raise ValueError(f"must be a path or a non-empty list of paths, got {v!r}")
-    return tuple(_user_path(i) for i in items)
+    return tuple(_abs_or_url(i) for i in items)
+
+
+def _local_path(v):
+    v = _user_path(v)
+    if v.startswith("root://") or v.startswith("/pnfs"):
+        raise ValueError(f"must be a local disk path (SLURM cannot write logs to dCache), got {v!r}")
+    if not v.startswith("/"):
+        raise ValueError(f"must be an absolute path, got {v!r}")
+    return v
+
+
+def _optional_local_path(v):
+    return None if v is None else _local_path(v)
+
+
+SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")
+_SLURM_KEYS = ("partition", "mem", "time", "cpus")
+_MEM_RE = re.compile(r"^\d+[KMGT]?$")
+_TIME_RE = re.compile(r"^(\d+-)?\d{1,2}:\d{2}:\d{2}$")
+
+
+def _slurm_jobs(v):
+    if not isinstance(v, dict):
+        raise ValueError(f"must be a mapping job -> {{{', '.join(_SLURM_KEYS)}}}, got {v!r}")
+    reasons = [f"missing job '{j}'" for j in SLURM_JOBS if j not in v]
+    reasons += [f"unknown job '{j}'" for j in v if j not in SLURM_JOBS]
+    jobs = {}
+    for name in SLURM_JOBS:
+        if name not in v:
+            continue
+        spec = v[name]
+        if not isinstance(spec, dict):
+            reasons.append(f"job '{name}' must be a mapping, got {spec!r}")
+            continue
+        reasons += [f"job '{name}': missing key '{k}'" for k in _SLURM_KEYS if k not in spec]
+        reasons += [f"job '{name}': unknown key '{k}'" for k in spec if k not in _SLURM_KEYS]
+        if not set(_SLURM_KEYS) <= set(spec):
+            continue
+        partition, mem, time, cpus = (spec[k] for k in _SLURM_KEYS)
+        if not isinstance(partition, str) or not partition.strip():
+            reasons.append(f"job '{name}': partition must be a non-empty string, got {partition!r}")
+        if not isinstance(mem, str) or not _MEM_RE.match(mem):
+            reasons.append(f"job '{name}': mem must look like 64G, got {mem!r}")
+        if not isinstance(time, str) or not _TIME_RE.match(time):
+            reasons.append(f"job '{name}': time must look like 1-00:00:00 or 06:00:00, got {time!r}")
+        if isinstance(cpus, bool) or not isinstance(cpus, int) or cpus < 1:
+            reasons.append(f"job '{name}': cpus must be an integer >= 1, got {cpus!r}")
+        jobs[name] = SlurmJob(partition, mem, time, cpus)
+    if reasons:
+        raise ValueError("; ".join(reasons))
+    return MappingProxyType(jobs)
 
 
 # ---------------------------------------------------------------- field tables
@@ -149,7 +217,9 @@ class _Field:
 USER_FIELDS: dict[str, _Field] = {
     "analysis_name": _Field(_name),
     "channel": _Field(_channel),
-    "paths.output_base": _Field(_user_path),
+    "paths.output_base": _Field(_abs_or_url),
+    "paths.log_dir": _Field(_local_path),
+    "paths.conda_env": _Field(_optional_local_path, required=False, default=None),
     "inputs.signal": _Field(_user_path_list),
     "inputs.background": _Field(_user_path_list),
     "inputs.tree_name": _Field(_non_empty_str, required=False, default="Events"),
@@ -176,10 +246,12 @@ DEFAULTS_FIELDS: dict[str, _Field] = {
     "limit.mass_window": _Field(_positive_number),
     "limit.fit_range": _Field(_range),
     "limit.cl": _Field(_open_unit_interval),
+    "slurm.account": _Field(_non_empty_str),
+    "slurm.jobs": _Field(_slurm_jobs),
 }
 
 # Keys whose value is a mapping but must not be flattened.
-_LEAF_KEYS = {"branch_map"}
+_LEAF_KEYS = {"branch_map", "slurm.jobs"}
 
 
 # ---------------------------------------------------------------- config objects
@@ -187,6 +259,8 @@ _LEAF_KEYS = {"branch_map"}
 @dataclass(frozen=True)
 class PathsConfig:
     output_base: str
+    log_dir: str
+    conda_env: str | None = None   # env the jobs activate; None: the active env of the submitting shell
 
 
 @dataclass(frozen=True)
@@ -230,6 +304,20 @@ class LimitConfig:
 
 
 @dataclass(frozen=True)
+class SlurmJob:
+    partition: str
+    mem: str
+    time: str        # D-HH:MM:SS or HH:MM:SS
+    cpus: int
+
+
+@dataclass(frozen=True)
+class SlurmConfig:
+    account: str
+    jobs: Mapping[str, SlurmJob]
+
+
+@dataclass(frozen=True)
 class Config:
     analysis_name: str
     channel: str
@@ -240,6 +328,7 @@ class Config:
     bdt: BDTConfig
     gnn: GNNConfig
     limit: LimitConfig
+    slurm: SlurmConfig
     user_file: Path
     defaults_file: Path
 
@@ -364,7 +453,8 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
     return Config(
         analysis_name=user["analysis_name"],
         channel=user["channel"],
-        paths=PathsConfig(output_base=user["paths.output_base"]),
+        paths=PathsConfig(output_base=user["paths.output_base"], log_dir=user["paths.log_dir"],
+                          conda_env=user["paths.conda_env"]),
         inputs=InputsConfig(
             signal=user["inputs.signal"],
             background=user["inputs.background"],
@@ -391,6 +481,7 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
             fit_range=defaults["limit.fit_range"],
             cl=defaults["limit.cl"],
         ),
+        slurm=SlurmConfig(account=defaults["slurm.account"], jobs=defaults["slurm.jobs"]),
         user_file=user_path.resolve(),
         defaults_file=defaults_path.resolve(),
     )

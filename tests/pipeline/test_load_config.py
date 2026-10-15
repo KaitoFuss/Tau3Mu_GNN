@@ -97,6 +97,7 @@ analysis_name: toy_run
 channel: W
 paths:
   output_base: /tmp/toy_out
+  log_dir: /tmp/toy_logs
 inputs:
   signal: [/data/sig.root]
   background: [/data/bkg.root]
@@ -207,3 +208,114 @@ def test_channel_not_allowed_in_defaults(load, user, fake_repo):
 def test_output_dir_from_base_and_analysis_name(load, user, base, expected):
     user["paths"]["output_base"] = base
     assert load(user).output_dir == expected
+
+
+def test_log_dir_and_slurm(load, user):
+    cfg = load(user)
+    assert cfg.paths.log_dir == "/tmp/toy_logs"
+    assert cfg.slurm.account == "t3"
+    assert set(cfg.slurm.jobs) == {"skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary"}
+    job = cfg.slurm.jobs["limit"]
+    assert (job.partition, job.mem, job.time, job.cpus) == ("standard", "4G", "0-01:00:00", 1)
+
+
+def test_log_dir_required(load, user):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    del user["paths"]["log_dir"]
+    with pytest.raises(ConfigError, match="paths.log_dir"):
+        load(user)
+
+
+@pytest.mark.parametrize("bad", ["root://t3dcachedb03.psi.ch:1094//pnfs/x", "/pnfs/psi.ch/x"])
+def test_log_dir_must_be_local(load, user, bad):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    user["paths"]["log_dir"] = bad
+    with pytest.raises(ConfigError, match="log_dir"):
+        load(user)
+
+
+def test_slurm_in_user_file_is_frozen(load, user):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    user["slurm"] = {"account": "t3"}
+    with pytest.raises(ConfigError, match="frozen"):
+        load(user)
+
+
+def _defaults_with(fake_repo, change):
+    import copy
+
+    import yaml
+    from conftest import TOY_DEFAULTS
+
+    d = copy.deepcopy(TOY_DEFAULTS)
+    change(d["slurm"]["jobs"])
+    (fake_repo / "configs" / "analysis_defaults_W.yaml").write_text(yaml.safe_dump(d))
+
+
+@pytest.mark.parametrize("change, match", [
+    (lambda j: j.pop("eval"), "missing job 'eval'"),
+    (lambda j: j.update(gnn_bkg=dict(j["bdt"])), "unknown job 'gnn_bkg'"),
+    (lambda j: j["bdt"].update(memory="4G"), "unknown key 'memory'"),
+    (lambda j: j["bdt"].pop("time"), "missing key 'time'"),
+    (lambda j: j["bdt"].update(mem="64 GB"), "mem"),
+    (lambda j: j["bdt"].update(time="7 days"), "time"),
+    (lambda j: j["bdt"].update(cpus=0), "cpus"),
+    (lambda j: j["bdt"].update(cpus=True), "cpus"),
+    (lambda j: j.update(eval=None), "must be a mapping"),
+])
+def test_slurm_jobs_validation(load, user, fake_repo, change, match):
+    from tau3mu_gnn.pipeline.config import ConfigError
+
+    _defaults_with(fake_repo, change)
+    with pytest.raises(ConfigError, match=match):
+        load(user)
+
+
+@pytest.mark.parametrize("bad", [
+    "out/tau3mu", "root://host/pnfs/x", "roots://host//pnfs/x", "root:/host//pnfs/x"])
+def test_output_base_must_be_absolute_or_valid_url(load, user, bad):
+    user["paths"]["output_base"] = bad
+    with pytest.raises(ConfigError, match="paths.output_base"):
+        load(user)
+
+
+@pytest.mark.parametrize("good", ["root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/x", "/work/x"])
+def test_output_base_valid_forms_load(load, user, good):
+    user["paths"]["output_base"] = good
+    assert load(user).paths.output_base == good
+
+
+@pytest.mark.parametrize("key", ["signal", "background"])
+@pytest.mark.parametrize("bad", ["data/sig.root", "root://host/pnfs/x.root"])
+def test_input_entries_must_be_absolute_or_valid_url(load, user, key, bad):
+    user["inputs"][key] = ["/data/ok.root", bad]
+    with pytest.raises(ConfigError, match=f"inputs.{key}"):
+        load(user)
+
+
+def test_input_valid_url_loads(load, user):
+    url = "root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/x/*.root"
+    user["inputs"]["signal"] = [url]
+    assert load(user).inputs.signal == (url,)
+
+
+def test_log_dir_must_be_absolute(load, user):
+    user["paths"]["log_dir"] = "logs"
+    with pytest.raises(ConfigError, match="paths.log_dir"):
+        load(user)
+
+
+def test_conda_env_optional(load, user):
+    assert load(user).paths.conda_env is None
+    user["paths"]["conda_env"] = "/work/u/miniforge3/envs/Tau3Mu"
+    assert load(user).paths.conda_env == "/work/u/miniforge3/envs/Tau3Mu"
+
+
+@pytest.mark.parametrize("bad", ["envs/Tau3Mu", "/pnfs/psi.ch/x"])
+def test_conda_env_must_be_absolute_local(load, user, bad):
+    user["paths"]["conda_env"] = bad
+    with pytest.raises(ConfigError, match="paths.conda_env"):
+        load(user)

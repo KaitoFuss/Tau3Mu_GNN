@@ -9,6 +9,11 @@ paths:
   # All outputs go to <output_base>/<analysis_name>.
   # Jobs write to /scratch first and then xrdcp to this location.
   output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
+  # Logs are also copied next to the results (<phase>_vsN/logs/).
+  log_dir: /work/$USER/tau3mu_logs
+  # Optional. Conda env that the jobs activate. Not set: the env that is active when you submit.
+  conda_env: /work/$USER/miniforge3/envs/Tau3Mu
 
 inputs:
   # Globs are allowed. A single path is also fine.

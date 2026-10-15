@@ -169,7 +169,7 @@ def test_old_cli_paths(tmp_path, monkeypatch):
 
 # ---------------------------------------------------------------- stage 3
 
-def _stage(tmp_path, monkeypatch, load, user, sig=None, bkg=None):
+def _stage(tmp_path, monkeypatch, load, user, sig=None, bkg=None, samples=None):
     import tau3mu_gnn.gnn_training.model_loading as model_loading
     from tau3mu_gnn.pipeline.stages import gnn as gnn_stage
 
@@ -188,7 +188,9 @@ def _stage(tmp_path, monkeypatch, load, user, sig=None, bkg=None):
                                        bkg or gnn_events([[50.0]], [0.85], first_event=20)),
               "scores_pickle": tmp_path / "2_bdt" / "tau_score_corr.pkl"}
     out_dir = tmp_path / "3_gnn"
-    return gnn_stage.run(cfg, inputs, out_dir), out_dir, cfg, seen
+    if samples is None:
+        return gnn_stage.run(cfg, inputs, out_dir), out_dir, cfg, seen
+    return gnn_stage.run(cfg, {s: inputs[s] for s in samples}, out_dir, samples=samples), out_dir, cfg, seen
 
 
 def test_stage_outputs(tmp_path, monkeypatch, load, user):
@@ -250,3 +252,19 @@ def test_duplicate_event_keys_fail_before_output(tmp_path, monkeypatch, load, us
     with pytest.raises(DuplicateEventError, match="signal_with_bdt_scores.root"):
         _stage(tmp_path, monkeypatch, load, user, sig=sig)
     assert not (tmp_path / "3_gnn").exists()
+
+
+def test_stage_one_sample(tmp_path, monkeypatch, load, user):
+    outputs, out_dir, *_ = _stage(tmp_path, monkeypatch, load, user, samples=("background",))
+    assert outputs == {"background": out_dir / "background_with_gnn_scores.root",
+                       "background_scores": out_dir / "raw_scores_and_tau_mass_background.npz"}
+    assert sorted(p.name for p in out_dir.iterdir()) == ["background_with_gnn_scores.root",
+                                                         "raw_scores_and_tau_mass_background.npz"]
+
+
+def test_output_files(tmp_path):
+    from tau3mu_gnn.pipeline.stages import gnn as gnn_stage
+
+    assert gnn_stage.output_files(tmp_path, "signal") == {
+        "signal": tmp_path / "signal_with_gnn_scores.root",
+        "signal_scores": tmp_path / "raw_scores_and_tau_mass_signal.npz"}
