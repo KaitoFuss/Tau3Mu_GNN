@@ -104,14 +104,14 @@ def limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
     m = check_upstream(cfg, upstream_dir, "phase_c")
     inputs = {s: _read(upstream_dir, m["outputs"][f"gnn_{s}"]) for s in SAMPLES}
     scratch = _scratch("limit")
-    card = scratch / limit_stage.cut_dir_name(cut)
+    cut_dir = scratch / limit_stage.cut_dir_name(cut)
     try:
         limit_stage.run(cfg, inputs, scratch, cut)
     finally:
-        if card.exists():
-            dest = storage.join(phase_dir, card.name)
-            log.info("copy %s -> %s", card, dest)
-            storage.put(card, dest)
+        if cut_dir.exists():
+            dest = storage.join(phase_dir, cut_dir.name)
+            log.info("copy %s -> %s", cut_dir, dest)
+            storage.put(cut_dir, dest)
 
 
 def summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -> None:
