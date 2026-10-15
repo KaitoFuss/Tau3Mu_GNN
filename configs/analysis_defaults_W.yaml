@@ -29,7 +29,7 @@ slurm:                         # SLURM resources per job (step 9). Times: first 
   account: t3                  # raise them here if jobs hit the limit.
   jobs:
     skim:           {partition: standard, mem: 128G, time: "0-03:00:00", cpus: 4}
-    bdt:            {partition: standard, mem: 160G, time: "0-06:00:00", cpus: 1}  # full W: MaxRSS 112 GB (job 202616)
+    bdt:            {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 1}  # full W: MaxRSS 107 GiB (job 202616)
     gnn_signal:     {partition: long,     mem: 64G,  time: "1-00:00:00", cpus: 1}
     gnn_background: {partition: long,     mem: 128G, time: "2-00:00:00", cpus: 1}  # full W: MaxRSS 64 GB = old limit (job 205117)
     eval:           {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
