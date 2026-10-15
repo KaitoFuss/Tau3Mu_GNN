@@ -74,3 +74,19 @@ def test_pick_upstream_phase_a_has_none(load, user):
 
     with pytest.raises(ValueError, match="phase_a"):
         pick_upstream(load(user), "phase_a")
+
+
+def test_pick_version_any_phase(load, user, tmp_path, caplog):
+    from tau3mu_gnn.pipeline.manifest import UpstreamError
+    from tau3mu_gnn.pipeline.runs import pick_version
+
+    user["paths"]["output_base"] = str(tmp_path)
+    cfg = load(user)
+    mk(tmp_path / "toy_run", "phase_c_vs1", "phase_c_vs2", complete=("phase_c_vs1",))
+    assert pick_version(cfg, "phase_c") == f"{tmp_path}/toy_run/phase_c_vs1"
+    assert pick_version(cfg, "phase_c", complete=False) == f"{tmp_path}/toy_run/phase_c_vs2"
+    assert pick_version(cfg, "phase_c", from_="phase_c_vs2", complete=False) == f"{tmp_path}/toy_run/phase_c_vs2"
+    with pytest.raises(UpstreamError, match="no manifest"):
+        pick_version(cfg, "phase_c", from_="phase_c_vs2")
+    with pytest.raises(UpstreamError, match="phase-b"):
+        pick_version(cfg, "phase_b")

@@ -306,3 +306,16 @@ def test_log_dir_must_be_absolute(load, user):
     user["paths"]["log_dir"] = "logs"
     with pytest.raises(ConfigError, match="paths.log_dir"):
         load(user)
+
+
+def test_conda_env_optional(load, user):
+    assert load(user).paths.conda_env is None
+    user["paths"]["conda_env"] = "/work/u/miniforge3/envs/Tau3Mu"
+    assert load(user).paths.conda_env == "/work/u/miniforge3/envs/Tau3Mu"
+
+
+@pytest.mark.parametrize("bad", ["envs/Tau3Mu", "/pnfs/psi.ch/x"])
+def test_conda_env_must_be_absolute_local(load, user, bad):
+    user["paths"]["conda_env"] = bad
+    with pytest.raises(ConfigError, match="paths.conda_env"):
+        load(user)
