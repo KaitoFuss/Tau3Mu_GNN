@@ -49,11 +49,24 @@ class JobEnv:
     src_dir: Path                  # folder that contains the tau3mu_gnn package used for submitting
 
     @classmethod
+    def from_config(cls, cfg: Config, environ: Mapping[str, str] = os.environ) -> "JobEnv":
+        """The env in paths.conda_env (<base>/envs/<name> or the base env itself), else the active env."""
+        if cfg.paths.conda_env is None:
+            return cls.from_environment(environ)
+        prefix = Path(cfg.paths.conda_env)
+        base = prefix.parents[1] if prefix.parent.name == "envs" else prefix
+        missing = [str(f) for f in (prefix / "bin" / "python", base / "bin" / "activate") if not f.is_file()]
+        if missing:
+            raise EnvError(f"paths.conda_env {prefix} is not a conda env: missing {', '.join(missing)}")
+        return cls(conda_base=base, env_prefix=prefix, python=prefix / "bin" / "python",
+                   src_dir=Path(tau3mu_gnn.__file__).resolve().parents[1])
+
+    @classmethod
     def from_environment(cls, environ: Mapping[str, str] = os.environ) -> "JobEnv":
         prefix, exe = environ.get("CONDA_PREFIX"), environ.get("CONDA_EXE")
         if not prefix or not exe:
             raise EnvError("no active conda env (CONDA_PREFIX / CONDA_EXE not set): "
-                           "activate the conda env first (conda activate Tau3Mu)")
+                           "activate the conda env first (conda activate Tau3Mu) or set paths.conda_env")
         return cls(conda_base=Path(exe).parents[1], env_prefix=Path(prefix), python=Path(sys.executable),
                    src_dir=Path(tau3mu_gnn.__file__).resolve().parents[1])
 

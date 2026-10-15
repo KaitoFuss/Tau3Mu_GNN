@@ -162,6 +162,10 @@ def _local_path(v):
     return v
 
 
+def _optional_local_path(v):
+    return None if v is None else _local_path(v)
+
+
 SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")
 _SLURM_KEYS = ("partition", "mem", "time", "cpus")
 _MEM_RE = re.compile(r"^\d+[KMGT]?$")
@@ -215,6 +219,7 @@ USER_FIELDS: dict[str, _Field] = {
     "channel": _Field(_channel),
     "paths.output_base": _Field(_abs_or_url),
     "paths.log_dir": _Field(_local_path),
+    "paths.conda_env": _Field(_optional_local_path, required=False, default=None),
     "inputs.signal": _Field(_user_path_list),
     "inputs.background": _Field(_user_path_list),
     "inputs.tree_name": _Field(_non_empty_str, required=False, default="Events"),
@@ -255,6 +260,7 @@ _LEAF_KEYS = {"branch_map", "slurm.jobs"}
 class PathsConfig:
     output_base: str
     log_dir: str
+    conda_env: str | None = None   # env the jobs activate; None: the active env of the submitting shell
 
 
 @dataclass(frozen=True)
@@ -447,7 +453,8 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
     return Config(
         analysis_name=user["analysis_name"],
         channel=user["channel"],
-        paths=PathsConfig(output_base=user["paths.output_base"], log_dir=user["paths.log_dir"]),
+        paths=PathsConfig(output_base=user["paths.output_base"], log_dir=user["paths.log_dir"],
+                          conda_env=user["paths.conda_env"]),
         inputs=InputsConfig(
             signal=user["inputs.signal"],
             background=user["inputs.background"],

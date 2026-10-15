@@ -39,6 +39,49 @@ def test_job_env_needs_active_env(missing):
         JobEnv.from_environment(env)
 
 
+def fake_conda(root):
+    """Conda base at root/base with an env T: base/bin/activate, base/envs/T/bin/python."""
+    base, prefix = root / "base", root / "base" / "envs" / "T"
+    for f in (base / "bin" / "activate", base / "bin" / "python", prefix / "bin" / "python"):
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("")
+    return base, prefix
+
+
+def test_job_env_from_config(load, user, tmp_path):
+    from tau3mu_gnn.pipeline.slurm import JobEnv
+
+    base, prefix = fake_conda(tmp_path)
+    user["paths"]["conda_env"] = str(prefix)
+    env = JobEnv.from_config(load(user), environ={})                     # no active env needed
+    assert (env.conda_base, env.env_prefix, env.python) == (base, prefix, prefix / "bin" / "python")
+    assert (env.src_dir / "tau3mu_gnn" / "pipeline" / "slurm.py").is_file()
+
+
+def test_job_env_from_config_base_env(load, user, tmp_path):
+    from tau3mu_gnn.pipeline.slurm import JobEnv
+
+    base, _ = fake_conda(tmp_path)
+    user["paths"]["conda_env"] = str(base)
+    env = JobEnv.from_config(load(user), environ={})
+    assert (env.conda_base, env.env_prefix, env.python) == (base, base, base / "bin" / "python")
+
+
+def test_job_env_from_config_not_a_conda_env(load, user, tmp_path):
+    from tau3mu_gnn.pipeline.slurm import EnvError, JobEnv
+
+    user["paths"]["conda_env"] = str(tmp_path / "nothing")
+    with pytest.raises(EnvError, match="paths.conda_env"):
+        JobEnv.from_config(load(user), environ={})
+
+
+def test_job_env_from_config_falls_back_to_active_env(load, user):
+    from tau3mu_gnn.pipeline.slurm import JobEnv
+
+    env = JobEnv.from_config(load(user), environ=ENV)
+    assert env.env_prefix == Path(ENV["CONDA_PREFIX"])
+
+
 def render(load, user, tmp_path, args=("skim",), user_file=None):
     from tau3mu_gnn.pipeline.slurm import Job, JobEnv, render_script
 

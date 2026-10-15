@@ -45,7 +45,8 @@ def config_dict(cfg: Config) -> dict:
     return {
         "analysis_name": cfg.analysis_name,
         "channel": cfg.channel,
-        "paths": {"output_base": cfg.paths.output_base, "log_dir": cfg.paths.log_dir},
+        "paths": {"output_base": cfg.paths.output_base, "log_dir": cfg.paths.log_dir,
+                  "conda_env": cfg.paths.conda_env},
         "inputs": {"signal": list(inp.signal), "background": list(inp.background), "tree_name": inp.tree_name,
                    "already_resonance_skimmed": inp.already_resonance_skimmed},
         "branch_map": dict(cfg.branch_map),

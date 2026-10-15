@@ -141,3 +141,16 @@ def test_stage_summary_uses_incomplete_phase_c(cfg, env, fake_sbatch):
     s = submit_stage(cfg, "summary", env=env)
     last = (s.log_folder / "summary.sh").read_text().splitlines()[-1]
     assert last.endswith(f"--source {cfg.output_dir}/phase_c_vs1 --no-manifest")
+
+
+def test_conda_env_from_config_needs_no_active_env(load, user, tmp_path, fake_sbatch, monkeypatch):
+    from test_slurm import fake_conda
+
+    from tau3mu_gnn.pipeline.driver import submit_phase
+
+    _, prefix = fake_conda(tmp_path)
+    user["paths"].update(output_base=str(tmp_path / "out"), log_dir=str(tmp_path / "logs"), conda_env=str(prefix))
+    monkeypatch.delenv("CONDA_PREFIX", raising=False)
+    monkeypatch.delenv("CONDA_EXE", raising=False)
+    s = submit_phase(load(user), "phase_a")
+    assert (s.log_folder / "skim.sh").read_text().splitlines()[-1].startswith(f"{prefix / 'bin' / 'python'} -m ")

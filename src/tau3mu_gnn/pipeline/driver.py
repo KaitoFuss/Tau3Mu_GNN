@@ -60,7 +60,7 @@ def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env) ->
 
 def submit_phase(cfg: Config, phase: str, from_: str | None = None, dry_run: bool = False,
                  env: JobEnv | None = None) -> Submission:
-    env = env if env is not None else JobEnv.from_environment()
+    env = env if env is not None else JobEnv.from_config(cfg)
     up = runs.pick_upstream(cfg, phase, from_) if phase != "phase_a" else None
     if phase == "phase_a" and from_ is not None:
         raise ValueError("phase-a has no upstream; --from is not allowed")
@@ -69,7 +69,7 @@ def submit_phase(cfg: Config, phase: str, from_: str | None = None, dry_run: boo
 
 def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float | None = None,
                  sample: str | None = None, dry_run: bool = False, env: JobEnv | None = None) -> Submission:
-    env = env if env is not None else JobEnv.from_environment()
+    env = env if env is not None else JobEnv.from_config(cfg)
     if stage not in STAGES:
         raise ValueError(f"unknown stage {stage!r}; one of {list(STAGES)}")
     up = src = None

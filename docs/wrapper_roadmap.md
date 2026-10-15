@@ -146,7 +146,7 @@ channel: W                              # user file only; selects analysis_defau
 paths:
   output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
   log_dir: /work/$USER/tau3mu_logs   # job scripts + SLURM logs (local disk)
-  conda_env:  /work/<user>/miniforge3/envs/Tau3Mu
+  conda_env:  /work/<user>/miniforge3/envs/Tau3Mu   # optional; default: the active env at submit
 
 inputs:
   signal:     [/pnfs/.../signal_W/*.root]
@@ -327,3 +327,4 @@ Tracked here. Answers move to section 8.
 | 2026-10-12 | Step 9b decisions (Kaito): D10 the job script activates the conda env of the submitting shell (CONDA_PREFIX, CONDA_EXE; error at submit if none). D11 small-input check: 20k signal / 1M background, cuts [2.0, 3.9]. Also: --dry-run makes no version folder; debug 'stage summary' may use an incomplete phase C version. |
 | 2026-10-14 | Step 9b check (small inputs, `small_W_9b`): jobs skim 99382, bdt 99383, gnn_signal 193445, gnn_background 193446, eval 193447, limit_2.0 199532, limit_3.9 199533, summary 199534, all COMPLETED 0:0. `phase_a_vs1`, `phase_b_vs1`, `phase_c_vs1` with manifests and logs; `limits.json`: cut 2.0 → 27.375 (best), 3.9 → 49.0. The high limits are expected: `signal_weight` 0.000019 is for the full 801,732 signal events, but the run uses 20,000 (1/40); signal rate at cut 3.9 is 0.0400 vs 1.6468 in the reference (×41), and 1.289 × 41 ≈ 53. Background fit on very few events (rate 1.60 vs 3.06). MaxRSS: skim 15.5 GB, bdt 11.2 GB, gnn_background 23.7 GB (1M events), limit 8 GB. |
 | 2026-10-14 | Final regression (roadmap 5.3 item 3), full W run A → B → C with the wrapper (`final_W_reference`, cut 3.9): limit **1.2890625** = reference; `datacard.txt` byte-identical to step 8 job 54814. So the step 5 and 6b changes do not change the limit; the step 5 open item is closed. Jobs (all COMPLETED 0:0, MaxRSS / elapsed): skim 202615 90 GB / 0:36, bdt 202616 112 GB / 1:36, gnn_signal 205116 19 GB / 7:05, gnn_background 205117 64 GB (= the 64G limit) / 3:33, eval 205118 2 GB, limit_3.9 243224 73 GB / 0:06, summary 243225 1 GB. Frozen slurm memory raised: bdt 64G → 160G, gnn_background 64G → 128G. |
+| 2026-10-15 | PR #20/#21 review (Kaito): limit job variable `card` → `cut_dir`. bdt job memory 160G → 128G (full W peak 107 GiB; power of 2). New optional user key `paths.conda_env` (amends D10): the jobs activate this env; not set → the active env of the submitting shell, as before. |
