@@ -14,6 +14,9 @@ def test_example_w_matches_production_settings(monkeypatch):
     assert cfg.gnn.graph_type == "skimmed_dzd0_cone_size_0.5_knn_10"
     assert cfg.gnn.bdt_preselection_cut == 0.8
     assert cfg.bdt.classifier == REPO_ROOT / "models/W/bdt/ISO_classifiers_24feb2026_v0.pck"
+    rs = cfg.resonance_skim
+    assert (rs.vtx_chi2_max, rs.mass_range, rs.veto_masses, rs.veto_half_width, rs.pf_dr_max) == \
+        (20, (1.0, 3.0), (0.78266, 1.019461), 0.040, 1.0)
     assert cfg.skim.dz_max == 0.5
     assert cfg.skim.cos_alpha_2d_min == 0.5
     assert cfg.limit.gnn_score_cut == (3.9,)

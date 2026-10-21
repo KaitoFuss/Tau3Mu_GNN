@@ -52,6 +52,21 @@ def required_branches(channel: str) -> tuple[str, ...]:
     return COMMON + PER_CHANNEL[channel]
 
 
+# Stage 0 cuts: vertex chi2, 3-muon and dimuon 4-vector masses, opposite-sign pairs.
+# No muon mass: raw NanoAOD has none, stage 0 defines it.
+STAGE0: tuple[str, ...] = (
+    "TauTo3Mu_vtx_chi2",
+    *(f"TauTo3Mu_mu{i}_{s}" for i in (1, 2, 3) for s in ("pt", "eta", "phi", "charge")),
+)
+
+
+def raw_required_branches(channel: str) -> tuple[str, ...]:
+    """Required branches of raw NanoAOD (before stage 0): the analysis names without the
+    Slimmed_ prefix (stage 0 writes Slimmed_TauTo3Mu_*, Slimmed_PFCands_*), plus the stage 0 cut inputs."""
+    names = (n.removeprefix("Slimmed_") for n in required_branches(channel))
+    return tuple(dict.fromkeys((*names, *STAGE0)))
+
+
 def _check_map(branch_map: Mapping[str, str], required: tuple[str, ...]) -> list[str]:
     problems = []
     required_set = set(required)
@@ -85,15 +100,17 @@ def _expand(inputs: Sequence[str], problems: list[str]) -> list[str]:
 
 
 def check_input_branches(inputs: Sequence[str], tree_name: str,
-                         branch_map: Mapping[str, str], channel: str) -> list[str]:
+                         branch_map: Mapping[str, str], channel: str, raw: bool = False) -> list[str]:
     """Check that every input file has every required branch after the branch map.
 
     inputs: config input entries (inputs.signal / inputs.background); each is a path or a glob.
+    raw: inputs are raw NanoAOD (before stage 0); check raw_required_branches, and the
+    branch map keys are raw analysis names (TauTo3Mu_*, PFCands_*).
     A file that holds both a mapped user name and its analysis name is an error.
     Reads branch names only (no events). Returns the expanded file list.
     Raises BranchError listing every problem of every file.
     """
-    required = required_branches(channel)
+    required = raw_required_branches(channel) if raw else required_branches(channel)
     problems = _check_map(branch_map, required)
     files = _expand(inputs, problems)
     for path in files:

@@ -167,7 +167,7 @@ which combine              # must be $CONDA_PREFIX/bin/combine
 
 This pipeline runs the frozen W analysis on **your** input files. You need only one config file.
 
-- Stages: skim → BDT → GNN → evaluation → limit.
+- Stages: resonance skim (raw NanoAOD only) → skim → BDT → GNN → evaluation → limit.
 - The models are fixed. The pipeline does not train.
 - All jobs run on the PSI T3 with SLURM.
 
@@ -204,13 +204,40 @@ Edit `my_W.yaml`. The comments in the file explain each key.
 | `paths.log_dir` | A local folder for the job scripts and the SLURM logs. |
 | `paths.conda_env` | Optional. The env that the jobs use. Not set: the env that is active when you submit. |
 | `inputs.signal`, `inputs.background` | Your ROOT files. Globs are allowed. |
-| `branch_map` | Set it only if your branch names are different. |
+| `inputs.already_resonance_skimmed` | `false`: your files are raw NanoAOD. Stage 0 applies the resonance skim. `true`: your files are already resonance-skimmed. Stage 0 is skipped. See [Skimming cuts](#skimming-cuts). |
+| `branch_map` | Set it only if your branch names are different. For raw NanoAOD, use the raw names as keys (`TauTo3Mu_*`, `PFCands_*`). |
 | `limit.signal_weight` | **Required.** It has no default. See below. |
 | `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
 
 > **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
 
-> **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
+> **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
+
+#### Skimming cuts
+
+All cuts apply to each tau candidate. Values are in `configs/analysis_defaults_W.yaml` (`resonance_skim`, `skim`).
+
+| Stage | Cut | Value | Notes |
+|---|---|---|---|
+| NanoAOD production | 3 muons, medium ID | — | Already true in the raw NanoAOD. The pipeline does not apply it again. |
+| NanoAOD production | Total charge | ±1 | Already true in the raw NanoAOD. |
+| 0 (resonance skim) | 3-muon vertex χ² | < 20 | `TauTo3Mu_vtx_chi2` |
+| 0 | 3-muon mass | 1 < m < 3 GeV | Sum of the three muon 4-vectors (muon mass 0.10566 GeV), not `fitted_mass`. |
+| 0 | ω(782) veto | \|m(μμ) − 0.78266\| ≥ 40 MeV | Opposite-sign pairs only, 4-vector mass. |
+| 0 | φ(1020) veto | \|m(μμ) − 1.019461\| ≥ 40 MeV | Opposite-sign pairs only, 4-vector mass. |
+| 0 | Events | ≥ 1 candidate passes | Other events are removed. |
+| 0 | PF candidates kept | ΔR < 1.0 to a kept candidate | Slimming only. The GNN cone is 0.5. |
+| 1 (skim) | \|dZ(μi, μj)\| | < 0.5 | All three pairs. |
+| 1 | cos α (2D) | > 0.5 | `CosAlpha2D_LxyP3mu` |
+| 1 | Events | — | No event is removed. Candidates that fail go out of `Selected_*`. |
+
+Stage 0 output:
+
+- `TauTo3Mu_*` → `Slimmed_TauTo3Mu_*` (passing candidates only). Masks: `Slimmed_TauTo3Mu_pass_*_mask`.
+- `TauPlusMET_*` and `nTauPlusMET`: same names, masked like the candidates. So they stay aligned with `Slimmed_TauTo3Mu_*`.
+- `PFCands_*` → `Slimmed_PFCands_*`.
+
+> **The old skims are different.** The files in `.../tau3mu_gnn_round2/data/*/old_data/` used: χ² < 100, m < 3 GeV (no lower cut), veto centres 0.782 and 1.020 GeV. Their `TauPlusMET_*` are not masked. With `already_resonance_skimmed: true` on these files, you get the old cuts.
 
 ### 3. Submit
 
@@ -347,7 +374,7 @@ Do the steps in this order. Each step has a job script in `jobs/`.
 You can pre-select the raw ROOT files before graph creation. The skimmer does this.
 
 - Examples: fiducial cuts, resonance vetoes.
-- The project report describes all pre-selection steps.
+- All cuts of the pipeline, with their values: see [Skimming cuts](#skimming-cuts).
 
 ```bash
 # jobs/graph_creation/skimming.sh

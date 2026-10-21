@@ -21,9 +21,9 @@ JOBS_FILE = "jobs.json"
 PHASES = ("phase_a", "phase_b", "phase_c")
 UPSTREAM = {"phase_a": None, "phase_b": "phase_a", "phase_c": "phase_b"}
 PHASE_SECTIONS = {
-    "phase_a": ("channel", "inputs", "branch_map", "skim", "bdt"),
-    "phase_b": ("channel", "inputs", "branch_map", "skim", "bdt", "gnn"),
-    "phase_c": ("channel", "inputs", "branch_map", "skim", "bdt", "gnn", "limit"),
+    "phase_a": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt"),
+    "phase_b": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt", "gnn"),
+    "phase_c": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt", "gnn", "limit"),
 }
 
 
@@ -41,7 +41,7 @@ def config_dict(cfg: Config) -> dict:
         except ValueError:
             return str(p)
 
-    g, lim, inp = cfg.gnn, cfg.limit, cfg.inputs
+    g, lim, inp, rs = cfg.gnn, cfg.limit, cfg.inputs, cfg.resonance_skim
     return {
         "analysis_name": cfg.analysis_name,
         "channel": cfg.channel,
@@ -50,6 +50,9 @@ def config_dict(cfg: Config) -> dict:
         "inputs": {"signal": list(inp.signal), "background": list(inp.background), "tree_name": inp.tree_name,
                    "already_resonance_skimmed": inp.already_resonance_skimmed},
         "branch_map": dict(cfg.branch_map),
+        "resonance_skim": {"vtx_chi2_max": rs.vtx_chi2_max, "mass_range": list(rs.mass_range),
+                           "veto_masses": list(rs.veto_masses), "veto_half_width": rs.veto_half_width,
+                           "pf_dr_max": rs.pf_dr_max},
         "skim": {"dz_max": cfg.skim.dz_max, "cos_alpha_2d_min": cfg.skim.cos_alpha_2d_min},
         "bdt": {"classifier": rel(cfg.bdt.classifier)},
         "gnn": {"model_dir": rel(g.model_dir), "model_name": g.model_name, "conv_type": g.conv_type,
