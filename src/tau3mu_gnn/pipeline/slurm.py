@@ -88,6 +88,18 @@ def chain_hours(cfg: Config, jobs: Sequence[Job]) -> float:
     return max(end.values(), default=0.0)
 
 
+SHORT_JOB = {"gnn_signal": "gnnS", "gnn_background": "gnnB", "summary": "sum"}
+
+
+def slurm_job_name(analysis_name: str, version: str, job: str) -> str:
+    """Short job first, so the 8-character NAME column of squeue shows it:
+    phase_b_vs3 + gnn_signal -> B3.gnnS.<analysis_name>; debug runs (<stage>_vsN) get D."""
+    stem, n = version.rsplit("_vs", 1)
+    code = stem[-1].upper() if stem.startswith("phase_") else "D"
+    short = SHORT_JOB.get(job) or job.replace("limit_", "lim", 1)
+    return f"{code}{n}.{short}.{analysis_name}"
+
+
 def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env: JobEnv,
                   scratch_root: str = "/scratch/$USER") -> str:
     res = cfg.slurm.jobs[job.resources]
@@ -101,7 +113,7 @@ def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env
     args = " ".join(q(a) for a in job.args)
     return "\n".join([
         "#!/bin/bash",
-        f"#SBATCH --job-name={cfg.analysis_name}.{version}.{job.name}",
+        f"#SBATCH --job-name={slurm_job_name(cfg.analysis_name, version, job.name)}",
         f"#SBATCH --account={cfg.slurm.account}",
         f"#SBATCH --partition={res.partition}",
         f"#SBATCH --mem={res.mem}",

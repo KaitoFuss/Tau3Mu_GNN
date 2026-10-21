@@ -175,6 +175,7 @@ output/
 
 .vscode/
 logs/
+tau3mu_logs/
 
 .zshrc
 

@@ -91,11 +91,28 @@ def render(load, user, tmp_path, args=("skim",), user_file=None):
     return render_script(cfg, job, "/out/toy_run/phase_b_vs2", tmp_path / "logs", env)
 
 
+@pytest.mark.parametrize("version, job, expected", [
+    ("phase_a_vs1", "skim", "A1.skim.run"),
+    ("phase_a_vs1", "bdt", "A1.bdt.run"),
+    ("phase_b_vs3", "gnn_signal", "B3.gnnS.run"),
+    ("phase_b_vs3", "gnn_background", "B3.gnnB.run"),
+    ("phase_b_vs3", "eval", "B3.eval.run"),
+    ("phase_c_vs12", "limit_3.9", "C12.lim3.9.run"),
+    ("phase_c_vs12", "summary", "C12.sum.run"),
+    ("gnn_vs2", "gnn_signal", "D2.gnnS.run"),
+    ("limit_vs1", "limit_2.0", "D1.lim2.0.run"),
+])
+def test_slurm_job_name(version, job, expected):
+    from tau3mu_gnn.pipeline.slurm import slurm_job_name
+
+    assert slurm_job_name("run", version, job) == expected
+
+
 def test_render_script_header_and_body(load, user, tmp_path):
     text = render(load, user, tmp_path, args=("gnn", "--sample", "signal"))
     lines = text.splitlines()
     assert lines[0] == "#!/bin/bash"
-    assert "#SBATCH --job-name=toy_run.phase_b_vs2.gnn_signal" in lines
+    assert "#SBATCH --job-name=B2.gnnS.toy_run" in lines
     assert "#SBATCH --account=t3" in lines and "#SBATCH --partition=standard" in lines
     assert "#SBATCH --mem=4G" in lines and "#SBATCH --time=0-01:00:00" in lines
     assert "#SBATCH --cpus-per-task=1" in lines
