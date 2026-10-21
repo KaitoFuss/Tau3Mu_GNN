@@ -138,38 +138,35 @@ def remote_cfg(load, user):
     return load(user)
 
 
-def jobs_with(*resources):
-    from tau3mu_gnn.pipeline.slurm import Job
-
-    return [Job(name=r, resources=r, args=("skim",)) for r in resources]
-
-
-def test_proxy_check_hours_from_longest_job(load, user, fake_voms, monkeypatch, fake_repo):
+def test_chain_hours_is_longest_dependency_path(load, user, fake_repo):
     import copy
 
     import yaml
     from conftest import TOY_DEFAULTS
-    from tau3mu_gnn.pipeline.slurm import check_proxy
+    from tau3mu_gnn.pipeline.slurm import Job, chain_hours
 
     d = copy.deepcopy(TOY_DEFAULTS)
     d["slurm"]["jobs"]["gnn_background"]["time"] = "2-00:00:00"
     (fake_repo / "configs" / "analysis_defaults_W.yaml").write_text(yaml.safe_dump(d))
-    check_proxy(remote_cfg(load, user), jobs_with("gnn_signal", "gnn_background"),
-                {"X509_USER_PROXY": "/t3home/u/.x509up_u1"})
+    cfg = load(user)
+    phase_b = [Job("gnn_signal", "gnn_signal", ()), Job("gnn_background", "gnn_background", ()),
+               Job("eval", "eval", (), after=("gnn_signal", "gnn_background"))]
+    assert chain_hours(cfg, phase_b) == 49.0                       # gnn_background 48 h, then eval 1 h
+    assert chain_hours(cfg, [Job("skim", "skim", ()), Job("bdt", "bdt", (), after=("skim",))]) == 2.0
+    assert chain_hours(cfg, [Job("limit_2.0", "limit", ()), Job("limit_3.9", "limit", ())]) == 1.0
+
+
+def test_proxy_check_hours(load, user, fake_voms):
+    from tau3mu_gnn.pipeline.slurm import check_proxy
+
+    check_proxy(remote_cfg(load, user), 48, {"X509_USER_PROXY": "/t3home/u/.x509up_u1"})
     assert fake_voms.read_text().split() == ["--exists", "--valid", "48:00"]
 
 
-def test_proxy_check_rounds_up(load, user, fake_voms, monkeypatch, fake_repo):
-    import copy
-
-    import yaml
-    from conftest import TOY_DEFAULTS
+def test_proxy_check_rounds_up(load, user, fake_voms):
     from tau3mu_gnn.pipeline.slurm import check_proxy
 
-    d = copy.deepcopy(TOY_DEFAULTS)
-    d["slurm"]["jobs"]["limit"]["time"] = "0-01:30:00"
-    (fake_repo / "configs" / "analysis_defaults_W.yaml").write_text(yaml.safe_dump(d))
-    check_proxy(remote_cfg(load, user), jobs_with("limit"), {"X509_USER_PROXY": "/t3home/u/.x509up_u1"})
+    check_proxy(remote_cfg(load, user), 1.5, {"X509_USER_PROXY": "/t3home/u/.x509up_u1"})
     assert fake_voms.read_text().split()[-1] == "2:00"
 
 
@@ -178,7 +175,7 @@ def test_proxy_invalid(load, user, fake_voms, monkeypatch):
 
     monkeypatch.setenv("FAKE_VOMS_RC", "1")
     with pytest.raises(ProxyError, match="voms-proxy-init --voms cms --valid 192:00"):
-        check_proxy(remote_cfg(load, user), jobs_with("skim"), {"X509_USER_PROXY": "/t3home/u/.x509up_u1"})
+        check_proxy(remote_cfg(load, user), 1, {"X509_USER_PROXY": "/t3home/u/.x509up_u1"})
 
 
 @pytest.mark.parametrize("environ, match", [({}, "X509_USER_PROXY"),
@@ -187,13 +184,13 @@ def test_proxy_location(load, user, fake_voms, environ, match):
     from tau3mu_gnn.pipeline.slurm import ProxyError, check_proxy
 
     with pytest.raises(ProxyError, match=match):
-        check_proxy(remote_cfg(load, user), jobs_with("skim"), environ)
+        check_proxy(remote_cfg(load, user), 1, environ)
 
 
 def test_proxy_not_needed_for_local_output(load, user, fake_voms):
     from tau3mu_gnn.pipeline.slurm import check_proxy
 
-    check_proxy(load(user), jobs_with("skim"), {})
+    check_proxy(load(user), 1, {})
     assert not fake_voms.exists()
 
 
@@ -230,7 +227,8 @@ def test_submit_jobs_dependencies(load, user, tmp_path, fake_sbatch):
     assert ids == {"limit_2.0": "1001", "limit_3.9": "1002", "summary": "1003"}
     calls = fake_sbatch.read_text().splitlines()
     assert calls[0] == f"--parsable {tmp_path / 'logs' / 'limit_2.0.sh'}"
-    assert calls[2] == f"--parsable --dependency=afterany:1001:1002 {tmp_path / 'logs' / 'summary.sh'}"
+    assert calls[2] == (f"--parsable --dependency=afterany:1001:1002 --kill-on-invalid-dep=yes "
+                        f"{tmp_path / 'logs' / 'summary.sh'}")
     assert (tmp_path / "logs" / "summary.sh").read_text().startswith("#!/bin/bash")
 
 
@@ -239,10 +237,11 @@ def test_submit_jobs_dry_run(load, user, tmp_path, fake_sbatch, capsys):
 
     ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs",
                       JobEnv.from_environment(ENV), dry_run=True)
-    assert ids == {"limit_2.0": "DRYRUN-1", "limit_3.9": "DRYRUN-2", "summary": "DRYRUN-3"}
+    assert ids == {"limit_2.0": "DRYRUN-limit_2.0", "limit_3.9": "DRYRUN-limit_3.9", "summary": "DRYRUN-summary"}
     assert not fake_sbatch.exists()
     out = capsys.readouterr().out
-    assert f"sbatch --parsable --dependency=afterany:DRYRUN-1:DRYRUN-2 {tmp_path / 'logs' / 'summary.sh'}" in out
+    assert (f"sbatch --parsable --dependency=afterany:DRYRUN-limit_2.0:DRYRUN-limit_3.9 --kill-on-invalid-dep=yes "
+            f"{tmp_path / 'logs' / 'summary.sh'}") in out
     assert (tmp_path / "logs" / "limit_3.9.sh").is_file()
 
 
@@ -300,3 +299,14 @@ limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
     assert json.loads((Path(version_dir) / "limits.json").read_text())["best_cut"] == 3.9
     assert (Path(version_dir) / "logs" / "summary-77.out").is_file()            # log copied by the trap
     assert not (tmp_path / "scratch" / "77").exists()                             # scratch removed
+
+
+def test_submit_jobs_waits_for_earlier_submission(load, user, tmp_path, fake_sbatch):
+    from tau3mu_gnn.pipeline.slurm import Job, JobEnv, submit_jobs
+
+    jobs = [Job("limit_2.0", "limit", ("limit",), after_ids=("77",)),
+            Job("summary", "summary", ("summary",), after=("limit_2.0",), dependency="afterany", after_ids=("77",))]
+    submit_jobs(load(user), jobs, "/out/toy_run/phase_c_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
+    calls = fake_sbatch.read_text().splitlines()
+    assert calls[0].startswith("--parsable --dependency=afterok:77 --kill-on-invalid-dep=yes ")
+    assert calls[1].startswith("--parsable --dependency=afterany:1001,afterok:77 --kill-on-invalid-dep=yes ")
