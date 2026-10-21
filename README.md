@@ -294,6 +294,8 @@ Each version folder also has these files:
 
 ## Quick Start
 
+> **This will change: GNN training in the pipeline.** A later step adds the GNN training to `tau3mu-pipeline`. Then this section will change.
+
 A short end-to-end run for the W channel.
 
 - It uses the standard configuration from `jobs/condor/train_W_GINE_deleted.sh`.
@@ -335,6 +337,8 @@ sbatch jobs/analysis/create_datacard.sh
 ---
 
 ## Pipeline Overview
+
+> **This will change: GNN training in the pipeline.** A later step adds the GNN training to `tau3mu-pipeline`. Then this section will change.
 
 Do the steps in this order. Each step has a job script in `jobs/`.
 
