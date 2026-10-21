@@ -9,6 +9,7 @@ A Graph Neural Network pipeline for searching the lepton-flavour-violating decay
 - [Infrastructure](#infrastructure)
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
+- [Analysis Pipeline (from a config file)](#analysis-pipeline-from-a-config-file)
 - [Quick Start](#quick-start)
 - [Pipeline Overview](#pipeline-overview)
   - [Step 0 — Skimming](#step-0--skimming-optional)
@@ -115,6 +116,92 @@ pip install -e .
 > `mamba` can be used as a drop-in replacement for `conda` for faster dependency resolution.
 
 The package follows a `src` layout — all modules live under `src/tau3mu_gnn/` and are imported as `tau3mu_gnn.*`. After `pip install -e .`, scripts can be run as `python -m tau3mu_gnn.scripts.<script_name>`.
+
+---
+
+## Analysis Pipeline (from a config file)
+
+Runs the frozen W analysis (skim → BDT → GNN → evaluation → limit) on **your** input files with one config file. The models are fixed; nothing is trained. All jobs run on the PSI T3 with SLURM.
+
+### 1. Set up (once)
+
+1. Install the `Tau3Mu` env and the package as in [Installation](#installation). `pip install -e .` also installs the command `tau3mu-pipeline`. If you installed the package before this command existed, run `pip install -e .` again.
+2. CMS Combine must be in the env (`<env>/bin/combine`). It is **not** in `environment_frozen.yaml`; build the standalone Combine into the env.
+3. Write your outputs to dCache? Then you need a VOMS proxy in your **home folder** (the nodes cannot see `/tmp`):
+
+   ```bash
+   export X509_USER_PROXY=$HOME/.x509up_u$(id -u)    # put this line in your ~/.bashrc
+   voms-proxy-init --voms cms --valid 192:00
+   ```
+
+   Before it submits, the command checks that the proxy is valid for the whole job chain. If it is not, the command stops with an error.
+
+### 2. Write your config
+
+```bash
+cp configs/example_W.yaml my_W.yaml
+```
+
+Edit `my_W.yaml`. The comments in the file explain each key.
+
+- `analysis_name`: the name of your run folder.
+- `paths.output_base`: where results go (a `root://` dCache URL or a local absolute path). `paths.log_dir`: a local folder for job scripts and SLURM logs.
+- `paths.conda_env` (optional): the env the jobs use. Not set: the env that is active when you submit.
+- `inputs.signal`, `inputs.background`: your ROOT files (globs allowed). `branch_map`: only if your branch names differ.
+- `limit.signal_weight` is **required** and has no default. Compute it for **your** dataset (lumi, cross section, reference BR). The example value is valid only for Kaito's W dataset.
+- `limit.gnn_score_cut`: one cut, or a list for a cut scan (one Combine job per cut).
+
+Frozen analysis settings (models, BDT preselection, mass window, SLURM resources) are in `configs/analysis_defaults_W.yaml`. Do not set them in your file: the command stops with an error if you do.
+
+### 3. Submit
+
+```bash
+tau3mu-pipeline all --config my_W.yaml --dry-run    # write the job scripts, print the sbatch commands, submit nothing
+tau3mu-pipeline all --config my_W.yaml              # submit phases A, B and C at once
+```
+
+| Phase | Jobs | Stages |
+|---|---|---|
+| A | `skim`, `bdt` | resonance skim (skipped if `already_resonance_skimmed: true`), skim, BDT |
+| B | `gnn_signal`, `gnn_background`, `eval` | GNN scores, evaluation plots |
+| C | `limit_<cut>` (one per cut), `summary` | datacard + Combine per cut, table of limits |
+
+`all` chains the phases with SLURM dependencies: B starts when A's `bdt` job succeeds, C starts when B's `eval` job succeeds. If a job fails, SLURM cancels the jobs after it.
+
+You can also run one phase at a time. A later phase uses the newest **complete** version of the phase before it, or the version you give with `--from`:
+
+```bash
+tau3mu-pipeline phase-a --config my_W.yaml
+tau3mu-pipeline phase-b --config my_W.yaml [--from phase_a_vs2]
+tau3mu-pipeline phase-c --config my_W.yaml [--from phase_b_vs1]
+```
+
+To rerun one stage for debugging (output in `debug/`, no manifest): `tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]`.
+
+`tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipeline.cli` is the same command.
+
+### 4. Results
+
+Each phase run makes a **new version folder**; nothing is overwritten.
+
+```
+<output_base>/<analysis_name>/
+├── phase_a_vs1/           0_resonance_skim/, 1_skim/, 2_bdt/
+├── phase_b_vs1/           3_gnn/, 4_eval/ (tau mass, ROC and SIC plots)
+├── phase_c_vs1/           cut_<cut>/ (datacard, Combine logs, limit.json), limits.json, limits.txt, limits.png
+└── debug/<stage>_vsN/     single-stage runs
+```
+
+Each version folder also has `config_used.yaml`, `jobs.json` (the SLURM job IDs), `logs/` (a copy of the SLURM logs) and, when the phase succeeded, `manifest.json`. **A version is complete only if `manifest.json` exists.** The expected limit and the best cut are in `phase_c_vsN/limits.txt`.
+
+The job scripts and the SLURM logs are also in `<log_dir>/<analysis_name>/<phase>_vsN/`.
+
+### 5. When a job fails
+
+1. `squeue -u $USER` shows the jobs that still wait or run. `sacct -j <ID>` shows the state of a job.
+2. Read the log of the failed job: `<log_dir>/<analysis_name>/<phase>_vsN/<job>-<ID>.err`.
+3. Fix the problem and submit the phase again. It makes the next version (e.g. `phase_b_vs2`); the failed version stays, without a manifest.
+4. If a job runs out of memory or time, raise its value in `configs/analysis_defaults_W.yaml` (`slurm.jobs`).
 
 ---
 

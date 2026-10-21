@@ -21,7 +21,9 @@ PROXY_HINT = "voms-proxy-init --voms cms --valid 192:00"
 
 
 class SubmitError(Exception):
-    pass
+    def __init__(self, message: str, submitted: Mapping[str, str] | None = None):
+        super().__init__(message)
+        self.submitted = dict(submitted or {})   # job name -> ID of the jobs submitted before the failure
 
 
 class ProxyError(SubmitError):
@@ -39,6 +41,7 @@ class Job:
     args: tuple[str, ...]          # arguments of `python -m tau3mu_gnn.pipeline.jobs`
     after: tuple[str, ...] = ()    # names of jobs this one waits for
     dependency: str = "afterok"    # afterok | afterany
+    after_ids: tuple[str, ...] = ()  # IDs of jobs submitted before (afterok), e.g. the last job of phase A
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,14 @@ def time_hours(time: str) -> float:
     days, _, hms = time.rpartition("-")
     h, m, s = (int(x) for x in hms.split(":"))
     return (int(days) if days else 0) * 24 + h + m / 60 + s / 3600
+
+
+def chain_hours(cfg: Config, jobs: Sequence[Job]) -> float:
+    """Hours of the longest path through the `after` dependencies (the jobs are in submit order)."""
+    end: dict[str, float] = {}
+    for j in jobs:
+        end[j.name] = max((end[a] for a in j.after), default=0.0) + time_hours(cfg.slurm.jobs[j.resources].time)
+    return max(end.values(), default=0.0)
 
 
 def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env: JobEnv,
@@ -117,8 +128,9 @@ def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env
     ]) + "\n"
 
 
-def check_proxy(cfg: Config, jobs: Sequence[Job], environ: Mapping[str, str] = os.environ) -> None:
-    """dCache output needs a VOMS proxy that the nodes can read and that outlives the longest job."""
+def check_proxy(cfg: Config, hours: float, environ: Mapping[str, str] = os.environ) -> None:
+    """dCache output needs a VOMS proxy that the nodes can read and that is valid for `hours`
+    (the longest job chain of the submission, see chain_hours)."""
     if not storage.is_remote(cfg.output_dir):
         return
     proxy = environ.get("X509_USER_PROXY")
@@ -128,17 +140,18 @@ def check_proxy(cfg: Config, jobs: Sequence[Job], environ: Mapping[str, str] = o
     if proxy.startswith("/tmp"):
         raise ProxyError(f"X509_USER_PROXY={proxy} is under /tmp, which the nodes cannot see. "
                          f"Put it in your home folder, then: {PROXY_HINT}")
-    hours = math.ceil(max(time_hours(cfg.slurm.jobs[j.resources].time) for j in jobs))
+    hours = math.ceil(hours)
     rc = subprocess.run(["voms-proxy-info", "--exists", "--valid", f"{hours}:00"], env={**os.environ, **environ},
                         capture_output=True).returncode
     if rc != 0:
-        raise ProxyError(f"no VOMS proxy valid for {hours} h (the longest job of this submission). Run: {PROXY_HINT}")
+        raise ProxyError(f"no VOMS proxy valid for {hours} h (the longest job chain of this submission). "
+                         f"Run: {PROXY_HINT}")
 
 
 def submit_jobs(cfg: Config, jobs: Sequence[Job], version_dir: str, log_folder: Path, env: JobEnv,
                 dry_run: bool = False) -> dict[str, str]:
     """Write one script per job into log_folder and submit them in order (or print them with dry_run).
-    Returns job name -> SLURM job ID ('DRYRUN-<n>' in a dry run)."""
+    Returns job name -> SLURM job ID ('DRYRUN-<job name>' in a dry run)."""
     log_folder = Path(log_folder)
     log_folder.mkdir(parents=True, exist_ok=True)
     names = [j.name for j in jobs]
@@ -147,21 +160,24 @@ def submit_jobs(cfg: Config, jobs: Sequence[Job], version_dir: str, log_folder: 
         if unknown:
             raise ValueError(f"job {j.name} waits for {unknown}, which are not submitted before it")
     ids: dict[str, str] = {}
-    for n, job in enumerate(jobs, start=1):
+    for job in jobs:
         script = log_folder / f"{job.name}.sh"
         script.write_text(render_script(cfg, job, version_dir, log_folder, env))
         cmd = ["sbatch", "--parsable"]
-        if job.after:
-            cmd.append(f"--dependency={job.dependency}:" + ":".join(ids[a] for a in job.after))
+        deps = ([f"{job.dependency}:" + ":".join(ids[a] for a in job.after)] if job.after else []) + \
+               (["afterok:" + ":".join(job.after_ids)] if job.after_ids else [])
+        if deps:
+            # without this a job whose dependency can never be met stays PENDING forever
+            cmd += [f"--dependency={','.join(deps)}", "--kill-on-invalid-dep=yes"]
         cmd.append(str(script))
         if dry_run:
             print(" ".join(cmd))
-            ids[job.name] = f"DRYRUN-{n}"
+            ids[job.name] = f"DRYRUN-{job.name}"
             continue
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             done = " ".join(ids.values())
             hint = f" Already submitted: {ids}; cancel them with: scancel {done}" if ids else ""
-            raise SubmitError(f"sbatch failed for job {job.name}: {res.stderr.strip()}.{hint}")
+            raise SubmitError(f"sbatch failed for job {job.name}: {res.stderr.strip()}.{hint}", ids)
         ids[job.name] = res.stdout.strip().split(";")[0]
     return ids

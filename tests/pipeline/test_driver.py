@@ -86,7 +86,7 @@ def test_dry_run_makes_no_version(cfg, env, fake_sbatch, capsys):
     from tau3mu_gnn.pipeline.driver import submit_phase
 
     s = submit_phase(cfg, "phase_a", dry_run=True, env=env)
-    assert s.version_dir.endswith("phase_a_vs1") and s.job_ids == {"skim": "DRYRUN-1", "bdt": "DRYRUN-2"}
+    assert s.version_dir.endswith("phase_a_vs1") and s.job_ids == {"skim": "DRYRUN-skim", "bdt": "DRYRUN-bdt"}
     assert not Path(cfg.output_dir).exists() and not fake_sbatch.exists()
     assert (s.log_folder / "skim.sh").is_file() and "sbatch --parsable" in capsys.readouterr().out
 
@@ -154,3 +154,62 @@ def test_conda_env_from_config_needs_no_active_env(load, user, tmp_path, fake_sb
     monkeypatch.delenv("CONDA_EXE", raising=False)
     s = submit_phase(load(user), "phase_a")
     assert (s.log_folder / "skim.sh").read_text().splitlines()[-1].startswith(f"{prefix / 'bin' / 'python'} -m ")
+
+
+def test_all_chains_the_three_phases(cfg, env, fake_sbatch):
+    from tau3mu_gnn.pipeline.driver import submit_all
+
+    a, b, c = submit_all(cfg, env=env)
+    assert [s.version_dir.rsplit("/", 1)[-1] for s in (a, b, c)] == ["phase_a_vs1", "phase_b_vs1", "phase_c_vs1"]
+    assert (a.upstream, b.upstream, c.upstream) == (None, a.version_dir, b.version_dir)   # A has no manifest yet
+    assert a.job_ids == {"skim": "1001", "bdt": "1002"}
+    assert b.job_ids == {"gnn_signal": "1003", "gnn_background": "1004", "eval": "1005"}
+    calls = sbatch_calls(fake_sbatch)
+    for i in (2, 3):                                                   # both GNN jobs wait for A's bdt job
+        assert calls[i].startswith("--parsable --dependency=afterok:1002 --kill-on-invalid-dep=yes ")
+    for i in (5, 6, 7):                                                # every limit job waits for B's eval job
+        assert calls[i].startswith("--parsable --dependency=afterok:1005 --kill-on-invalid-dep=yes ")
+    assert calls[8].startswith("--parsable --dependency=afterany:1006:1007:1008,afterok:1005 ")
+    assert (b.log_folder / "gnn_signal.sh").read_text().splitlines()[-1].endswith(
+        f"--upstream {a.version_dir} --sample signal")
+    for s in (a, b, c):
+        assert json.loads((Path(s.version_dir) / "jobs.json").read_text()) == s.job_ids
+
+
+def test_all_uses_its_own_phase_a_not_an_older_one(cfg, env, fake_sbatch):
+    from tau3mu_gnn.pipeline.driver import submit_all
+
+    complete(cfg, "phase_a_vs1")
+    a, b, _ = submit_all(cfg, env=env)
+    assert a.version_dir.endswith("phase_a_vs2") and b.upstream == a.version_dir
+
+
+def test_all_dry_run(cfg, env, fake_sbatch, capsys):
+    from tau3mu_gnn.pipeline.driver import submit_all
+
+    a, b, c = submit_all(cfg, dry_run=True, env=env)
+    assert f"--dependency=afterok:DRYRUN-bdt --kill-on-invalid-dep=yes {b.log_folder}/gnn_signal.sh" \
+        in capsys.readouterr().out
+    assert b.upstream == a.version_dir and a.version_dir.endswith("phase_a_vs1")
+    assert c.job_ids["summary"] == "DRYRUN-summary"
+    assert (c.log_folder / "summary.sh").is_file()
+    assert not Path(cfg.output_dir).exists() and not fake_sbatch.exists()
+
+
+def test_all_proxy_covers_the_whole_chain(cfg, env, fake_sbatch, monkeypatch):
+    from tau3mu_gnn.pipeline import driver
+
+    hours = []
+    monkeypatch.setattr(driver, "check_proxy", lambda cfg, h: hours.append(h))
+    driver.submit_all(cfg, env=env)
+    assert hours == [6.0]                       # toy: every job 1 h; A 2 h + B 2 h + C 2 h
+
+
+def test_all_sbatch_failure_lists_earlier_phases(cfg, env, fake_sbatch, monkeypatch):
+    from tau3mu_gnn.pipeline.driver import submit_all
+    from tau3mu_gnn.pipeline.slurm import SubmitError
+
+    monkeypatch.setenv("FAKE_SBATCH_FAIL_AT", "4")                  # gnn_background of phase B
+    with pytest.raises(SubmitError) as e:
+        submit_all(cfg, env=env)
+    assert "scancel 1001 1002 1003" in str(e.value)

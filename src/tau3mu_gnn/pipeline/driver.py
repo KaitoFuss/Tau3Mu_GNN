@@ -10,12 +10,14 @@ from pathlib import Path
 from tau3mu_gnn.pipeline import runs, storage
 from tau3mu_gnn.pipeline.config import Config
 from tau3mu_gnn.pipeline.manifest import JOBS_FILE, read_manifest
-from tau3mu_gnn.pipeline.slurm import Job, JobEnv, check_proxy, submit_jobs
+from tau3mu_gnn.pipeline.slurm import Job, JobEnv, SubmitError, chain_hours, check_proxy, submit_jobs
 
 log = logging.getLogger(__name__)
 
 SAMPLES = ("signal", "background")
 STAGES = ("skim", "bdt", "gnn", "eval", "limit", "summary")
+PHASES = ("phase_a", "phase_b", "phase_c")
+LAST_JOB = {"phase_a": "bdt", "phase_b": "eval"}   # writes the manifest; the next phase of `all` waits for it
 
 
 @dataclass(frozen=True)
@@ -30,23 +32,27 @@ def _base(cfg: Config, version_dir: str) -> tuple[str, ...]:
     return ("--config", str(cfg.user_file), "--phase-dir", version_dir)
 
 
-def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None) -> list[Job]:
+def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None, after_ids: tuple[str, ...] = ()) \
+        -> list[Job]:
+    """after_ids: SLURM IDs the first jobs of the phase wait for (`all`: the last job of the phase before)."""
     b = _base(cfg, version_dir)
     if phase == "phase_a":
-        return [Job("skim", "skim", ("skim", *b)), Job("bdt", "bdt", ("bdt", *b), after=("skim",))]
+        return [Job("skim", "skim", ("skim", *b), after_ids=after_ids),
+                Job("bdt", "bdt", ("bdt", *b), after=("skim",))]
     if phase == "phase_b":
-        gnn = [Job(f"gnn_{s}", f"gnn_{s}", ("gnn", *b, "--upstream", up, "--sample", s)) for s in SAMPLES]
+        gnn = [Job(f"gnn_{s}", f"gnn_{s}", ("gnn", *b, "--upstream", up, "--sample", s), after_ids=after_ids)
+               for s in SAMPLES]
         return gnn + [Job("eval", "eval", ("eval", *b, "--upstream", up), after=tuple(j.name for j in gnn))]
-    limits = [Job(f"limit_{c}", "limit", ("limit", *b, "--upstream", up, "--cut", repr(c)))
+    limits = [Job(f"limit_{c}", "limit", ("limit", *b, "--upstream", up, "--cut", repr(c)), after_ids=after_ids)
               for c in cfg.limit.gnn_score_cut]
     return limits + [Job("summary", "summary", ("summary", *b, "--upstream", up),
-                         after=tuple(j.name for j in limits), dependency="afterany")]
+                         after=tuple(j.name for j in limits), dependency="afterany", after_ids=after_ids)]
 
 
-def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env) -> Submission:
-    """jobs_for(version_dir) -> job list. Shared tail of submit_phase / submit_stage (steps 3-7)."""
-    probe = jobs_for("<version>")
-    check_proxy(cfg, probe)
+def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, proxy=True) -> Submission:
+    """jobs_for(version_dir) -> job list. Shared tail of submit_phase / submit_stage / submit_all (steps 3-7)."""
+    if proxy:
+        check_proxy(cfg, chain_hours(cfg, jobs_for("<version>")))
     name = runs.next_version(parent, prefix)
     version_dir = storage.join(parent, name) if dry_run else runs.create_version(cfg, prefix, parent=parent)
     name = version_dir.rsplit("/", 1)[-1]
@@ -109,3 +115,26 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 
     debug = storage.join(cfg.output_dir, "debug")
     return _submit(cfg, jobs_for, stage, debug, ("debug",), up or src, dry_run, env)
+
+
+def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
+    """Submit phase A, B and C at once. B uses the new A version, C the new B version (not the newest complete
+    one: they have no manifest yet). The first jobs of B and C wait (afterok) for the last job of the phase
+    before; their upstream check runs when they start. If a job fails, SLURM cancels the jobs after it."""
+    env = env if env is not None else JobEnv.from_config(cfg)
+    check_proxy(cfg, sum(chain_hours(cfg, _phase_jobs(cfg, p, "<version>", "<upstream>")) for p in PHASES))
+    subs: list[Submission] = []
+    up, after = None, ()
+    for phase in PHASES:
+        try:
+            s = _submit(cfg, lambda v, phase=phase, up=up, after=after: _phase_jobs(cfg, phase, v, up, after),
+                        phase, cfg.output_dir, (), up, dry_run, env, proxy=False)
+        except SubmitError as e:
+            if not subs:
+                raise
+            done = [i for prev in subs for i in prev.job_ids.values()] + list(e.submitted.values())
+            raise SubmitError(f"{e} Earlier phases are already submitted ({', '.join(x.version_dir for x in subs)});"
+                              f" to cancel everything: scancel {' '.join(done)}") from e
+        subs.append(s)
+        up, after = s.version_dir, (s.job_ids[LAST_JOB[phase]],) if phase in LAST_JOB else ()
+    return subs

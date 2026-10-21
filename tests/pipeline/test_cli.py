@@ -28,7 +28,7 @@ def test_dry_run(cli_env, fake_sbatch, capsys):
     from tau3mu_gnn.pipeline import cli
 
     assert cli.main(["phase-a", "--config", "my.yaml", "--dry-run"]) == 0
-    assert "DRYRUN-1" in capsys.readouterr().out and not fake_sbatch.exists()
+    assert "DRYRUN-skim" in capsys.readouterr().out and not fake_sbatch.exists()
 
 
 def test_known_error_exit_1(cli_env, fake_sbatch, capsys):
@@ -53,3 +53,22 @@ def test_config_error_exit_1(tmp_path, capsys):
 
     assert cli.main(["phase-a", "--config", str(tmp_path / "missing.yaml")]) == 1
     assert "cannot read config file" in capsys.readouterr().err
+
+
+def test_all(cli_env, fake_sbatch, capsys):
+    from tau3mu_gnn.pipeline import cli
+
+    assert cli.main(["all", "--config", "my.yaml"]) == 0
+    out = capsys.readouterr().out
+    assert all(f"phase_{p}_vs1" in out for p in "abc") and "summary          1007" in out
+    with pytest.raises(SystemExit):
+        cli.main(["all", "--config", "my.yaml", "--from", "phase_a_vs1"])
+
+
+def test_console_script():
+    import tomllib
+
+    from conftest import REPO_ROOT
+
+    scripts = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["scripts"]
+    assert scripts == {"tau3mu-pipeline": "tau3mu_gnn.pipeline.cli:main"}
