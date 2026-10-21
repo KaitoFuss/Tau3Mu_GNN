@@ -53,6 +53,14 @@ The work uses two clusters:
 > - `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/`
 > - `/eos/user/k/kfuss/`
 
+> **This will change: move to lxplus.** A later step moves all work to lxplus (HTCondor and EOS). Then the split between T3 and lxplus stops. These README parts describe the T3 setup now and will change:
+> - [Infrastructure](#infrastructure): the clusters, the schedulers and the hardcoded paths.
+> - [CMS Combine](#cms-combine): the build on lxplus.
+> - [Analysis Pipeline](#analysis-pipeline-from-a-config-file): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
+> - [Quick Start](#quick-start) and [Pipeline Overview](#pipeline-overview): the copy steps between T3 and lxplus (Steps 1b, 2, 4).
+> - [Data Storage and Transfer](#data-storage-and-transfer): `/pnfs/`, `/work/`, the data flow.
+> - [Job Submission](#job-submission): SLURM on T3.
+
 ---
 
 ## Repository Structure

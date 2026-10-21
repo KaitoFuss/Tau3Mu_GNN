@@ -250,7 +250,7 @@ Each step is small, testable, and keeps the old job scripts working.
 11. Dry run on a clean account / clean checkout. Combine gap closed: README "CMS Combine" (standalone conda build into Tau3Mu, pinned commit `10cef0bb`).
 11b. Stage "npvs weights" (for when retraining is in the pipeline): after the skim, before the BDT. Port `utils/CorrectPileupDist.py` (`create_weight_array`): `PV_npvs` of signal vs data → `npvs_weights.npz` (`weight_per_bin`, `bins`) + plots. Only the training graph weights (`weights="npvs_rescale"`) use it; inference and the limit do not. `PV_npvs` becomes a required branch only for this stage. Note: the old weights were made before the skim, so the new ones differ a bit.
 12. Extend to the HF channel: HF config, HF features, multi-file inputs, HF signal weight. Test.
-13. (Very last) Port to lxplus: HTCondor scheduler layer, EOS paths, Combine on lxplus. Test.
+13. (Very last) Port to lxplus: HTCondor scheduler layer, EOS paths, Combine on lxplus. Update the README parts listed in the "move to lxplus" note (Infrastructure). Test.
 
 **Maybe, at the very end** (Kaito decides then; not needed for the limit):
 
