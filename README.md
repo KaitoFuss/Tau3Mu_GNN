@@ -117,6 +117,24 @@ pip install -e .
 
 The package follows a `src` layout — all modules live under `src/tau3mu_gnn/` and are imported as `tau3mu_gnn.*`. After `pip install -e .`, scripts can be run as `python -m tau3mu_gnn.scripts.<script_name>`.
 
+### CMS Combine
+
+The limit step needs CMS Combine **in the `Tau3Mu` env** (`<env>/bin/combine`). It is not a conda package of the env: build it once from source, with the [standalone conda recipe](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/latest/#standalone-compilation-with-conda-cmake-based) of Combine. Tau3Mu already has all build dependencies (ROOT 6.34, gsl, boost-cpp, vdt, eigen, tbb, cmake, ninja), so do not make a new env. Run this in the repo folder (`HiggsAnalysis/` is gitignored):
+
+```bash
+conda activate Tau3Mu
+git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
+cd HiggsAnalysis/CombinedLimit
+git checkout 10cef0bb      # v10.5.1 + 6 commits: the version of the reference limit
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+      -DCMAKE_INSTALL_PYTHONDIR=lib/python3.11/site-packages -DUSE_VDT=OFF
+cmake --build build -j8
+cmake --install build
+which combine              # must be $CONDA_PREFIX/bin/combine
+```
+
+Do not use the CMSSW recipe (`cmsrel`, `scram`): the jobs do not run `cmsenv`, and they look for `combine` next to the env Python. Do not use another Combine version: the limit can change.
+
 ---
 
 ## Analysis Pipeline (from a config file)
@@ -126,12 +144,13 @@ Runs the frozen W analysis (skim → BDT → GNN → evaluation → limit) on **
 ### 1. Set up (once)
 
 1. Install the `Tau3Mu` env and the package as in [Installation](#installation). `pip install -e .` also installs the command `tau3mu-pipeline`. If you installed the package before this command existed, run `pip install -e .` again.
-2. CMS Combine must be in the env (`<env>/bin/combine`). It is **not** in `environment_frozen.yaml`; build the standalone Combine into the env.
+2. Build CMS Combine into the env as in [CMS Combine](#cms-combine). It is **not** in `environment_frozen.yaml`.
 3. Write your outputs to dCache? Then you need a VOMS proxy in your **home folder** (the nodes cannot see `/tmp`):
 
    ```bash
-   export X509_USER_PROXY=$HOME/.x509up_u$(id -u)    # put this line in your ~/.bashrc
-   voms-proxy-init --voms cms --valid 192:00
+   echo 'export X509_USER_PROXY=$HOME/.x509up_u$(id -u)' >> ~/.bashrc    # once: puts this line in your ~/.bashrc
+   source ~/.bashrc
+   voms-proxy-init --voms cms --valid 192:00                               # every 8 days
    ```
 
    Before it submits, the command checks that the proxy is valid for the whole job chain. If it is not, the command stops with an error.
