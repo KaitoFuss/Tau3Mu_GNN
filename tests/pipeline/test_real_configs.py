@@ -32,3 +32,16 @@ def test_example_w_matches_production_settings(monkeypatch):
         ("standard", "128G", "0-03:00:00", 4)
     assert (jobs["gnn_background"].partition, jobs["gnn_background"].time) == ("long", "2-00:00:00")
     assert jobs["limit"].time == "0-01:30:00" and jobs["summary"].partition == "short"
+
+
+def test_example_w_raw_differs_only_in_inputs(monkeypatch):
+    from tau3mu_gnn.pipeline.manifest import config_dict
+
+    monkeypatch.setenv("USER", "tester")
+    skimmed = config_dict(load_config(REPO_ROOT / "configs" / "example_W.yaml"))
+    raw = config_dict(load_config(REPO_ROOT / "configs" / "example_W_raw.yaml"))
+    assert raw["inputs"]["already_resonance_skimmed"] is False
+    assert all("/manzoni/tau3mu_gnn/" in p for p in raw["inputs"]["signal"] + raw["inputs"]["background"])
+    assert raw["analysis_name"] != skimmed["analysis_name"]
+    differ = sorted(k for k in raw if raw[k] != skimmed[k])
+    assert differ == ["analysis_name", "inputs"]
