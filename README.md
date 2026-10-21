@@ -1,6 +1,10 @@
 # Tau3Mu GNN
 
-A Graph Neural Network pipeline for searching the lepton-flavour-violating decay **τ → 3μ** with CMS data. The GNN is intended to outperform the existing BDT baseline, with the physics goal of setting an expected upper limit on the branching ratio B(τ → 3μ) using CMS Combine.
+A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ** in CMS data.
+
+- This decay violates lepton flavour.
+- The GNN must be better than the current BDT baseline.
+- The physics goal: an expected upper limit on the branching ratio B(τ → 3μ), set with CMS Combine.
 
 ---
 
@@ -37,14 +41,17 @@ A Graph Neural Network pipeline for searching the lepton-flavour-violating decay
 
 ## Infrastructure
 
-Work is split across two clusters depending on the task:
+The work uses two clusters:
 
 | Task | Cluster | Scheduler |
 |---|---|---|
 | Graph creation, GNN inference, limit-setting | **PSI T3** | SLURM (`sbatch`) |
 | GNN training | **CERN lxplus** | HTCondor (`condor_submit`) |
 
-> Paths in job scripts and some file paths in scripts are hardcoded for user `kfuss`. Adjust all occurrences of `/work/kfuss/`, `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/` and `/eos/user/k/kfuss/` when running under a different account.
+> **Other account?** Some paths in the job scripts and the Python scripts are hardcoded for the user `kfuss`. Change all of these paths:
+> - `/work/kfuss/`
+> - `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/`
+> - `/eos/user/k/kfuss/`
 
 ---
 
@@ -104,7 +111,7 @@ tau3mu_gnn/
 
 ## Installation
 
-All steps use the `Tau3Mu` conda environment. Create and activate it with:
+All steps use the conda env `Tau3Mu`. Make it and activate it:
 
 ```bash
 conda env create -f environment_frozen.yaml
@@ -113,13 +120,22 @@ pip install -r requirements_frozen.txt
 pip install -e .
 ```
 
-> `mamba` can be used as a drop-in replacement for `conda` for faster dependency resolution.
+> **Faster:** you can use `mamba` instead of `conda`. It finds the package versions faster.
 
-The package follows a `src` layout — all modules live under `src/tau3mu_gnn/` and are imported as `tau3mu_gnn.*`. After `pip install -e .`, scripts can be run as `python -m tau3mu_gnn.scripts.<script_name>`.
+How the package works:
+
+- It has a `src` layout. All modules are in `src/tau3mu_gnn/`.
+- You import them as `tau3mu_gnn.*`.
+- After `pip install -e .`, run a script with `python -m tau3mu_gnn.scripts.<script_name>`.
 
 ### CMS Combine
 
-The limit step needs CMS Combine **in the `Tau3Mu` env** (`<env>/bin/combine`). It is not a conda package of the env: build it once from source, with the [standalone conda recipe](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/latest/#standalone-compilation-with-conda-cmake-based) of Combine. Tau3Mu already has all build dependencies (ROOT 6.34, gsl, boost-cpp, vdt, eigen, tbb, cmake, ninja), so do not make a new env. Run this in the repo folder (`HiggsAnalysis/` is gitignored):
+The limit step needs CMS Combine **in the `Tau3Mu` env** (`<env>/bin/combine`).
+
+- Combine is not a conda package of the env. Build it one time from source.
+- Use the [standalone conda recipe](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/latest/#standalone-compilation-with-conda-cmake-based) of Combine.
+- Do not make a new env. Tau3Mu already has all build dependencies: ROOT 6.34, gsl, boost-cpp, vdt, eigen, tbb, cmake, ninja.
+- Run the commands in the repo folder. Git ignores `HiggsAnalysis/`.
 
 ```bash
 conda activate Tau3Mu
@@ -133,19 +149,28 @@ cmake --install build
 which combine              # must be $CONDA_PREFIX/bin/combine
 ```
 
-Do not use the CMSSW recipe (`cmsrel`, `scram`): the jobs do not run `cmsenv`, and they look for `combine` next to the env Python. Do not use another Combine version: the limit can change.
+> **Do not** use the CMSSW recipe (`cmsrel`, `scram`). The jobs do not run `cmsenv`. They look for `combine` next to the env Python.
+>
+> **Do not** use a different Combine version. The limit can change.
 
 ---
 
 ## Analysis Pipeline (from a config file)
 
-Runs the frozen W analysis (skim → BDT → GNN → evaluation → limit) on **your** input files with one config file. The models are fixed; nothing is trained. All jobs run on the PSI T3 with SLURM.
+This pipeline runs the frozen W analysis on **your** input files. You need only one config file.
+
+- Stages: skim → BDT → GNN → evaluation → limit.
+- The models are fixed. The pipeline does not train.
+- All jobs run on the PSI T3 with SLURM.
 
 ### 1. Set up (once)
 
-1. Install the `Tau3Mu` env and the package as in [Installation](#installation). `pip install -e .` also installs the command `tau3mu-pipeline`. If you installed the package before this command existed, run `pip install -e .` again.
-2. Build CMS Combine into the env as in [CMS Combine](#cms-combine). It is **not** in `environment_frozen.yaml`.
-3. Write your outputs to dCache? Then you need a VOMS proxy in your **home folder** (the nodes cannot see `/tmp`):
+1. **Install the env and the package.** Follow [Installation](#installation).
+   - `pip install -e .` also installs the command `tau3mu-pipeline`.
+   - Did you install the package before this command existed? Then run `pip install -e .` again.
+2. **Build CMS Combine into the env.** Follow [CMS Combine](#cms-combine). Combine is **not** in `environment_frozen.yaml`.
+3. **Make a VOMS proxy.** You need it only if your outputs go to dCache.
+   - The proxy must be in your **home folder**. The nodes cannot see `/tmp`.
 
    ```bash
    echo 'export X509_USER_PROXY=$HOME/.x509up_u$(id -u)' >> ~/.bashrc    # once: puts this line in your ~/.bashrc
@@ -153,7 +178,8 @@ Runs the frozen W analysis (skim → BDT → GNN → evaluation → limit) on **
    voms-proxy-init --voms cms --valid 192:00                               # every 8 days
    ```
 
-   Before it submits, the command checks that the proxy is valid for the whole job chain. If it is not, the command stops with an error.
+   - Before it submits, the command checks the proxy. The proxy must be valid for the full job chain.
+   - Proxy not valid long enough? The command stops with an error.
 
 ### 2. Write your config
 
@@ -163,16 +189,24 @@ cp configs/example_W.yaml my_W.yaml
 
 Edit `my_W.yaml`. The comments in the file explain each key.
 
-- `analysis_name`: the name of your run folder.
-- `paths.output_base`: where results go (a `root://` dCache URL or a local absolute path). `paths.log_dir`: a local folder for job scripts and SLURM logs.
-- `paths.conda_env` (optional): the env the jobs use. Not set: the env that is active when you submit.
-- `inputs.signal`, `inputs.background`: your ROOT files (globs allowed). `branch_map`: only if your branch names differ.
-- `limit.signal_weight` is **required** and has no default. Compute it for **your** dataset (lumi, cross section, reference BR). The example value is valid only for Kaito's W dataset.
-- `limit.gnn_score_cut`: one cut, or a list for a cut scan (one Combine job per cut).
+| Key | What it is |
+|---|---|
+| `analysis_name` | The name of your run folder. |
+| `paths.output_base` | Where the results go. A `root://` dCache URL or a local absolute path. |
+| `paths.log_dir` | A local folder for the job scripts and the SLURM logs. |
+| `paths.conda_env` | Optional. The env that the jobs use. Not set: the env that is active when you submit. |
+| `inputs.signal`, `inputs.background` | Your ROOT files. Globs are allowed. |
+| `branch_map` | Set it only if your branch names are different. |
+| `limit.signal_weight` | **Required.** It has no default. See below. |
+| `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
 
-Frozen analysis settings (models, BDT preselection, mass window, SLURM resources) are in `configs/analysis_defaults_W.yaml`. Do not set them in your file: the command stops with an error if you do.
+> **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
+
+> **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
 
 ### 3. Submit
+
+Do a dry run first. Then submit.
 
 ```bash
 tau3mu-pipeline all --config my_W.yaml --dry-run    # write the job scripts, print the sbatch commands, submit nothing
@@ -185,9 +219,16 @@ tau3mu-pipeline all --config my_W.yaml              # submit phases A, B and C a
 | B | `gnn_signal`, `gnn_background`, `eval` | GNN scores, evaluation plots |
 | C | `limit_<cut>` (one per cut), `summary` | datacard + Combine per cut, table of limits |
 
-`all` chains the phases with SLURM dependencies: B starts when A's `bdt` job succeeds, C starts when B's `eval` job succeeds. If a job fails, SLURM cancels the jobs after it.
+How `all` connects the phases (SLURM dependencies):
 
-You can also run one phase at a time. A later phase uses the newest **complete** version of the phase before it, or the version you give with `--from`:
+- B starts when the `bdt` job of A succeeds.
+- C starts when the `eval` job of B succeeds.
+- If a job fails, SLURM cancels the jobs after it.
+
+**One phase at a time.** You can also run each phase alone.
+
+- A later phase uses the newest **complete** version of the phase before it.
+- To use a different version, give it with `--from`.
 
 ```bash
 tau3mu-pipeline phase-a --config my_W.yaml
@@ -195,13 +236,17 @@ tau3mu-pipeline phase-b --config my_W.yaml [--from phase_a_vs2]
 tau3mu-pipeline phase-c --config my_W.yaml [--from phase_b_vs1]
 ```
 
-To rerun one stage for debugging (output in `debug/`, no manifest): `tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]`.
+**One stage, for debugging.** The output goes to `debug/`. It has no manifest.
 
-`tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipeline.cli` is the same command.
+```bash
+tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
+```
+
+**Help.** `tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipeline.cli` is the same command.
 
 ### 4. Results
 
-Each phase run makes a **new version folder**; nothing is overwritten.
+Each phase run makes a **new version folder**. The pipeline does not overwrite a folder.
 
 ```
 <output_base>/<analysis_name>/
@@ -211,24 +256,47 @@ Each phase run makes a **new version folder**; nothing is overwritten.
 └── debug/<stage>_vsN/     single-stage runs
 ```
 
-Each version folder also has `config_used.yaml`, `jobs.json` (the SLURM job IDs), `logs/` (a copy of the SLURM logs) and, when the phase succeeded, `manifest.json`. **A version is complete only if `manifest.json` exists.** The expected limit and the best cut are in `phase_c_vsN/limits.txt`.
+Each version folder also has these files:
 
-The job scripts and the SLURM logs are also in `<log_dir>/<analysis_name>/<phase>_vsN/`.
+- `config_used.yaml`
+- `jobs.json`: the SLURM job IDs.
+- `logs/`: a copy of the SLURM logs.
+- `manifest.json`: only when the phase succeeded.
+
+> **A version is complete only if `manifest.json` exists.**
+
+- **The limit:** `phase_c_vsN/limits.txt` has the expected limit and the best cut.
+- **Local copy:** `<log_dir>/<analysis_name>/<phase>_vsN/` also has the job scripts and the SLURM logs.
 
 ### 5. When a job fails
 
-1. `squeue -u $USER` shows the jobs that still wait or run. `sacct -j <ID>` shows the state of a job.
-2. Read the log of the failed job: `<log_dir>/<analysis_name>/<phase>_vsN/<job>-<ID>.err`.
-3. Fix the problem and submit the phase again. It makes the next version (e.g. `phase_b_vs2`); the failed version stays, without a manifest.
-4. If a job runs out of memory or time, raise its value in `configs/analysis_defaults_W.yaml` (`slurm.jobs`).
+1. **Find the job.**
+   - `squeue -u $USER` shows the jobs that wait or run.
+   - `sacct -j <ID>` shows the state of one job.
+   - Job names have the format `<phase><version>.<job>.<analysis_name>`, for example `B1.gnnS.my_W`.
+     - Phase: `A`, `B`, `C`, or `D` for a debug stage. Version: the `N` of `_vsN`.
+     - Job: `skim`, `bdt`, `gnnS` (gnn_signal), `gnnB` (gnn_background), `eval`, `lim<cut>`, `sum` (summary).
+2. **Read the log** of the failed job: `<log_dir>/<analysis_name>/<phase>_vsN/<job>-<ID>.err`.
+3. **Fix the problem. Then submit the phase again.**
+   - This makes the next version, for example `phase_b_vs2`.
+   - The failed version stays. It has no manifest.
+4. **Out of memory or time?** Increase the value for that job in `configs/analysis_defaults_W.yaml` (`slurm.jobs`).
 
 ---
 
 ## Quick Start
 
-A condensed end-to-end run for the W channel using the canonical configuration from `jobs/condor/train_W_GINE_deleted.sh`. See [Pipeline Overview](#pipeline-overview) for full argument documentation and [Data Storage and Transfer](#data-storage-and-transfer) for storage layout.
+A short end-to-end run for the W channel.
 
-**Prerequisites:** active `Tau3Mu` conda environment, valid CMS VOMS proxy, skimmed ROOT files placed in `src/tau3mu_gnn/data/{signal,background}_W/` on T3.
+- It uses the standard configuration from `jobs/condor/train_W_GINE_deleted.sh`.
+- All arguments: see [Pipeline Overview](#pipeline-overview).
+- Storage layout: see [Data Storage and Transfer](#data-storage-and-transfer).
+
+**Before you start, you need:**
+
+- The `Tau3Mu` conda env, active.
+- A valid CMS VOMS proxy.
+- The skimmed ROOT files in `src/tau3mu_gnn/data/{signal,background}_W/` on T3.
 
 ```bash
 # Step 1 — Build graphs (T3)
@@ -260,11 +328,14 @@ sbatch jobs/analysis/create_datacard.sh
 
 ## Pipeline Overview
 
-The full pipeline proceeds in the following order. Each step has a corresponding job script under `jobs/`.
+Do the steps in this order. Each step has a job script in `jobs/`.
 
 ### Step 0 — Skimming (OPTIONAL)
 
-Before graph creation, raw ROOT files can optionally be pre-selected (fiducial cuts, resonance vetoes, etc.) using the skimmer. Pre-selection steps are described in detail in the project report.
+You can pre-select the raw ROOT files before graph creation. The skimmer does this.
+
+- Examples: fiducial cuts, resonance vetoes.
+- The project report describes all pre-selection steps.
 
 ```bash
 # jobs/graph_creation/skimming.sh
@@ -275,7 +346,12 @@ python -m tau3mu_gnn.utils.skimmer \
 
 ### Step 1 — Graph Creation (T3)
 
-Reads skimmed ROOT files, applies selection cuts, and builds PyTorch Geometric graph objects (`.pt` files). Separate graphs are created for signal and background, and for each channel.
+This step makes the graphs.
+
+- It reads the skimmed ROOT files.
+- It applies the selection cuts.
+- It builds PyTorch Geometric graph objects (`.pt` files).
+- It makes separate graphs for signal and background, and for each channel.
 
 ```bash
 # SLURM: jobs/graph_creation/GraphCreation_W.sh
@@ -288,16 +364,24 @@ python -m tau3mu_gnn.scripts.GraphCreation \
   --unsculpting_mode <mode>
 ```
 
-The output dataset name is constructed automatically from the parameters and written into `src/tau3mu_gnn/data/signal_<channel>/processed/` and `src/tau3mu_gnn/data/background_<channel>/processed/`. This name is used as `--model` in Step 3. See [Unsculpting / Mass Decorrelation](#unsculpting--mass-decorrelation) for `--unsculpting_mode` options.
+**The output dataset name:**
 
-> **Note on output location**: The script expects ROOT files in `src/tau3mu_gnn/data/signal_<channel>/` and `src/tau3mu_gnn/data/background_<channel>/` (relative to the repo root). The resulting `.pt` graphs are written alongside them in `processed/`. These directories are gitignored — place ROOT files there manually before running.
+- The script makes the name from the parameters.
+- It writes the files into `src/tau3mu_gnn/data/signal_<channel>/processed/` and `src/tau3mu_gnn/data/background_<channel>/processed/`.
+- In Step 3, you use this name as `--model`.
+- For the `--unsculpting_mode` options, see [Unsculpting / Mass Decorrelation](#unsculpting--mass-decorrelation).
 
-> **`--bdt_preselection_cut`** (boolean flag): when set, does three things:
-> 1. Reads ROOT files from the `bdt_full/` subdirectory (e.g. `src/tau3mu_gnn/data/signal_W/bdt_full/`) — requires pre-scored ROOT files to be placed there
-> 2. Appends `small_with_bdt_iso` to the output dataset name
-> 3. Saves the BDT ISO score as a graph-level attribute, enabling BDT-threshold pre-selection during [Fine-Tuning](#fine-tuning)
+> **Input and output folders:**
+> - The script reads the ROOT files from `src/tau3mu_gnn/data/signal_<channel>/` and `src/tau3mu_gnn/data/background_<channel>/` (relative to the repo root).
+> - It writes the `.pt` graphs next to them, in `processed/`.
+> - Git ignores these folders. Put the ROOT files there by hand before you run the script.
 
-After graph creation, copy the `.pt` files to T3 storage before proceeding to Step 2:
+> **`--bdt_preselection_cut`** (boolean flag). When you set it, the script does three things:
+> 1. It reads the ROOT files from the `bdt_full/` subfolder (for example `src/tau3mu_gnn/data/signal_W/bdt_full/`). You must put ROOT files with BDT scores there.
+> 2. It adds `small_with_bdt_iso` to the output dataset name.
+> 3. It saves the BDT ISO score as a graph-level attribute. Then [Fine-Tuning](#fine-tuning) can pre-select events with a BDT threshold.
+
+After graph creation, copy the `.pt` files to the T3 storage. Then go to Step 2.
 
 ```bash
 cp /work/kfuss/SVJ_GNN/src/tau3mu_gnn/data/signal_W/processed/<GRAPH_FILE> \
@@ -307,15 +391,20 @@ cp /work/kfuss/SVJ_GNN/src/tau3mu_gnn/data/background_W/processed/<GRAPH_FILE> \
 # Repeat for HF channel as needed
 ```
 
-**Node features** include: particle kinematics (pT, η, φ), displacement (dz, d0), PUPPI weights, and charge.  
-**Edge features** include: relative angles (ΔR, Δη, Δφ) and pairwise pT.  
-**Graph-level features** include: τ candidate kinematics, MET, vertex quality, displacement significance (previously BDT input features).
+**The features:**
+
+- **Node features:** particle kinematics (pT, η, φ), displacement (dz, d0), PUPPI weights, charge.
+- **Edge features:** relative angles (ΔR, Δη, Δφ), pairwise pT.
+- **Graph-level features:** τ candidate kinematics, MET, vertex quality, displacement significance. These were the BDT input features before.
 
 ### Step 2 — Copy Graphs to lxplus
 
-Transfer the processed `.pt` graph files from T3 storage to lxplus. Training can also be run directly on T3 (see [Job Submission](#job-submission)), but lxplus GPU nodes are more powerful and thus preferred for full-scale runs.
+Copy the `.pt` graph files from the T3 storage to lxplus.
 
-> All `xrdcp` calls require a valid CMS VOMS proxy: `voms-proxy-init --voms cms --valid 192:00`
+- You can also train on T3 (see [Job Submission](#job-submission)).
+- For full-size runs, use lxplus. Its GPU nodes are more powerful.
+
+> **Proxy:** all `xrdcp` calls need a valid CMS VOMS proxy: `voms-proxy-init --voms cms --valid 192:00`
 
 ```bash
 # Run on T3
@@ -326,7 +415,7 @@ xrdcp -r root://t3se01.psi.ch//pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_g
 
 ### Step 3 — GNN Training (lxplus)
 
-Training runs on lxplus GPU nodes via HTCondor. The training entry point is `Train_TauMuNet.py`.
+The training runs on the lxplus GPU nodes with HTCondor. The entry point is `Train_TauMuNet.py`.
 
 ```bash
 # HTCondor: jobs/condor/train_W_GINE.sub  (submit file)
@@ -347,16 +436,23 @@ python -m tau3mu_gnn.scripts.Train_TauMuNet \
   --data_base        /eos/user/k/kfuss/tau3mu_gnn_round2/data
 ```
 
-`--model` must match the dataset name auto-generated in [Step 1](#step-1--graph-creation-t3) (the suffix of the `.pt` files in `processed/`). Optional fine-tuning flags: `--finetune`, `--finetune_lr <float>`, `--finetune_epochs <int>`, `--bdt_threshold <float>`. See [Fine-Tuning](#fine-tuning) and [Key Concepts](#key-concepts) for other argument details.
+- **`--model`** must be the dataset name from [Step 1](#step-1--graph-creation-t3). This is the suffix of the `.pt` files in `processed/`.
+- **Optional fine-tuning flags:** `--finetune`, `--finetune_lr <float>`, `--finetune_epochs <int>`, `--bdt_threshold <float>`. See [Fine-Tuning](#fine-tuning).
+- **Other arguments:** see [Key Concepts](#key-concepts).
 
-Training uses:
-- **Loss**: Binary cross-entropy (+ optional DisCo term on background)
-- **Optimiser**: Adam with `ReduceLROnPlateau` scheduler
-- **Early stopping**: enabled by default; saves the best checkpoint
-- **Experiment tracking**: CometML (project logged automatically)
-- **Outputs** saved in `output/<run_name>/`: model checkpoint (`.pt`), normalisation parameters (`Normalization.pkl`), loss curves, ROC plots, sculpting check plots, architecture config (`arch_config.json`)
+The training uses:
 
-At the end of training, the model is automatically evaluated on the held-out test set (events in the 70–100% window) and plots are saved.
+- **Loss:** binary cross-entropy. Optional: a DisCo term on the background.
+- **Optimiser:** Adam with the `ReduceLROnPlateau` scheduler.
+- **Early stopping:** on by default. It saves the best checkpoint.
+- **Experiment tracking:** CometML. It logs the project automatically.
+- **Outputs** in `output/<run_name>/`:
+  - model checkpoint (`.pt`)
+  - normalisation parameters (`Normalization.pkl`)
+  - loss curves, ROC plots, sculpting check plots
+  - architecture config (`arch_config.json`)
+
+At the end, the script evaluates the model on the held-out test set. These are the events in the 70–100% window. The script saves the plots.
 
 ### Step 4 — Copy Model back to T3
 
@@ -372,7 +468,7 @@ mv /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/gnn_from_lxplus/<
 
 ### Step 5 — GNN Inference (T3)
 
-Runs a trained model on ROOT files and writes a new ROOT file containing the GNN score for each event.
+This step runs a trained model on ROOT files. It writes a new ROOT file with the GNN score of each event.
 
 ```bash
 # SLURM: jobs/gnn_score_creation/create_score_W_bkg.sh
@@ -390,13 +486,20 @@ python -m tau3mu_gnn.scripts.ScoreCreation \
   --unsculpting_mode <mode>
 ```
 
-Optional: `--bdt_preselection_cut <float>` to restrict inference to events above a BDT score threshold; `--max_events_to_process <int>` to cap the number of events processed.
+Optional arguments:
 
-The output ROOT files (containing the `GNN_score` branch) are written to `--storage_folder`. After score production, `ModelEval` is called automatically within the job script to produce tau mass histograms at fixed FPR, which are used to check for mass sculpting.
+- `--bdt_preselection_cut <float>`: use only the events above this BDT score.
+- `--max_events_to_process <int>`: the maximum number of events.
+
+**The output:**
+
+- The script writes the output ROOT files to `--storage_folder`. They have the `GNN_score` branch.
+- After the scores, the job script calls `ModelEval` automatically.
+- `ModelEval` makes tau mass histograms at a fixed FPR. Use them to check for mass sculpting.
 
 ### Step 6 — Model Evaluation (T3) (OPTIONAL)
 
-ROC curve comparisons across multiple models (and against the BDT baseline) can be produced with:
+This step compares the ROC curves of many models. It can also compare them to the BDT baseline.
 
 ```bash
 # jobs/model_eval/ROC_curves_comparison.sh
@@ -410,15 +513,16 @@ python -m tau3mu_gnn.model_eval.ModelEval \
   --bdt_location    <path/to/bdt_model/>
 ```
 
-`--lambdas` are free-text display labels for each model in the plot legend — typically the DisCo λ value used in training (e.g. `0.0`, `0.5`), but can be any descriptive string.
-
-Other `--plot_mode` options: `tau_hist`, `tau_hist_fpr`, `score_cut`.
+- **`--lambdas`:** free-text labels for each model in the plot legend.
+  - Usually the DisCo λ value of the training, for example `0.0` or `0.5`.
+  - Any descriptive text is also possible.
+- **Other `--plot_mode` options:** `tau_hist`, `tau_hist_fpr`, `score_cut`.
 
 ### Step 7 — Limit Setting (T3)
 
-Limit setting requires a valid CMS VOMS proxy and CMS Combine to be available.
+You need a valid CMS VOMS proxy and CMS Combine.
 
-**7a — Generate datacard and run Combine:**
+**7a — Make the datacard and run Combine:**
 
 ```bash
 # jobs/analysis/create_datacard.sh
@@ -432,9 +536,13 @@ combine -M FitDiagnostics datacard.txt                        # sanity-checks th
 combine -C 0.90 --run blind -M AsymptoticLimits datacard.txt  # 90% CL expected upper limit, asymptotic approximation, blinded
 ```
 
-The signal is modelled as a Gaussian at m(τ) = 1.78 GeV, background as a falling exponential. The expected limit is calculated blinded (signal mass window excluded from the fit).
+The model:
 
-**7b — Parse and save the limit:**
+- **Signal:** a Gaussian at m(τ) = 1.78 GeV.
+- **Background:** a falling exponential.
+- **Limit:** expected, blinded. The fit does not use the signal mass window.
+
+**7b — Read and save the limit:**
 
 ```bash
 python -m tau3mu_gnn.analysis.readout_limit \
@@ -444,7 +552,9 @@ python -m tau3mu_gnn.analysis.readout_limit \
   --path    <path/to/combine/output/>
 ```
 
-The median expected limit is extracted and appended to `/work/kfuss/SVJ_GNN/output/<channel>_limits.json`, sorted by model performance.
+- The script reads the median expected limit.
+- It adds the limit to `/work/kfuss/SVJ_GNN/output/<channel>_limits.json`.
+- It sorts the file by model performance.
 
 ---
 
@@ -452,16 +562,25 @@ The median expected limit is extracted and appended to `/work/kfuss/SVJ_GNN/outp
 
 ### Channels
 
-Two τ production channels are supported throughout the pipeline:
+The pipeline supports two τ production channels:
 
-- **W channel** (`--tau_channel W`): τ from W → τν decay
-- **HF channel** (`--tau_channel HF`): τ from heavy-flavour decays
+- **W channel** (`--tau_channel W`): τ from W → τν decay.
+- **HF channel** (`--tau_channel HF`): τ from heavy-flavour decays.
 
-Graph-level features, signal weights, and some file naming conventions differ between channels. The channel must be specified consistently at every pipeline step.
+These are different for each channel:
+
+- the graph-level features
+- the signal weights
+- some file names
+
+> **Use the same channel in every pipeline step.**
 
 ### Graph Construction
 
-Each event is represented as a graph over particle-flow (PF) candidates within a cone of ΔR < 0.5 around the τ candidate.
+Each event is a graph.
+
+- The nodes are the particle-flow (PF) candidates.
+- Only candidates in a cone of ΔR < 0.5 around the τ candidate are used.
 
 **Edge connection modes** (`--graph_type`):
 
@@ -473,7 +592,9 @@ Each event is represented as a graph over particle-flow (PF) candidates within a
 
 ### Unsculpting / Mass Decorrelation
 
-A key challenge is preventing the GNN from sculpting the τ invariant mass distribution, which would bias the background model used in the limit fit. Several strategies are implemented via `--unsculpting_mode`:
+**The problem:** the GNN can sculpt the τ invariant mass distribution. This gives a bias to the background model of the limit fit.
+
+**The solutions:** `--unsculpting_mode` selects one strategy:
 
 | Mode | Description |
 |---|---|
@@ -482,20 +603,23 @@ A key challenge is preventing the GNN from sculpting the τ invariant mass distr
 | `split_pt_uniformly` | Replaces muon pT with a fixed value drawn from a uniform distribution |
 | *(None)* | No unsculpting applied |
 
-DisCo regularisation (see below) can also be used independently or in combination with these modes.
+You can also use DisCo regularisation (see below). Use it alone or together with these modes.
 
-> **Note**: `GraphCreation.py` and `ConeGraphProducer.py` use the name `split_pt_uniformly`; `Train_TauMuNet.py` accepts `split_pt`. Use the name that matches the script you are calling.
+> **Name difference:**
+> - `GraphCreation.py` and `ConeGraphProducer.py` use `split_pt_uniformly`.
+> - `Train_TauMuNet.py` uses `split_pt`.
+> - Use the name of the script that you call.
 
 ### GNN Architecture (TauMuNet)
 
-The model (`TauMuNet`) is a message-passing GNN with the following structure:
+The model `TauMuNet` is a message-passing GNN. Its structure:
 
-1. Configurable number of graph convolution layers (the convolution type is selectable)
-2. Feature fusion: concatenated outputs from all convolution layers are projected into a shared representation
-3. Optional scale-down fully-connected layers
-4. Global mean pooling over nodes
-5. Graph-level feature injection (position depends on `gnn_mode`)
-6. Final fully-connected classification head (with sigmoid output, logits are preferred for stability)
+1. **Graph convolution layers.** You select the number of layers and the convolution type.
+2. **Feature fusion.** The outputs of all convolution layers are concatenated. Then they are projected into one shared representation.
+3. **Scale-down layers.** Optional fully-connected layers.
+4. **Global mean pooling** over the nodes.
+5. **Graph-level features** go in. The position depends on `gnn_mode`.
+6. **Classification head.** Fully-connected, with sigmoid output. Logits are better for stability.
 
 **Convolution types** (`--conv_type`):
 
@@ -505,11 +629,15 @@ The model (`TauMuNet`) is a message-passing GNN with the following structure:
 | `GAT` | Graph Attention Network |
 | `Transformer` | Transformer-based graph convolution |
 
-Architecture hyperparameters (number of layers, hidden dimensions, dropout) are defined in `GNN_archs.py` and selected via `--arch`. A `random` option draws a configuration from a predefined random grid.
+**Hyperparameters:**
+
+- `GNN_archs.py` defines the number of layers, the hidden dimensions and the dropout.
+- `--arch` selects one configuration.
+- `--arch random` takes a configuration from a predefined random grid.
 
 ### Graph Feature Integration Modes
 
-Graph-level features (τ kinematics, MET, vertex variables) can be injected into the GNN at different points, controlled by `--gnn_mode`:
+The graph-level features are τ kinematics, MET and vertex variables. `--gnn_mode` sets where they go into the GNN:
 
 | Mode | Description |
 |---|---|
@@ -520,17 +648,23 @@ Graph-level features (τ kinematics, MET, vertex variables) can be injected into
 
 ### DisCo Regularisation
 
-A distance-correlation (DisCo) penalty term between the GNN output score and the reconstructed τ mass is added to the training loss on background events:
+The training loss can have a distance-correlation (DisCo) penalty.
+
+- The penalty is between the GNN output score and the reconstructed τ mass.
+- It is used only on background events. Signal events are masked out.
 
 ```
 L = BCE + λ · DisCo(score, m_τ)
 ```
 
-The regularisation strength is set via `--disco` (λ = 0 disables it). A linear warm-up over the first 20 epochs is applied. The DisCo penalty is only evaluated on background events; signal events are masked out.
+- `--disco` sets the strength λ. λ = 0 turns it off.
+- λ increases linearly over the first 20 epochs (warm-up).
 
 ### Fine-Tuning
 
-After the main training phase, a second fine-tuning phase can be run on a subset of events selected by a BDT ISO score threshold:
+After the main training, you can do a second training phase: fine-tuning.
+
+- It uses only the events above a BDT ISO score threshold.
 
 ```bash
 --finetune
@@ -539,13 +673,17 @@ After the main training phase, a second fine-tuning phase can be run on a subset
 --bdt_threshold    <float>   # minimum BDT ISO score for event inclusion
 ```
 
-The pre-fine-tune checkpoint is saved separately as `<name>_pretrained.pt`. Fine-tuning uses a higher early-stopping patience to allow adaptation on the smaller dataset.
+- The checkpoint before fine-tuning is saved separately, as `<name>_pretrained.pt`.
+- Fine-tuning has a higher early-stopping patience. The smaller dataset needs more time to adapt.
 
 ---
 
 ## BDT Baseline
 
-The primary baseline is the ISO BDT (`rel_iso` input), which is also the classifier currently used in the analysis. A legacy variant that takes `GNN_score` as input exists but is no longer the focus. Both can be trained and scored:
+**The primary baseline is the ISO BDT** (input: `rel_iso`). The analysis also uses this classifier now.
+
+- An old variant uses `GNN_score` as input. It is no longer the focus.
+- You can train and score both variants:
 
 ```bash
 # Train (W channel)
@@ -561,19 +699,22 @@ python -m tau3mu_gnn.bdt_training.BDT_ScoreProducer \
   --storage_folder <scratch_dir>
 ```
 
-The BDT ISO score can also be saved as a graph-level feature during graph creation (`--bdt_preselection_cut`), for event pre-selection during fine-tuning.
+Graph creation can also save the BDT ISO score as a graph-level feature (`--bdt_preselection_cut`). Fine-tuning then uses it to pre-select events.
 
 ---
 
 ## Data Storage and Transfer
 
-Processed data lives on the T3 CMS storage system and is accessed via `xrootd`. All jobs that read from or write to `/pnfs/` require a valid VOMS proxy:
+The processed data is on the T3 CMS storage. You access it with `xrootd`.
+
+> **Proxy:** all jobs that read from or write to `/pnfs/` need a valid VOMS proxy:
 
 ```bash
 voms-proxy-init --voms cms --valid 192:00
 ```
 
-Data paths on T3 storage:
+Data paths on the T3 storage:
+
 ```
 /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/
 ├── data/
@@ -585,16 +726,19 @@ Data paths on T3 storage:
 └── datacard_tests/        # Combine datacards and output
 ```
 
-Combine outputs and limit results are written to `/work/kfuss/SVJ_GNN/output/` and `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/<MODEL_NAME>`.
+The Combine outputs and the limit results go to:
+
+- `/work/kfuss/SVJ_GNN/output/`
+- `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/<MODEL_NAME>`
 
 ### Location roles and data flow
 
 | Location | Purpose |
 |---|---|
-| `src/tau3mu_gnn/data/` (repo, T3) | Temporary landing zone for ROOT inputs and generated `.pt` graphs; gitignored |
-| T3 `/pnfs/` | Persistent CMS xrootd storage; source for xrdcp transfers |
-| T3 `/work/kfuss/` | Fast local scratch; used by active SLURM jobs for model loading and output |
-| lxplus `/eos/user/k/kfuss/` | EOS storage used for training data and model outputs on lxplus |
+| `src/tau3mu_gnn/data/` (repo, T3) | Temporary place for the ROOT inputs and the `.pt` graphs. Git ignores it. |
+| T3 `/pnfs/` | Permanent CMS xrootd storage. The source for `xrdcp` transfers. |
+| T3 `/work/kfuss/` | Fast local disk. Running SLURM jobs load models from it and write output to it. |
+| lxplus `/eos/user/k/kfuss/` | EOS storage for the training data and the model outputs on lxplus. |
 
 ```
 ROOT files (T3 /work/kfuss/SVJ_GNN/)
@@ -623,6 +767,7 @@ scored ROOT files + limit JSON (T3 /work/kfuss/ and /pnfs/)   ← Steps 5–7
 ### T3 (SLURM)
 
 Standard jobs (CPU):
+
 ```bash
 sbatch jobs/graph_creation/GraphCreation_W.sh
 sbatch jobs/gnn_score_creation/create_score_W_bkg.sh
@@ -630,22 +775,26 @@ sbatch jobs/analysis/create_datacard.sh
 ```
 
 GPU training jobs on T3 (for quick tests):
+
 ```bash
 sbatch jobs/gnn_training/Train_W_final_layer.sh
 ```
 
-Log files are written to `/work/kfuss/SVJ_GNN/logs/`.
+The log files go to `/work/kfuss/SVJ_GNN/logs/`.
 
 ### lxplus (HTCondor)
 
-For full-scale training, submit via HTCondor on lxplus:
+For full-size training, submit with HTCondor on lxplus:
+
 ```bash
 condor_submit jobs/condor/train_W_GINE.sub
 ```
 
-The `.sub` file points to an executable `.sh` script (stored on AFS). Logs go to `/afs/cern.ch/user/k/kfuss/condor_logs/`.
-
-HTCondor jobs request a GPU with compute capability ≥ 7.0 and ≥ 30 GB VRAM.
+- The `.sub` file points to an executable `.sh` script. The script is on AFS.
+- The logs go to `/afs/cern.ch/user/k/kfuss/condor_logs/`.
+- HTCondor jobs ask for one GPU with:
+  - compute capability ≥ 7.0
+  - ≥ 30 GB VRAM
 
 ---
 

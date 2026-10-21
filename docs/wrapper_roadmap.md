@@ -145,7 +145,7 @@ channel: W                              # user file only; selects analysis_defau
 
 paths:
   output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
-  log_dir: /work/$USER/tau3mu_logs   # job scripts + SLURM logs (local disk)
+  log_dir: /work/$USER/SVJ_GNN/tau3mu_logs   # job scripts + SLURM logs (local disk)
   conda_env:  /work/<user>/miniforge3/envs/Tau3Mu   # optional; default: the active env at submit
 
 inputs:

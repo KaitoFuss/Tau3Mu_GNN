@@ -22,7 +22,7 @@ def test_example_w_matches_production_settings(monkeypatch):
     assert cfg.limit.mass_window == 0.060
     assert cfg.limit.fit_range == (1.62, 1.98)
     assert cfg.limit.cl == 0.90
-    assert cfg.paths.log_dir == "/work/tester/tau3mu_logs"
+    assert cfg.paths.log_dir == "/work/tester/SVJ_GNN/tau3mu_logs"
     jobs = cfg.slurm.jobs
     assert cfg.slurm.account == "t3"
     assert (jobs["skim"].partition, jobs["skim"].mem, jobs["skim"].time, jobs["skim"].cpus) == \
