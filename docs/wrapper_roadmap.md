@@ -254,7 +254,7 @@ Each step is small, testable, and keeps the old job scripts working.
     - 12a ✅ Training config: `configs/training_defaults_W.yaml` (frozen), `configs/example_training_W.yaml` (user), `pipeline/training/config.py` (`load_training_config`). Shared stages read `analysis_defaults_W.yaml`. Plan `docs/superpowers/plans/2026-10-23-step12a-training-config.md`.
     - 12b ✅ Stage npvs (was 12a): all skimmed signal vs all skimmed background, old variable binning. `pipeline/training/stages/npvs.py` → `npvs_weights.npz` (`weight_per_bin`, `bins`), `npvs.png`, `npvs_weights.png`; `branches.training_required_branches` adds `PV_npvs`. Plan `docs/superpowers/plans/2026-10-23-step12b-npvs.md`.
     - 12c Stage bdt_train (ISO only, sideband background).
-    - 12d Stage graphs (BDT cut `>=` at creation, candidate 0, sideband background, 600k events).
+    - 12d Stage graphs (BDT cut `>=` at creation, candidate 0, sideband background, 600k events). **Fix here:** `ConeGraphProducer.py:477` indexes `weight_per_bin[PV_npvs]` (length 100), but `PV_npvs` (uint8) can be 100-255 → IndexError (old bug, 12b review). Choose clip or weight 0, test `PV_npvs` = 100 and 150. Also 12g: use `branches.training_required_branches` in the training stage-0 input check.
     - 12e Stage gnn_train (no fine-tune, Comet ML).
     - 12f Stage benchmark limit (cut scan + summary).
     - 12g Training driver, SLURM (GPU job: per-job account / gres), `tau3mu-train`.
