@@ -150,3 +150,22 @@ def test_stage_model_loads_in_analysis(tmp_path, load_training, training_user):
     with torch.no_grad():
         score = model(Batch.from_data_list([g]))
     assert torch.isfinite(score).all()
+
+
+def test_nan_validation_loss_stops_at_once(tmp_path, small, monkeypatch):
+    import tau3mu_gnn.gnn_training.TrainingUtils as utrain
+    real = utrain.distance_corr
+
+    def nan_in_validation(*args, **kwargs):          # NaN only in the validation pass (no grad)
+        return torch.tensor(float("nan")) if not torch.is_grad_enabled() else real(*args, **kwargs)
+
+    monkeypatch.setattr(utrain, "distance_corr", nan_in_validation)
+    with pytest.raises(FloatingPointError, match="validation loss"):
+        _train(tmp_path, small, _toy_graphs(tmp_path, small))
+
+
+def test_old_cli_comet_settings_for_any_channel():
+    from tau3mu_gnn.scripts.Train_TauMuNet import comet_settings
+    for channel in ("W", "HF"):
+        c = comet_settings(channel)
+        assert c["workspace"] and c["api_key"]

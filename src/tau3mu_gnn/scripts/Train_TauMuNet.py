@@ -372,6 +372,18 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     aucs = {key: float(value) for key, value in auc.items()}   # roc_auc: {evaluation key: AUC}
     return {**info, "auc_test": next(iter(aucs.values())) if len(aucs) == 1 else aucs}
 
+def comet_settings(tau_channel):
+    """Comet workspace and API key for the old CLI: configs/training_defaults_<channel>.yaml, else the W file
+    (one Comet account for all channels; no key in the code)."""
+    import yaml
+    from tau3mu_gnn.pipeline.config import REPO_ROOT
+    path = REPO_ROOT / "configs" / f"training_defaults_{tau_channel}.yaml"
+    if not path.is_file():
+        path = REPO_ROOT / "configs" / "training_defaults_W.yaml"
+    with open(path) as f:
+        return yaml.safe_load(f)["comet"]
+
+
 class _NoExperiment:
     """Stand-in when no Comet experiment is given."""
 
@@ -531,6 +543,10 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_full_losses.append(epoch_loss_validation)
         experiment.log_metric(f"Full validation validation", epoch_loss_validation, epoch=epoch)
+
+        if not np.isfinite(epoch_loss_validation):  # NaN would block early stopping and the checkpoint
+            raise FloatingPointError(f"validation loss is {epoch_loss_validation} in epoch {epoch} "
+                                     f"(BCE {epoch_bce_loss_validation}, DisCo {epoch_disco_validation})")
 
         if scheduler is not None:
             scheduler.step(epoch_loss_validation)
@@ -718,12 +734,8 @@ if __name__ == "__main__":
 
     print("==> Running TauMuNet ")
 
-    # Comet workspace and API key: configs/training_defaults_<channel>.yaml (no key in the code)
-    import yaml
     from comet_ml import Experiment
-    from tau3mu_gnn.pipeline.config import REPO_ROOT
-    with open(REPO_ROOT / "configs" / f"training_defaults_{tau_channel}.yaml") as f:
-        comet = yaml.safe_load(f)["comet"]
+    comet = comet_settings(tau_channel)
     experiment = Experiment(api_key=comet["api_key"], project_name=name, workspace=comet["workspace"])
     
     if arch == "random":
