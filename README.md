@@ -14,6 +14,7 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
 - [Analysis Pipeline (from a config file)](#analysis-pipeline-from-a-config-file)
+- [Training Pipeline (tau3mu-train)](#training-pipeline-tau3mu-train)
 - [Quick Start](#quick-start)
 - [Pipeline Overview](#pipeline-overview)
   - [Step 0 — Skimming](#step-0--skimming-optional)
@@ -322,9 +323,71 @@ Each version folder also has these files:
 
 ---
 
+## Training Pipeline (tau3mu-train)
+
+Trains a new BDT and GNN on your inputs, and computes a BDT-only benchmark limit. You need it only if you want new models. Without it, the analysis uses the frozen models.
+
+### 1. Write the training config
+
+```bash
+cp configs/example_training_W.yaml my_training_W.yaml
+```
+
+The comments in the file explain each key. The frozen training settings (BDT and GNN recipe, graph settings, Comet ML, SLURM resources) are in `configs/training_defaults_W.yaml`. The shared settings (skim cuts, limit fit) come from `configs/analysis_defaults_W.yaml`.
+
+| Key | What it is |
+|---|---|
+| `training_name` | The name of the training folder. |
+| `paths`, `inputs`, `branch_map` | As in the analysis config. |
+| `graphs.bdt_preselection_cut` | **Required.** Only events with `bdt_ISO >= cut` go into the GNN training graphs. |
+| `graphs.max_events`, `bdt_training.max_events_per_class` | Optional. Defaults 600000 and 100000. |
+| `benchmark.bdt_score_cut` | **Required.** One cut or a list on `bdt_ISO` for the BDT-only benchmark limit. |
+| `limit.signal_weight` | **Required.** As in the analysis config. |
+
+### 2. Submit
+
+```bash
+voms-proxy-init --voms cms --valid 192:00     # the longest job chain is about 157 h
+tau3mu-train all --config my_training_W.yaml --dry-run
+tau3mu-train all --config my_training_W.yaml
+```
+
+`all` submits three phases. You can also submit one phase: `tau3mu-train bdt|gnn|benchmark --config ...` (`gnn` and `benchmark` take `--from bdt_vsN`).
+
+| Phase | Jobs | Needs |
+|---|---|---|
+| `bdt` | skim → BDT training → BDT inference | your inputs |
+| `gnn` | npvs weights → signal graphs; background graphs → GNN training (GPU) | a `bdt_vsN` |
+| `benchmark` | one BDT-only limit per cut → summary | a `bdt_vsN` |
+
+The jobs use the code of the folder you submit from. Do not change that folder while the jobs run. The GNN training runs on the `gpu` partition. Without a visible GPU it trains on CPU and writes a warning to its log. Each job checks at its start that the proxy is valid for its own time limit.
+
+### 3. Results
+
+```
+<output_base>/<training_name>/
+├── bdt_vsN/         1_skim/, bdt_train/ (ISO_classifiers.pck, plots), 2_bdt/
+├── gnn_vsN/         npvs/, graphs/, gnn_train/<model_name>/ (model, Normalization.pkl, arch_config.json)
+└── benchmark_vsN/   cut_<cut>/, limits.json, limits.txt, limits.png   (BDT-only limit, best cut)
+```
+
+Job names: `BDT<N>`, `GNN<N>`, `BEN<N>` plus the job, for example `GNN1.gnnT.my_training`.
+
+### 4. Use the new models in the analysis
+
+Set `models` in your analysis config to the `gnn_vsN` folder, then run the analysis as usual (`tau3mu-pipeline all`):
+
+```yaml
+models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/<you>/tau3mu_pipeline/<training_name>/gnn_vs1
+```
+
+The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `phase_c_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
+
+---
+
 ## Quick Start
 
-> **This will change: GNN training in the pipeline.** A later step adds the GNN training to `tau3mu-pipeline`. Then this section will change.
+> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-from-a-config-file) and the [Training Pipeline](#training-pipeline-tau3mu-train) replace these steps. They are kept for reference.
 
 A short end-to-end run for the W channel.
 
@@ -368,7 +431,7 @@ sbatch jobs/analysis/create_datacard.sh
 
 ## Pipeline Overview
 
-> **This will change: GNN training in the pipeline.** A later step adds the GNN training to `tau3mu-pipeline`. Then this section will change.
+> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-train) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-from-a-config-file) Steps 5–7. They are kept for reference.
 
 Do the steps in this order. Each step has a job script in `jobs/`.
 

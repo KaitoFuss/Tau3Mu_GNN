@@ -55,7 +55,7 @@ slurm:                         # SLURM resources per job. First values (2026-10-
   account: t3                  # default account; a job may set its own
   jobs:
     skim:              {partition: long,     mem: 128G, time: "1-00:00:00", cpus: 4}
-    bdt_train:         {partition: standard, mem: 64G,  time: "0-06:00:00", cpus: 4}
+    bdt_train:         {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 4}  # BDT inference on full W: MaxRSS 107 GiB
     bdt_infer:         {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 1}
     npvs:              {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
     graphs_signal:     {partition: long,     mem: 256G, time: "2-00:00:00", cpus: 1}
