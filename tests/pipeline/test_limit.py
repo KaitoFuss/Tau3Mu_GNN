@@ -286,3 +286,36 @@ def test_stage_end_to_end(load, user, toy_inputs, tmp_path):
     saved = json.loads((d / "limit.json").read_text())
     assert saved == {"cut": 3.9, "limit": res["limit"], "limitErr": res["limitErr"]}
     assert res["limit"] > 0
+
+
+def _renamed_copy(src, dst, old="GNN_score", new="bdt_ISO"):
+    import uproot
+    with uproot.open(src) as f:
+        arr = f["Events"].arrays(library="ak")
+    return write_tree(dst, {(new if k == old else k): arr[k] for k in arr.fields})
+
+
+def test_score_branch_gives_same_card(toy_inputs, tmp_path):
+    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    sig, bkg = toy_inputs
+    a = make_datacard([sig], [bkg], 3.9, SIG_WEIGHT, tmp_path / "gnn")
+    sig2, bkg2 = _renamed_copy(sig, tmp_path / "iso" / "s.root"), _renamed_copy(bkg, tmp_path / "iso" / "b.root")
+    b = make_datacard([sig2], [bkg2], 3.9, SIG_WEIGHT, tmp_path / "bdt", score_branch="bdt_ISO")
+    assert (tmp_path / "gnn" / "datacard.txt").read_text() == (tmp_path / "bdt" / "datacard.txt").read_text()
+    assert (a.n_signal, a.n_data) == (b.n_signal, b.n_data)
+
+
+def test_iso_old_cli_builds_old_paths(monkeypatch, tmp_path):
+    from tau3mu_gnn.analysis import datacard_creation_ISO as iso
+    calls = {}
+
+    def fake(sig, bkg, cut, weight, out_dir, **kw):
+        calls.update(sig=sig, bkg=bkg, cut=cut, weight=weight, out_dir=out_dir, **kw)
+
+    monkeypatch.setattr(iso, "make_datacard", fake)
+    iso.main(["--model", "m", "--channel", "W", "--cut", "0.986"])
+    base = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data"
+    assert calls["sig"] == [f"{base}/background_W/m/selected_signal_skimmed_no_resonances_with_scores_bdt_full.root"]
+    assert calls["bkg"] == [f"{base}/background_W/m/selected_data_skimmed_no_resonances_with_scores_bdt_full.root"]
+    assert calls["cut"] == 0.986 and calls["weight"] == 0.000019 and calls["out_dir"] == "."
+    assert calls["score_branch"] == "bdt_ISO"

@@ -102,8 +102,8 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
 def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Path], cut: float,
                   signal_weight: float, out_dir: str | Path, tau_mass: float = 1.78,
                   mass_window: float = 0.060, fit_range: tuple[float, float] = (1.62, 1.98),
-                  tree_name: str = "Events") -> DatacardResult:
-    """Select GNN_score > cut, fit signal (Gaussian) and sideband data (exponential), write into out_dir:
+                  tree_name: str = "Events", score_branch: str = "GNN_score") -> DatacardResult:
+    """Select <score_branch> > cut (GNN_score; the BDT-only benchmark uses bdt_ISO), fit signal (Gaussian) and sideband data (exponential), write into out_dir:
     temp_mc_selected.root, temp_data_selected.root, mass.pdf, datacard.root, datacard.txt."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -116,7 +116,7 @@ def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Pat
     ##########################################################################################
     ##      Selection definitions
     ##########################################################################################
-    selection = f"GNN_score > {cut}"
+    selection = f"{score_branch} > {cut}"
     signal_weight = f"{signal_weight}" # weight to scale the signal. Can be one of the branches of the tree
     blind_cut = f'abs(mass - {tau_mass}) > {mass_window}'  # blinding cut for sidebands only
 
