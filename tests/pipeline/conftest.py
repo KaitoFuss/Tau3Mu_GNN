@@ -126,7 +126,7 @@ TOY_TRAINING_DEFAULTS = {
                      "split_seed": 1986, "sample_seed": 42},
     "npvs": {"var_bins": VAR_BINS, "uniform_bins": [0, 100, 101]},
     "graphs": {"connection": "knn", "k": 10, "cone_size": 0.5, "use_displacement": True,
-               "unsculpting_mode": "delete_muons"},
+               "unsculpting_mode": "delete_muons", "shuffle_seed": 1986},
     "gnn_training": {"conv_type": "GINE", "gnn_mode": "final_layer", "arch": "fl8_sd4", "learning_rate": 0.0016,
                      "batch_size": 128, "disco": 0.0, "epochs": 1000, "early_stopping_patience": 20,
                      "lr_scheduler_patience": 10, "class_fraction": [0.5, 0.5],

@@ -31,6 +31,7 @@ graphs:                        # graph creation, from scripts/GraphCreation.py (
   cone_size: 0.5
   use_displacement: true       # dz/d0 node features ("dzd0" in the name)
   unsculpting_mode: delete_muons
+  shuffle_seed: 1986           # random subset of max_events; the old code had no seed
 
 gnn_training:                  # from scripts/Train_TauMuNet.py + jobs/condor/train_W_GINE_deleted.sh, no fine-tune
   conv_type: GINE

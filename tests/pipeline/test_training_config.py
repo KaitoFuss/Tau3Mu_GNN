@@ -98,3 +98,10 @@ def test_r_threshold_connection_rejected(load_training, training_user):
     load_training.defaults["graphs"]["connection"] = "r_threshold"
     with pytest.raises(ConfigError, match="graphs.connection"):
         load_training(training_user)
+
+
+def test_graph_shuffle_seed_frozen(load_training, training_user):
+    assert load_training(training_user).graphs.shuffle_seed == 1986
+    training_user["graphs"]["shuffle_seed"] = 1
+    with pytest.raises(ConfigError, match="'graphs.shuffle_seed' is a frozen training setting"):
+        load_training(training_user)

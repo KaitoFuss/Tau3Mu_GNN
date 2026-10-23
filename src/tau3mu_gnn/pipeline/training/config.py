@@ -109,6 +109,7 @@ TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "graphs.cone_size": _Field(_positive_number),
     "graphs.use_displacement": _Field(_bool),
     "graphs.unsculpting_mode": _Field(_non_empty_str),
+    "graphs.shuffle_seed": _Field(_positive_int),
     "gnn_training.conv_type": _Field(_non_empty_str),
     "gnn_training.gnn_mode": _Field(_non_empty_str),
     "gnn_training.arch": _Field(_non_empty_str),
@@ -165,6 +166,7 @@ class GraphsConfig:
     cone_size: float
     use_displacement: bool        # "dzd0" in the name
     unsculpting_mode: str
+    shuffle_seed: int             # random subset of max_events
 
     @property
     def graph_type(self) -> str:

@@ -12,6 +12,7 @@ def test_example_training_w_loads_the_recipe(monkeypatch):
     cfg, _ = _load(monkeypatch)
     assert cfg.sideband_half_width == 0.08
     assert (cfg.graphs.max_events, cfg.graphs.bdt_preselection_cut) == (600000, 0.8)
+    assert cfg.graphs.shuffle_seed == 1986
     assert (cfg.bdt_training.max_depth, cfg.bdt_training.n_estimators, cfg.bdt_training.kfold) == (8, 1000, 6)
     assert cfg.bdt_training.max_events_per_class == 100000
     assert (cfg.gnn_training.learning_rate, cfg.gnn_training.batch_size, cfg.gnn_training.epochs) == (0.0016, 128, 1000)
