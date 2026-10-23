@@ -149,4 +149,5 @@ def test_class_weights_balance_unequal_classes(tmp_path):
         [_toy(tmp_path / "s.root", 60, rng, True)], [_toy(tmp_path / "b.root", 20, rng, False, first_event=100)],
         "Events", "W", 1.78, 0.08, 1000, 42)
     sums = data.groupby("target")["weight"].sum()
-    assert sums[0] == pytest.approx(sums[1]) and data["weight"].sum() == pytest.approx(len(data))
+    assert sums[1] == pytest.approx(sums[0])                 # signal rescaled to the background total
+    assert (data.loc[data.target == 0, "weight"] == 1.0).all()   # background weights untouched

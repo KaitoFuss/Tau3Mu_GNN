@@ -16,7 +16,7 @@
 - One row per event = candidate 0 (`ak.firsts` in `_load`), rows with NaN dropped (`dropna`), as stage 2.
 - Signal: all events (an event without a selected candidate drops out through `dropna`; the old script used `GNN_score != -1` for the same).
 - Background: **sideband only**, old rule: keep an event only if **all** its `Selected_TauTo3Mu_fitted_mass` values satisfy `abs(m - tau_mass) > sideband_half_width` (`Train_XGB_W.py:215-216`). `tau_mass` = `cfg.limit.tau_mass` (1.78), half width = `cfg.sideband_half_width` (0.08).
-- Sampling: `df.sample(n=min(max_events_per_class, len(df)), random_state=sample_seed)` per class; weights: equal total weight per class, mean 1 (Kaito, PR #28 review; old: all 1); `target` 1 / 0.
+- Sampling: `df.sample(n=min(max_events_per_class, len(df)), random_state=sample_seed)` per class; weights: background 1, signal rescaled to the background total (Kaito, PR #28 review; old: all 1); `target` 1 / 0.
 - Split and folds: `train_test_split(data, test_size, random_state=split_seed)`; `StratifiedKFold(n_splits=kfold, random_state=split_seed, shuffle=True)` on train.
 - XGBoost per fold: `max_depth, learning_rate, n_estimators, subsample, colsample_bytree, gamma, reg_alpha, reg_lambda, early_stopping_rounds` from `cfg.bdt_training`; `min_child_weight = min_child_weight_fraction * sum(fold train weights)`; `seed = split_seed`; `eval_metric="logloss"`; `eval_set=[(X_train, y_train), (X_valid, y_valid)]`; `verbosity=1`.
 - Pickle format = what stage 2 reads: `pickle.dump({fold_index: XGBClassifier, ...})`, fold indices `0..kfold-1`.

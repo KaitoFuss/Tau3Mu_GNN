@@ -59,7 +59,7 @@ skim ─► bdt_train ─► bdt_infer                     ├─► gnn_train
 | BDT train events | signal: all candidates; background: **sideband only**, candidate-level `abs(fitted_mass - 1.78) > 0.08`, events with all candidates in the sideband | `Train_XGB_W.py:215-216` |
 | BDT sample size | at most 100,000 events per class (`sample(random_state=42)`) | `Train_XGB_W.py:238-239` |
 | BDT split / folds | `train_test_split(test_size=0.4, random_state=1986)`, `StratifiedKFold(6, random_state=1986)` | `Train_XGB_W.py:374-386` |
-| BDT XGBoost | `max_depth=8`, `learning_rate=0.005`, `n_estimators=1000`, `early_stopping_rounds=100`, `min_child_weight=1e-6*sum(w)`, weights: both classes the same total weight, mean 1 (Kaito, PR #28; the old script used 1) | `Train_XGB_W.py:300-420` |
+| BDT XGBoost | `max_depth=8`, `learning_rate=0.005`, `n_estimators=1000`, `early_stopping_rounds=100`, `min_child_weight=1e-6*sum(w)`, weights: background 1, signal rescaled to the background total (Kaito, PR #28; the old script used 1 for both) | `Train_XGB_W.py:300-420` |
 | BDT features | the ISO feature list of `Train_XGB_W.py` (`modes["ISO"]`), must equal what stage 2 reads | `Train_XGB_W.py:88-` |
 | npvs events | **all skimmed signal vs all skimmed background** (`1_skim`), no BDT cut, no sideband (Kaito, 2026-10-23) | |
 | npvs bins | the old **variable binning** (`var_bins`) mapped onto `np.linspace(0, 100, 101)`, as `create_weight_array` does; frozen | `CorrectPileupDist.py` |
