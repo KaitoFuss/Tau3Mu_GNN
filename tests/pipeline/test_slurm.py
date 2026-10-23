@@ -99,7 +99,7 @@ def render(load, user, tmp_path, args=("skim",), user_file=None):
     ("phase_b_vs3", "eval", "B3.eval.run"),
     ("phase_c_vs12", "limit_3.9", "C12.lim3.9.run"),
     ("phase_c_vs12", "summary", "C12.sum.run"),
-    ("gnn_vs2", "gnn_signal", "D2.gnnS.run"),
+    ("skim_vs2", "gnn_signal", "D2.gnnS.run"),
     ("limit_vs1", "limit_2.0", "D1.lim2.0.run"),
 ])
 def test_slurm_job_name(version, job, expected):
@@ -327,3 +327,53 @@ def test_submit_jobs_waits_for_earlier_submission(load, user, tmp_path, fake_sba
     calls = fake_sbatch.read_text().splitlines()
     assert calls[0].startswith("--parsable --dependency=afterok:77 --kill-on-invalid-dep=yes ")
     assert calls[1].startswith("--parsable --dependency=afterany:1001,afterok:77 --kill-on-invalid-dep=yes ")
+
+
+def _env():
+    from tau3mu_gnn.pipeline.slurm import JobEnv
+
+    return JobEnv(Path("/c/base"), Path("/c/base/envs/T"), Path("/c/base/envs/T/bin/python"), Path("/repo/src"))
+
+
+@pytest.mark.parametrize("name, resources, args", [
+    ("skim", "skim", ("skim", "--x", "a b")),
+    ("limit_3.9", "limit", ("limit", "--cut", "3.9")),
+])
+def test_analysis_script_unchanged(load, user, name, resources, args):
+    """Expected text rendered by the code before step 12g (tests/pipeline/expected/)."""
+    from tau3mu_gnn.pipeline.slurm import Job, render_script
+
+    text = render_script(load(user), Job(name, resources, args), "/out/toy_run/phase_a_vs1",
+                         Path("/logs/toy_run/phase_a_vs1"), _env())
+    assert text == (Path(__file__).parent / "expected" / f"script_{name}.txt").read_text()
+
+
+def test_job_module_and_gpu_flags(load_training, training_user, tmp_path):
+    from tau3mu_gnn.pipeline.slurm import Job, render_script
+
+    cfg = load_training(training_user)
+    module = "tau3mu_gnn.pipeline.training.jobs"
+    gpu = render_script(cfg, Job("gnn_train", "gnn_train", ("gnn_train",), module=module),
+                        "/out/toy_train/gnn_vs2", tmp_path / "logs", _env()).splitlines()
+    assert "#SBATCH --account=gpu_gres" in gpu and "#SBATCH --gres=gpu:1" in gpu
+    assert gpu.index("#SBATCH --gres=gpu:1") == gpu.index("#SBATCH --cpus-per-task=1") + 1
+    assert "#SBATCH --job-name=GNN2.gnnT.toy_train" in gpu
+    assert gpu[-1] == f"/c/base/envs/T/bin/python -m {module} gnn_train"
+    cpu = render_script(cfg, Job("npvs", "npvs", ("npvs",), module=module),
+                        "/out/toy_train/gnn_vs2", tmp_path / "logs", _env())
+    assert "#SBATCH --account=t3" in cpu and "--gres" not in cpu
+
+
+@pytest.mark.parametrize("version, job, expected", [
+    ("gnn_vs2", "gnn_train", "GNN2.gnnT.toy_train"),
+    ("bdt_vs1", "bdt_train", "BDT1.bdtT.toy_train"),
+    ("bdt_vs1", "bdt_infer", "BDT1.bdtI.toy_train"),
+    ("gnn_vs3", "graphs_signal", "GNN3.grS.toy_train"),
+    ("gnn_vs3", "graphs_background", "GNN3.grB.toy_train"),
+    ("benchmark_vs1", "benchmark_limit_3.9", "BEN1.bl3.9.toy_train"),
+    ("benchmark_vs1", "benchmark_summary", "BEN1.bsum.toy_train"),
+])
+def test_training_job_names(version, job, expected):
+    from tau3mu_gnn.pipeline.slurm import slurm_job_name
+
+    assert slurm_job_name("toy_train", version, job) == expected

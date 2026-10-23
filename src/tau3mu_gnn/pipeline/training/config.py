@@ -240,6 +240,11 @@ class TrainingConfig:
         """Run folder: <output_base>/<training_name>. String join, so xrootd URLs stay intact."""
         return f"{self.paths.output_base.rstrip('/')}/{self.training_name}"
 
+    @property
+    def run_name(self) -> str:
+        """Name shared with the analysis config (SLURM job names, log folder)."""
+        return self.training_name
+
 
 # ---------------------------------------------------------------- loading
 

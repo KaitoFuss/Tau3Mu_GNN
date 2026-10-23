@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=A1.skim.toy_run
+#SBATCH --account=t3
+#SBATCH --partition=standard
+#SBATCH --mem=4G
+#SBATCH --time=0-01:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --output=/logs/toy_run/phase_a_vs1/skim-%j.out
+#SBATCH --error=/logs/toy_run/phase_a_vs1/skim-%j.err
+set -eo pipefail
+source /c/base/bin/activate /c/base/envs/T
+export PYTHONPATH=/repo/src${PYTHONPATH:+:$PYTHONPATH}
+JOB_SCRATCH="/scratch/$USER/$SLURM_JOB_ID"
+mkdir -p "$JOB_SCRATCH"
+export TMPDIR="$JOB_SCRATCH"
+cleanup() {
+    for f in /logs/toy_run/phase_a_vs1/skim-"$SLURM_JOB_ID".out /logs/toy_run/phase_a_vs1/skim-"$SLURM_JOB_ID".err; do
+        [ -f "$f" ] && /c/base/envs/T/bin/python -c "import sys; from tau3mu_gnn.pipeline import storage; storage.put(sys.argv[1], sys.argv[2])" "$f" /out/toy_run/phase_a_vs1/logs/"$(basename "$f")" || true
+    done
+    rm -rf "$JOB_SCRATCH"
+}
+trap cleanup EXIT
+cd "$JOB_SCRATCH"
+/c/base/envs/T/bin/python -m tau3mu_gnn.pipeline.jobs skim --x 'a b'

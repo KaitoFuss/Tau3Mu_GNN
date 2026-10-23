@@ -56,7 +56,7 @@ def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, pr
     name = runs.next_version(parent, prefix)
     version_dir = storage.join(parent, name) if dry_run else runs.create_version(cfg, prefix, parent=parent)
     name = version_dir.rsplit("/", 1)[-1]
-    log_folder = Path(cfg.paths.log_dir, cfg.analysis_name, *log_parts, name)
+    log_folder = Path(cfg.paths.log_dir, cfg.run_name, *log_parts, name)
     ids = submit_jobs(cfg, jobs_for(version_dir), version_dir, log_folder, env, dry_run=dry_run)
     if not dry_run:
         storage.write_text(storage.join(version_dir, JOBS_FILE), json.dumps(ids, indent=2) + "\n")

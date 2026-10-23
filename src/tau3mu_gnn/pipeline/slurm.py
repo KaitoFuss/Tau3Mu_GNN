@@ -11,11 +11,14 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import TYPE_CHECKING, Mapping, Sequence
 
 import tau3mu_gnn
 from tau3mu_gnn.pipeline import storage
 from tau3mu_gnn.pipeline.config import Config
+
+if TYPE_CHECKING:
+    from tau3mu_gnn.pipeline.training.config import TrainingConfig
 
 PROXY_HINT = "voms-proxy-init --voms cms --valid 192:00"
 
@@ -38,10 +41,11 @@ class EnvError(SubmitError):
 class Job:
     name: str                      # e.g. "gnn_signal", "limit_3.9"
     resources: str                 # key of cfg.slurm.jobs
-    args: tuple[str, ...]          # arguments of `python -m tau3mu_gnn.pipeline.jobs`
+    args: tuple[str, ...]          # arguments of `python -m <module>`
     after: tuple[str, ...] = ()    # names of jobs this one waits for
     dependency: str = "afterok"    # afterok | afterany
     after_ids: tuple[str, ...] = ()  # IDs of jobs submitted before (afterok), e.g. the last job of phase A
+    module: str = "tau3mu_gnn.pipeline.jobs"   # `python -m` module of the job command
 
 
 @dataclass(frozen=True)
@@ -88,19 +92,23 @@ def chain_hours(cfg: Config, jobs: Sequence[Job]) -> float:
     return max(end.values(), default=0.0)
 
 
-SHORT_JOB = {"gnn_signal": "gnnS", "gnn_background": "gnnB", "summary": "sum"}
+SHORT_JOB = {"gnn_signal": "gnnS", "gnn_background": "gnnB", "summary": "sum",
+             "bdt_train": "bdtT", "bdt_infer": "bdtI", "graphs_signal": "grS", "graphs_background": "grB",
+             "gnn_train": "gnnT", "benchmark_summary": "bsum"}
+VERSION_CODES = {"bdt": "BDT", "gnn": "GNN", "benchmark": "BEN"}   # training pipeline version prefixes
 
 
-def slurm_job_name(analysis_name: str, version: str, job: str) -> str:
+def slurm_job_name(run_name: str, version: str, job: str) -> str:
     """Short job first, so the 8-character NAME column of squeue shows it:
-    phase_b_vs3 + gnn_signal -> B3.gnnS.<analysis_name>; debug runs (<stage>_vsN) get D."""
+    phase_b_vs3 + gnn_signal -> B3.gnnS.<run_name>; gnn_vs2 + gnn_train -> GNN2.gnnT.<run_name>
+    (training versions bdt / gnn / benchmark -> BDT / GNN / BEN); debug runs (<stage>_vsN) get D."""
     stem, n = version.rsplit("_vs", 1)
-    code = stem[-1].upper() if stem.startswith("phase_") else "D"
-    short = SHORT_JOB.get(job) or job.replace("limit_", "lim", 1)
-    return f"{code}{n}.{short}.{analysis_name}"
+    code = stem[-1].upper() if stem.startswith("phase_") else VERSION_CODES.get(stem, "D")
+    short = SHORT_JOB.get(job) or job.replace("benchmark_limit_", "bl", 1).replace("limit_", "lim", 1)
+    return f"{code}{n}.{short}.{run_name}"
 
 
-def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env: JobEnv,
+def render_script(cfg: "Config | TrainingConfig", job: Job, version_dir: str, log_folder: Path, env: JobEnv,
                   scratch_root: str = "/scratch/$USER") -> str:
     res = cfg.slurm.jobs[job.resources]
     version = storage.join(version_dir).rsplit("/", 1)[-1]
@@ -113,12 +121,13 @@ def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env
     args = " ".join(q(a) for a in job.args)
     return "\n".join([
         "#!/bin/bash",
-        f"#SBATCH --job-name={slurm_job_name(cfg.analysis_name, version, job.name)}",
-        f"#SBATCH --account={cfg.slurm.account}",
+        f"#SBATCH --job-name={slurm_job_name(cfg.run_name, version, job.name)}",
+        f"#SBATCH --account={res.account or cfg.slurm.account}",
         f"#SBATCH --partition={res.partition}",
         f"#SBATCH --mem={res.mem}",
         f"#SBATCH --time={res.time}",
         f"#SBATCH --cpus-per-task={res.cpus}",
+        *([f"#SBATCH --gres={res.gres}"] if res.gres else []),
         f"#SBATCH --output={out}",
         f"#SBATCH --error={err}",
         "set -eo pipefail",
@@ -136,7 +145,7 @@ def render_script(cfg: Config, job: Job, version_dir: str, log_folder: Path, env
         "}",
         "trap cleanup EXIT",
         'cd "$JOB_SCRATCH"',
-        f"{q(str(env.python))} -m tau3mu_gnn.pipeline.jobs {args}",
+        f"{q(str(env.python))} -m {job.module} {args}",
     ]) + "\n"
 
 
