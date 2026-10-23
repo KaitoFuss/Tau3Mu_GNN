@@ -122,3 +122,22 @@ def test_stage_missing_branch_raises(tmp_path, load_training, training_user):
     with pytest.raises(BranchError, match="b.root"):
         stage.run(load_training(training_user), {"signal": sig, "background": bkg}, tmp_path / "o")
     assert not (tmp_path / "o" / "ISO_classifiers.pck").exists()
+
+
+def test_inf_feature_rows_dropped(tmp_path, params):
+    rng = np.random.default_rng(5)
+    sig = _toy(tmp_path / "s.root", 40, rng, True)
+    arr = uproot_read(sig)
+    data = {k: arr[k] for k in arr.fields}
+    data["Selected_TauTo3Mu_vtx_Ndof"] = ak.Array([[0.0]] + [[2.0]] * 39)   # chi2 / 0 = inf in event 0
+    sig = write_tree(tmp_path / "s_inf.root", data)
+    bkg = _toy(tmp_path / "b.root", 40, rng, False, first_event=100)
+    d, feats = train_bdt.load_training_data([sig], [bkg], "Events", "W", 1.78, 0.08, 1000, 42)
+    assert (d.target == 1).sum() == 39 and np.isfinite(d[feats].to_numpy(dtype=float)).all()
+    train_bdt.train_iso_bdt(d, feats, params)   # no XGBoostError
+
+
+def uproot_read(path):
+    import uproot
+    with uproot.open(path) as f:
+        return f["Events"].arrays(library="ak")

@@ -54,6 +54,9 @@ def load_training_data(signal_files, background_files, tree_name: str, channel: 
         if sig[col].dtype == object:
             sig[col] = sig[col].astype(int)
             bkg[col] = bkg[col].astype(int)
+    # XGBoost fit rejects inf (e.g. chi2 / Ndof with Ndof = 0); dropna above does not remove it
+    sig, bkg = (df[np.isfinite(df[bdt_features].to_numpy(dtype=float)).all(axis=1)].reset_index(drop=True)
+                for df in (sig, bkg))
     sig["target"], bkg["target"] = 1, 0
     sig["weight"], bkg["weight"] = 1., 1.
     data = pd.concat([sig, bkg], ignore_index=True)
