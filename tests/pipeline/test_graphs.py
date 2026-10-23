@@ -149,3 +149,61 @@ def test_training_graph_equals_inference_graph(tmp_path):
         edges = lambda g: sorted(zip(g.edge_index.T.tolist(), g.edge_attr.float().tolist()))  # noqa: E731
         assert edges(t) == edges(i)
         assert t.x.shape[0] > 11   # knn with k = 10 really selects
+
+
+NAME = "skimmed_dzd0_cone_size_0.5_knn_10_delete_muons"
+
+
+def _stage_inputs(tmp_path):
+    sig = write_tree(tmp_path / "in" / "sig.root", training_events([[10.0], [20.0]], bdt=[0.9, 0.9], npvs=[30, 40]))
+    bkg = write_tree(tmp_path / "in" / "bkg.root",
+                     training_events([[30.0], [40.0]], bdt=[0.9, 0.9], masses=[[1.65], [1.90]]))
+    npz = tmp_path / "in" / "signal_W_npvs_weights.npz"
+    np.savez(npz, weight_per_bin=np.arange(100.0), bins=np.linspace(0, 100, 101))
+    return sig, bkg, npz
+
+
+def test_stage_layout_and_names(tmp_path, load_training, training_user):
+    from tau3mu_gnn.pipeline.training.stages import graphs as stage
+    cfg = load_training(training_user)
+    sig, bkg, npz = _stage_inputs(tmp_path)
+    out = tmp_path / "graphs"
+    ps = stage.run(cfg, "signal", sig, out, npvs_file=npz)
+    pb = stage.run(cfg, "background", bkg, out)
+    assert stage.model_type(cfg) == NAME
+    assert ps == out / "signal_W" / "processed" / f"W_decay_signal_{NAME}.pt" and ps.is_file()
+    assert pb == out / "background_W" / "processed" / f"W_decay_background_{NAME}.pt" and pb.is_file()
+    s = list(ConeGraphProducer(str(out / "signal_W"), output_dataset_name=f"W_decay_signal_{NAME}"))
+    b = list(ConeGraphProducer(str(out / "background_W"), output_dataset_name=f"W_decay_background_{NAME}"))
+    assert sorted(float(g.w) for g in s) == [30.0, 40.0] and all(float(g.y) == 1 for g in s)
+    assert all(float(g.w) == 1.0 and float(g.y) == 0 for g in b) and len(b) == 2
+
+
+def test_stage_signal_needs_npvs_background_refuses_it(tmp_path, load_training, training_user):
+    from tau3mu_gnn.pipeline.training.stages import graphs as stage
+    cfg = load_training(training_user)
+    sig, bkg, npz = _stage_inputs(tmp_path)
+    with pytest.raises(ValueError, match="npvs"):
+        stage.run(cfg, "signal", sig, tmp_path / "a")
+    with pytest.raises(ValueError, match="signal only"):
+        stage.run(cfg, "background", bkg, tmp_path / "b", npvs_file=npz)
+
+
+def test_stage_missing_branch(tmp_path, load_training, training_user):
+    from tau3mu_gnn.pipeline.branches import BranchError
+    from tau3mu_gnn.pipeline.training.stages import graphs as stage
+    data = training_events([[30.0]], bdt=[0.9], masses=[[1.65]])
+    data.pop("bdt_ISO")
+    bkg = write_tree(tmp_path / "nobdt.root", data)
+    with pytest.raises(BranchError, match="nobdt.root"):
+        stage.run(load_training(training_user), "background", bkg, tmp_path / "g")
+    assert not list((tmp_path / "g").rglob("*.pt")) if (tmp_path / "g").exists() else True
+
+
+def test_stage_refuses_existing_folder(tmp_path, load_training, training_user):
+    from tau3mu_gnn.pipeline.training.stages import graphs as stage
+    cfg = load_training(training_user)
+    _, bkg, _ = _stage_inputs(tmp_path)
+    stage.run(cfg, "background", bkg, tmp_path / "g")
+    with pytest.raises(FileExistsError):
+        stage.run(cfg, "background", bkg, tmp_path / "g")
