@@ -99,7 +99,7 @@ def render(load, user, tmp_path, args=("skim",), user_file=None):
     ("phase_b_vs3", "eval", "B3.eval.run"),
     ("phase_c_vs12", "limit_3.9", "C12.lim3.9.run"),
     ("phase_c_vs12", "summary", "C12.sum.run"),
-    ("skim_vs2", "gnn_signal", "D2.gnnS.run"),
+    ("gnn_vs2", "gnn_signal", "D2.gnnS.run"),
     ("limit_vs1", "limit_2.0", "D1.lim2.0.run"),
 ])
 def test_slurm_job_name(version, job, expected):
@@ -374,6 +374,17 @@ def test_job_module_and_gpu_flags(load_training, training_user, tmp_path):
     ("benchmark_vs1", "benchmark_summary", "BEN1.bsum.toy_train"),
 ])
 def test_training_job_names(version, job, expected):
-    from tau3mu_gnn.pipeline.slurm import slurm_job_name
+    from tau3mu_gnn.pipeline.slurm import VERSION_CODES, slurm_job_name
 
-    assert slurm_job_name("toy_train", version, job) == expected
+    assert slurm_job_name("toy_train", version, job, VERSION_CODES) == expected
+
+
+def test_analysis_debug_job_keeps_code_d(load, user, tmp_path):
+    """bdt_vs2 is an analysis debug folder (D); only training jobs get BDT."""
+    from tau3mu_gnn.pipeline.slurm import Job, render_script
+
+    cfg = load(user)
+    for module, code in (("tau3mu_gnn.pipeline.jobs", "D2"), ("tau3mu_gnn.pipeline.training.jobs", "BDT2")):
+        text = render_script(cfg, Job("bdt", "skim", ("bdt",), module=module), "/out/toy_run/bdt_vs2",
+                             tmp_path / "logs", _env())
+        assert f"#SBATCH --job-name={code}.bdt.toy_run" in text.splitlines()

@@ -98,12 +98,15 @@ SHORT_JOB = {"gnn_signal": "gnnS", "gnn_background": "gnnB", "summary": "sum",
 VERSION_CODES = {"bdt": "BDT", "gnn": "GNN", "benchmark": "BEN"}   # training pipeline version prefixes
 
 
-def slurm_job_name(run_name: str, version: str, job: str) -> str:
+TRAINING_MODULE = "tau3mu_gnn.pipeline.training.jobs"
+
+
+def slurm_job_name(run_name: str, version: str, job: str, codes: Mapping[str, str] = {}) -> str:
     """Short job first, so the 8-character NAME column of squeue shows it:
     phase_b_vs3 + gnn_signal -> B3.gnnS.<run_name>; gnn_vs2 + gnn_train -> GNN2.gnnT.<run_name>
-    (training versions bdt / gnn / benchmark -> BDT / GNN / BEN); debug runs (<stage>_vsN) get D."""
+    (codes=VERSION_CODES, training jobs only: bdt / gnn / benchmark -> BDT / GNN / BEN); debug runs (<stage>_vsN) get D."""
     stem, n = version.rsplit("_vs", 1)
-    code = stem[-1].upper() if stem.startswith("phase_") else VERSION_CODES.get(stem, "D")
+    code = stem[-1].upper() if stem.startswith("phase_") else codes.get(stem, "D")
     short = SHORT_JOB.get(job) or job.replace("benchmark_limit_", "bl", 1).replace("limit_", "lim", 1)
     return f"{code}{n}.{short}.{run_name}"
 
@@ -121,7 +124,7 @@ def render_script(cfg: "Config | TrainingConfig", job: Job, version_dir: str, lo
     args = " ".join(q(a) for a in job.args)
     return "\n".join([
         "#!/bin/bash",
-        f"#SBATCH --job-name={slurm_job_name(cfg.run_name, version, job.name)}",
+        f"#SBATCH --job-name={slurm_job_name(cfg.run_name, version, job.name, VERSION_CODES if job.module == TRAINING_MODULE else {})}",
         f"#SBATCH --account={res.account or cfg.slurm.account}",
         f"#SBATCH --partition={res.partition}",
         f"#SBATCH --mem={res.mem}",
