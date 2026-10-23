@@ -15,7 +15,7 @@ def read_npvs(files, tree_name="Events", col_name="PV_npvs"):
 
 
 def npvs_weights(npvs_signal, npvs_bkg, var_bins, uniform_bins):
-    """Signal -> background weights of the normalised npvs histograms on var_bins, mapped onto
+    """Weights for SIGNAL events only (background events keep weight 1): signal -> background weights of the normalised npvs histograms on var_bins, mapped onto
     uniform_bins: a uniform bin gets the weight of the variable bin that holds its centre.
     Variable bins without signal get weight 0. Raise ValueError if a sample has no entry in var_bins."""
     hist_signal, _ = np.histogram(npvs_signal, bins=var_bins)
@@ -39,13 +39,19 @@ def npvs_weights(npvs_signal, npvs_bkg, var_bins, uniform_bins):
     return rescaled_weights
 
 
+def signal_event_weights(npvs_signal, weight_per_bin):
+    """Per-event weight of signal events: weight_per_bin[PV_npvs], with PV_npvs clipped to the
+    table (values >= len(weight_per_bin) get the last bin's weight)."""
+    index = np.clip(np.asarray(npvs_signal, dtype=np.int64), 0, len(weight_per_bin) - 1)
+    return np.asarray(weight_per_bin)[index]
+
+
 def plot_npvs(npvs_signal, npvs_bkg, weight_per_bin, uniform_bins, title, out_npvs, out_weights):
     """Signal, background and rescaled signal npvs (log y), and the weight distribution."""
     fig, ax1 = plt.subplots()
     ax1.hist(npvs_signal, bins=uniform_bins, alpha=0.7, color='blue', label="signal", density=True)
     ax1.hist(npvs_bkg, bins=uniform_bins, alpha=0.7, color='red', label="background", density=True)
-    signal_bin_indices = np.clip(np.digitize(npvs_signal, bins=uniform_bins) - 1, 0, len(weight_per_bin) - 1)
-    event_weights = weight_per_bin[signal_bin_indices]
+    event_weights = signal_event_weights(npvs_signal, weight_per_bin)
     ax1.hist(npvs_signal, bins=uniform_bins, weights=event_weights, alpha=0.7, color='green',
              label="rescaled signal", density=True)
     ax1.set_ylabel("Normalised Counts")

@@ -1,8 +1,11 @@
-"""Training stage npvs: PV_npvs weights (signal -> background shape) for the signal graphs.
+"""Training stage npvs: PV_npvs weights for the SIGNAL graphs only.
 
-Reads all events of the stage 1 outputs (no BDT cut, no sideband). Histograms on npvs.var_bins,
+The weights reshape the signal PV_npvs distribution to the background one. Only the signal graphs
+use them (graph weight = signal_event_weights(PV_npvs, weight_per_bin)); background graphs keep
+weight 1, and GNN inference uses no weights. Reads all events of the stage 1 outputs of both
+samples (no BDT cut, no sideband): background is the target shape. Histograms on npvs.var_bins,
 weights mapped onto np.linspace(*npvs.uniform_bins) (utils/CorrectPileupDist.py).
-Writes npvs_weights.npz (weight_per_bin, bins) and two plots.
+Writes signal_<channel>_npvs_weights.npz (weight_per_bin, bins) and two plots.
 """
 from __future__ import annotations
 
@@ -22,7 +25,8 @@ from tau3mu_gnn.utils.CorrectPileupDist import npvs_weights, plot_npvs, read_npv
 
 log = logging.getLogger(__name__)
 
-OUTPUTS = {"weights": "npvs_weights.npz", "plot_npvs": "npvs.png", "plot_weights": "npvs_weights.png"}
+OUTPUTS = {"weights": "signal_{channel}_npvs_weights.npz", "plot_npvs": "signal_{channel}_npvs.png",
+           "plot_weights": "signal_{channel}_npvs_weights.png"}   # name as the old graph code reads it
 
 
 def run(cfg: TrainingConfig, inputs: Mapping[str, str | Path], out_dir: str | Path) -> dict[str, Path]:
@@ -38,7 +42,7 @@ def run(cfg: TrainingConfig, inputs: Mapping[str, str | Path], out_dir: str | Pa
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    outputs = {key: out_dir / name for key, name in OUTPUTS.items()}
+    outputs = {key: out_dir / name.format(channel=cfg.channel) for key, name in OUTPUTS.items()}
     np.savez(outputs["weights"], weight_per_bin=weights, bins=uniform_bins)
     plot_npvs(npvs["signal"], npvs["background"], weights, uniform_bins, f"{cfg.channel} channel",
               outputs["plot_npvs"], outputs["plot_weights"])

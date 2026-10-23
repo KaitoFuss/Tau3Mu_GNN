@@ -80,4 +80,20 @@ def test_missing_branch_raises(tmp_path, load_training, training_user):
     bkg = write_tree(tmp_path / "bkg.root", {"other": np.array([1.0])})
     with pytest.raises(BranchError, match="bkg.root.*PV_npvs"):
         stage.run(load_training(training_user), {"signal": sig, "background": bkg}, tmp_path / "out")
-    assert not (tmp_path / "out" / "npvs_weights.npz").exists()
+    assert not (tmp_path / "out").exists() or not any((tmp_path / "out").iterdir())
+
+
+def test_signal_event_weights_clip_out_of_range():
+    w = np.arange(100, dtype=float)                      # weight of uniform bin i = i
+    npvs = np.array([0, 50, 99, 100, 255], dtype=np.uint8)
+    np.testing.assert_array_equal(cpd.signal_event_weights(npvs, w), [0, 50, 99, 99, 99])
+
+
+def test_stage_output_names_say_signal(tmp_path, load_training, training_user):
+    from conftest import write_tree
+    from tau3mu_gnn.pipeline.training.stages import npvs as stage
+    sig = write_tree(tmp_path / "sig.root", {"PV_npvs": np.array([10, 30, 30], dtype=np.uint8)})
+    bkg = write_tree(tmp_path / "bkg.root", {"PV_npvs": np.array([10, 10, 30], dtype=np.uint8)})
+    out = stage.run(load_training(training_user), {"signal": sig, "background": bkg}, tmp_path / "out")
+    assert {p.name for p in out.values()} == {
+        "signal_W_npvs_weights.npz", "signal_W_npvs.png", "signal_W_npvs_weights.png"}

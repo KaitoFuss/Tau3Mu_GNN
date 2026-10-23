@@ -38,16 +38,16 @@ Anti-goals (would make it a failure even if it runs)
 ## 3. The chain
 
 ```
-                      ┌─► npvs ─► graphs_signal ─┐
-skim ─► bdt_train ─► bdt_infer                   ├─► gnn_train
-                      │          graphs_background┘
+                      ┌─► npvs ─► graphs_signal ──┐
+skim ─► bdt_train ─► bdt_infer                     ├─► gnn_train
+                      ├─► graphs_background ───────┘    (no npvs: background weight 1)
                       └─► benchmark_limit_<cut> (one job per cut) ─► benchmark_summary
 ```
 
 - `skim` = stage 0 (resonance skim, if inputs are raw) + stage 1 (skim). The **same code** as the analysis (`pipeline/stages/resonance_skim.py`, `skim.py`), the same frozen cuts.
 - `bdt_train`: new. Trains the ISO BDT. Port of `bdt_training/Train_XGB_W.py`, **ISO mode only** (the script also trains a "GNN" mode that uses `GNN_score` as a feature: not ported).
 - `bdt_infer`: the existing stage 2 (`pipeline/stages/bdt.py`) with the **new** classifier.
-- `npvs`: new (was roadmap step 12a). Port of `utils/CorrectPileupDist.create_weight_array`: `PV_npvs` of signal vs background → `npvs_weights.npz` (`weight_per_bin`, `bins`) + plots. Only the training graph weights (`weights="npvs_rescale"`) use it. Note: the old weights were made before the skim; the new ones are made after the skim, so they differ a bit.
+- `npvs`: new (was roadmap step 12a). Port of `utils/CorrectPileupDist.create_weight_array`: `PV_npvs` of signal vs background → `signal_<channel>_npvs_weights.npz` (`weight_per_bin`, `bins`) + plots. **Signal only** (checked 2026-10-23 in the old code): only the signal graphs get `weights="npvs_rescale"` (`GraphCreation.py:180`), background graphs get weight 1, and GNN inference uses no weights. The training samples graphs with these weights (`graphDataLoader.py:102-113`, `WeightedRandomSampler`, normalised per sample), so they reshape the signal `PV_npvs` distribution to the background one. Background is read only as the target shape. So `graphs_background` does not wait for `npvs`. Per-event lookup: `CorrectPileupDist.signal_event_weights` (`PV_npvs` clipped to the table; values ≥ 100 get the last bin's weight). Note: the old weights were made before the skim; the new ones are made after the skim, so they differ a bit.
 - `graphs_signal`, `graphs_background`: new. Port of `scripts/GraphCreation.py` + `graph/ConeGraphProducer.py`. **The BDT preselection cut is applied here**: only events that pass go into the graph files (as in commit `01d680e`, which made the graphs of the frozen model). One job per sample, in parallel.
 - `gnn_train`: new. Port of `scripts/Train_TauMuNet.py` without the fine-tune part. GPU job.
 - `benchmark_limit_<cut>`, `benchmark_summary`: new stage, the BDT-only limit. Port of `analysis/datacard_creation_ISO.py` + the two Combine commands of `jobs/analysis/create_datacard_benchmark.sh`. A cut scan like the GNN scan (step 8b): one job per cut, a summary job writes the table and marks the best cut. Starts after `bdt_infer` (not after `bdt_train`), in parallel with the GNN branch.
@@ -160,13 +160,13 @@ My call (Claude), same style as step 9. The training has three phases so that a 
 | Phase | Jobs | Needs |
 |---|---|---|
 | `bdt` | skim → bdt_train → bdt_infer | inputs |
-| `gnn` | npvs → graphs_signal ∥ graphs_background → gnn_train | a `bdt_vsN` |
+| `gnn` | (npvs → graphs_signal) ∥ graphs_background → gnn_train | a `bdt_vsN` |
 | `benchmark` | benchmark_limit_<cut> (∥) → benchmark_summary | a `bdt_vsN` |
 
 ```
 <output_base>/<training_name>/
 ├── bdt_vsN/        manifest.json, config_used.yaml, logs/, 0_resonance_skim/, 1_skim/, bdt_train/ (classifier .pck, plots), 2_bdt/
-├── gnn_vsN/        manifest.json, config_used.yaml, logs/, npvs/ (npvs_weights.npz, plots), graphs/ (.pt), gnn_train/ (<model_name>/ model files, plots, test outputs)
+├── gnn_vsN/        manifest.json, config_used.yaml, logs/, npvs/ (signal_W_npvs_weights.npz, plots), graphs/ (.pt), gnn_train/ (<model_name>/ model files, plots, test outputs)
 ├── benchmark_vsN/  manifest.json, config_used.yaml, logs/, cut_<cut>/, limits.{json,txt,png}
 └── debug/<stage>_vsN/
 ```
