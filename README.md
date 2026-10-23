@@ -208,8 +208,11 @@ Edit `my_W.yaml`. The comments in the file explain each key.
 | `branch_map` | Set it only if your branch names are different. For raw NanoAOD, use the raw names as keys (`TauTo3Mu_*`, `PFCands_*`). |
 | `limit.signal_weight` | **Required.** It has no default. See below. |
 | `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
+| `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/`. Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-train`). See below. |
 
 > **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
+
+> **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The config stops with an error if the folder is not a `gnn_vsN`, its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
 > **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
 

@@ -107,3 +107,24 @@ def test_models_loadable_by_gnn_stage(load, user, tmp_path):
     model, normalizer = model_loading.load_model(g.model_dir, g.model_name, g.conv_type, g.gnn_mode,
                                                  g.graph_type, "W", torch.device("cpu"))
     assert not model.training and "means_x" in normalizer
+
+
+def test_config_used_records_models(load, user, tmp_path):
+    import yaml
+    from tau3mu_gnn.pipeline import runs
+    user["paths"]["output_base"] = str(tmp_path / "res")
+    cfg = load(user)
+    version = runs.create_version(cfg, "phase_a")
+    assert yaml.safe_load((tmp_path / "res" / "toy_run" / "phase_a_vs1" / "config_used.yaml").read_text())["models"] \
+        == "frozen" and version.endswith("phase_a_vs1")
+
+
+def test_models_in_settings(load, user, tmp_path):
+    from tau3mu_gnn.pipeline.manifest import phase_settings, settings_diff
+    frozen = load(user)
+    user["models"] = str(make_training(tmp_path))
+    trained = load(user)
+    for phase in ("phase_a", "phase_b", "phase_c"):
+        assert phase_settings(frozen, phase)["models"] == "frozen"
+    diff = " ".join(settings_diff(phase_settings(frozen, "phase_b"), phase_settings(trained, "phase_b")))
+    assert "models" in diff and "gnn.model_dir" in diff and "bdt.classifier" in diff
