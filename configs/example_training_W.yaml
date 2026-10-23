@@ -1,0 +1,49 @@
+# Example training user config (W channel). Copy this file and edit it.
+# Frozen training settings live in training_defaults_W.yaml, frozen analysis settings in
+# analysis_defaults_W.yaml; neither may be set here.
+
+training_name: kaito_W_train               # letters, digits, _ - . only; used as folder name
+
+channel: W                                 # selects configs/training_defaults_W.yaml + analysis_defaults_W.yaml
+
+paths:
+  # All outputs go to <output_base>/<training_name>.
+  # Jobs write to /scratch first and then xrdcp to this location.
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
+  # Logs are also copied next to the results (<phase>_vsN/logs/).
+  log_dir: /work/$USER/SVJ_GNN/tau3mu_logs
+  # Optional. Conda env that the jobs activate. Not set: the env that is active when you submit.
+  conda_env: /work/$USER/miniforge3/envs/Tau3Mu
+
+inputs:
+  # Globs are allowed. A single path is also fine.
+  # Kaito's W inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*).
+  signal:
+    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/old_data/signal_skimmed_no_resonances.root
+  background:
+    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/old_data/data_skimmed_no_resonances.root
+  tree_name: Events                        # optional, default: Events
+  already_resonance_skimmed: true          # true: skip stage 0 (resonance skim); false: inputs are raw NanoAOD
+
+# Map from the analysis branch names (left) to the names in YOUR ntuples (right).
+# Only list branches whose name differs. Leave empty if your names are the same.
+# Raw NanoAOD (already_resonance_skimmed: false): use the raw names on the left (TauTo3Mu_*, PFCands_*).
+branch_map: {}
+#   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
+
+graphs:
+  bdt_preselection_cut: 0.8                # REQUIRED. Only events with bdt_ISO >= cut go into the GNN training graphs
+  # max_events: 600000                     # optional, default 600000; graphs per sample
+
+# bdt_training:
+#   max_events_per_class: 100000           # optional, default 100000; BDT training events per class
+
+benchmark:
+  # REQUIRED. BDT-only benchmark limit: one cut or a list of cuts on bdt_ISO. A list runs a cut scan.
+  bdt_score_cut: [0.98, 0.985, 0.986, 0.99]
+
+limit:
+  # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
+  # Compute it for YOUR dataset. 0.000019 is valid only for Kaito's W dataset.
+  signal_weight: 0.000019
