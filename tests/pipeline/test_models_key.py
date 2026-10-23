@@ -128,3 +128,26 @@ def test_models_in_settings(load, user, tmp_path):
         assert phase_settings(frozen, phase)["models"] == "frozen"
     diff = " ".join(settings_diff(phase_settings(frozen, "phase_b"), phase_settings(trained, "phase_b")))
     assert "models" in diff and "gnn.model_dir" in diff and "bdt.classifier" in diff
+
+
+@pytest.mark.parametrize("key, value", [("k", 5), ("cone_size", 0.4), ("use_displacement", False),
+                                        ("connection", "fully")])
+def test_models_graph_settings_must_match_inference(load, user, tmp_path, key, value):
+    """GNN inference (ScoreProducer.score_events) builds graphs with fixed settings; a model trained on other
+    graphs must be refused at load time, not scored silently on different graphs."""
+    gnn = make_training(tmp_path)
+    m = json.loads((gnn / "manifest.json").read_text())
+    m["settings"]["graphs"][key] = value
+    (gnn / "manifest.json").write_text(json.dumps(m))
+    user["models"] = str(gnn)
+    with pytest.raises(ConfigError, match=f"graphs.{key}"):
+        load(user)
+
+
+def test_inference_graph_constants_used_by_scorer():
+    import inspect
+    from tau3mu_gnn.gnn_training import ScoreProducer
+    from tau3mu_gnn.gnn_training.gnn_inputs import INFERENCE_GRAPH
+    assert INFERENCE_GRAPH == {"connection": "knn", "k": 10, "cone_size": 0.5, "use_displacement": True}
+    src = inspect.getsource(ScoreProducer.score_events)
+    assert "INFERENCE_GRAPH" in src and "k_knn=10" not in src

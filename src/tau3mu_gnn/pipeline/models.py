@@ -77,6 +77,11 @@ def read_trained_models(gnn_version: str, problems: list[str]) -> TrainedModels 
     except (KeyError, TypeError) as e:
         problems.append(f"models: the manifests of {gnn_version} lack an entry: {e!r}")
         return None
+    from tau3mu_gnn.gnn_training.gnn_inputs import INFERENCE_GRAPH
+    for key, value in INFERENCE_GRAPH.items():
+        if graphs.get(key) != value:
+            problems.append(f"models: {gnn_version} was trained on graphs.{key} = {graphs.get(key)!r}, but GNN "
+                            f"inference builds graphs with {key} = {value!r}; this model cannot be scored")
     for path in files.values():
         if not path.is_file():
             problems.append(f"models: file not found: {path}")

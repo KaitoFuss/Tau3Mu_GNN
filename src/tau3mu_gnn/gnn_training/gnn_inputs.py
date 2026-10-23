@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from tau3mu_gnn.bdt_training.bdt_inputs import expression_names
 
+# Graph settings of GNN inference (ScoreProducer.score_events). A model trained on other graphs cannot be
+# scored correctly; the analysis key `models:` refuses such a training run (pipeline/models.py).
+INFERENCE_GRAPH = {"connection": "knn", "k": 10, "cone_size": 0.5, "use_displacement": True}
+
 # Made by the pipeline (stage 1 skim, stage 2 BDT), not raw input branches.
 STAGE_MADE = frozenset({"nSelectedTauTo3Mu", "bdt_ISO"})
 
