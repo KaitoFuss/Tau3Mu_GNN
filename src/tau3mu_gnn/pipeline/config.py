@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 import yaml
 
@@ -454,13 +454,14 @@ def _flatten(data: dict, fields: dict[str, _Field], prefix: str = "") -> dict[st
 
 
 def _parse(flat: dict, fields: dict[str, _Field], source: str, problems: list[str],
-           frozen_fields: dict[str, _Field] | None = None) -> dict[str, Any]:
+           frozen: Sequence[tuple[Mapping[str, _Field], str]] = ()) -> dict[str, Any]:
+    """frozen: (field table, label) pairs; a user key found in a table is reported with its label."""
     for key in sorted(flat):
         if key in fields:
             continue
-        if frozen_fields and key in frozen_fields:
-            problems.append(f"{source}: '{key}' is a frozen analysis setting (defaults file) "
-                            f"and must not be set in the user file")
+        label = next((lbl for table, lbl in frozen if key in table), None)
+        if label:
+            problems.append(f"{source}: '{key}' is a {label} and must not be set in the user file")
         else:
             hint = difflib.get_close_matches(key, list(fields), n=1)
             problems.append(f"{source}: unknown key '{key}'"
@@ -481,6 +482,53 @@ def _parse(flat: dict, fields: dict[str, _Field], source: str, problems: list[st
     return values
 
 
+def _read_flat_user(user_path: Path, fields: dict[str, _Field],
+                    frozen: Sequence[tuple[Mapping[str, _Field], str]], problems: list[str]) -> dict | None:
+    """Read, flatten and parse the user file. None if it cannot be read."""
+    raw = _read_yaml(user_path, problems)
+    if raw is None:
+        return None
+    return _parse(_flatten(raw, fields), fields, f"user config {user_path}", problems, frozen=frozen)
+
+
+def read_analysis_defaults(defaults_dir: Path, channel: str,
+                           problems: list[str]) -> tuple[dict[str, Any], Path] | None:
+    """Read and parse analysis_defaults_<channel>.yaml. None if it cannot be read."""
+    path = defaults_dir / f"analysis_defaults_{channel}.yaml"
+    raw = _read_yaml(path, problems)
+    if raw is None:
+        return None
+    return _parse(_flatten(raw, DEFAULTS_FIELDS), DEFAULTS_FIELDS, f"defaults {path}", problems), path
+
+
+def _paths(user: dict) -> PathsConfig:
+    return PathsConfig(output_base=user["paths.output_base"], log_dir=user["paths.log_dir"],
+                       conda_env=user["paths.conda_env"])
+
+
+def _inputs(user: dict) -> InputsConfig:
+    return InputsConfig(
+        signal=user["inputs.signal"],
+        background=user["inputs.background"],
+        tree_name=user["inputs.tree_name"],
+        already_resonance_skimmed=user["inputs.already_resonance_skimmed"],
+    )
+
+
+def _resonance_skim(defaults: dict) -> ResonanceSkimConfig:
+    return ResonanceSkimConfig(
+        vtx_chi2_max=defaults["resonance_skim.vtx_chi2_max"],
+        mass_range=defaults["resonance_skim.mass_range"],
+        veto_masses=defaults["resonance_skim.veto_masses"],
+        veto_half_width=defaults["resonance_skim.veto_half_width"],
+        pf_dr_max=defaults["resonance_skim.pf_dr_max"],
+    )
+
+
+def _skim(defaults: dict) -> SkimConfig:
+    return SkimConfig(dz_max=defaults["skim.dz_max"], cos_alpha_2d_min=defaults["skim.cos_alpha_2d_min"])
+
+
 def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -> Config:
     """Read the user config and the frozen defaults for its channel. Raise ConfigError on any problem."""
     user_path = Path(user_path)
@@ -488,20 +536,15 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
     repo_root = defaults_dir.parent
     problems: list[str] = []
 
-    user_raw = _read_yaml(user_path, problems)
-    if user_raw is None:
-        raise ConfigError(problems)
-    user = _parse(_flatten(user_raw, USER_FIELDS), USER_FIELDS, f"user config {user_path}",
-                  problems, frozen_fields=DEFAULTS_FIELDS)
-    if "channel" not in user:
+    user = _read_flat_user(user_path, USER_FIELDS,
+                           [(DEFAULTS_FIELDS, "frozen analysis setting (defaults file)")], problems)
+    if user is None or "channel" not in user:
         raise ConfigError(problems)
 
-    defaults_path = defaults_dir / f"analysis_defaults_{user['channel']}.yaml"
-    defaults_raw = _read_yaml(defaults_path, problems)
-    if defaults_raw is None:
+    read = read_analysis_defaults(defaults_dir, user["channel"], problems)
+    if read is None:
         raise ConfigError(problems)
-    source = f"defaults {defaults_path}"
-    defaults = _parse(_flatten(defaults_raw, DEFAULTS_FIELDS), DEFAULTS_FIELDS, source, problems)
+    defaults, defaults_path = read
 
     if {"bdt.classifier", "gnn.model_dir", "gnn.model_name"} <= defaults.keys():
         name = defaults["gnn.model_name"]
@@ -519,23 +562,11 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
     return Config(
         analysis_name=user["analysis_name"],
         channel=user["channel"],
-        paths=PathsConfig(output_base=user["paths.output_base"], log_dir=user["paths.log_dir"],
-                          conda_env=user["paths.conda_env"]),
-        inputs=InputsConfig(
-            signal=user["inputs.signal"],
-            background=user["inputs.background"],
-            tree_name=user["inputs.tree_name"],
-            already_resonance_skimmed=user["inputs.already_resonance_skimmed"],
-        ),
+        paths=_paths(user),
+        inputs=_inputs(user),
         branch_map=user["branch_map"],
-        resonance_skim=ResonanceSkimConfig(
-            vtx_chi2_max=defaults["resonance_skim.vtx_chi2_max"],
-            mass_range=defaults["resonance_skim.mass_range"],
-            veto_masses=defaults["resonance_skim.veto_masses"],
-            veto_half_width=defaults["resonance_skim.veto_half_width"],
-            pf_dr_max=defaults["resonance_skim.pf_dr_max"],
-        ),
-        skim=SkimConfig(dz_max=defaults["skim.dz_max"], cos_alpha_2d_min=defaults["skim.cos_alpha_2d_min"]),
+        resonance_skim=_resonance_skim(defaults),
+        skim=_skim(defaults),
         bdt=BDTConfig(classifier=repo_root / defaults["bdt.classifier"]),
         gnn=GNNConfig(
             model_dir=repo_root / defaults["gnn.model_dir"],
