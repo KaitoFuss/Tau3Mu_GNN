@@ -55,3 +55,29 @@ def test_values_outside_bins_ignored():
 def test_empty_sample_raises(sig, bkg, sample):
     with pytest.raises(ValueError, match=sample):
         cpd.npvs_weights(sig, bkg, [0, 50, 100], UNIFORM)
+
+
+def test_run_writes_outputs(tmp_path, load_training, training_user):
+    from conftest import write_tree
+    from tau3mu_gnn.pipeline.training.stages import npvs as stage
+    rng = np.random.default_rng(2)
+    sig = write_tree(tmp_path / "sig.root", {"PV_npvs": rng.poisson(30, 2000).astype(np.uint8)})
+    bkg = write_tree(tmp_path / "bkg.root", {"PV_npvs": rng.poisson(25, 3000).astype(np.uint8)})
+    cfg = load_training(training_user)
+    out = stage.run(cfg, {"signal": sig, "background": bkg}, tmp_path / "out")
+    assert set(out) == {"weights", "plot_npvs", "plot_weights"} and all(p.is_file() for p in out.values())
+    d = np.load(out["weights"])
+    assert d["weight_per_bin"].shape == (100,) and d["bins"].shape == (101,)
+    np.testing.assert_array_equal(d["weight_per_bin"], cpd.npvs_weights(
+        cpd.read_npvs([sig]), cpd.read_npvs([bkg]), cfg.npvs.var_bins, np.linspace(*cfg.npvs.uniform_bins)))
+
+
+def test_missing_branch_raises(tmp_path, load_training, training_user):
+    from conftest import write_tree
+    from tau3mu_gnn.pipeline.branches import BranchError
+    from tau3mu_gnn.pipeline.training.stages import npvs as stage
+    sig = write_tree(tmp_path / "sig.root", {"PV_npvs": np.array([10], dtype=np.uint8)})
+    bkg = write_tree(tmp_path / "bkg.root", {"other": np.array([1.0])})
+    with pytest.raises(BranchError, match="bkg.root.*PV_npvs"):
+        stage.run(load_training(training_user), {"signal": sig, "background": bkg}, tmp_path / "out")
+    assert not (tmp_path / "out" / "npvs_weights.npz").exists()

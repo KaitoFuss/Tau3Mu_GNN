@@ -183,3 +183,9 @@ def test_rename_columns_identity_and_empty_map_change_nothing(tmp_path):
     for mapping in ({}, {"run": "run"}):
         _, columns = b.rename_columns(df, mapping)
         assert sorted(columns) == before
+
+
+def test_training_required_branches_add_pv_npvs():
+    t = b.training_required_branches("W")
+    assert "PV_npvs" in t and "PV_npvs" not in b.required_branches("W")
+    assert set(b.required_branches("W")) <= set(t) and len(t) == len(set(t))

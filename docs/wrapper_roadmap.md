@@ -252,7 +252,7 @@ Each step is small, testable, and keeps the old job scripts working.
 11. ✅ Combine gap closed: README "CMS Combine" (standalone conda build into Tau3Mu, pinned commit `10cef0bb`). The clean-account dry run moved to step 15.
 12. Training pipeline (`tau3mu-train`), spec `docs/superpowers/specs/2026-10-23-step12-training-pipeline-design.md` (supersedes the old 12 / 12a text). Chain: skim → BDT training → BDT inference → (npvs → graphs → GNN training) ∥ (benchmark BDT-only limit, cut scan). Sub-steps:
     - 12a ✅ Training config: `configs/training_defaults_W.yaml` (frozen), `configs/example_training_W.yaml` (user), `pipeline/training/config.py` (`load_training_config`). Shared stages read `analysis_defaults_W.yaml`. Plan `docs/superpowers/plans/2026-10-23-step12a-training-config.md`.
-    - 12b Stage npvs (was 12a): all skimmed signal vs all skimmed background, old variable binning.
+    - 12b ✅ Stage npvs (was 12a): all skimmed signal vs all skimmed background, old variable binning. `pipeline/training/stages/npvs.py` → `npvs_weights.npz` (`weight_per_bin`, `bins`), `npvs.png`, `npvs_weights.png`; `branches.training_required_branches` adds `PV_npvs`. Plan `docs/superpowers/plans/2026-10-23-step12b-npvs.md`.
     - 12c Stage bdt_train (ISO only, sideband background).
     - 12d Stage graphs (BDT cut `>=` at creation, candidate 0, sideband background, 600k events).
     - 12e Stage gnn_train (no fine-tune, Comet ML).

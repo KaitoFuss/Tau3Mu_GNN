@@ -40,6 +40,12 @@ PER_CHANNEL: dict[str, tuple[str, ...]] = {
 }
 
 
+# Read by the training pipeline only (on top of required_branches).
+TRAINING_EXTRA: dict[str, tuple[str, ...]] = {
+    "W": ("PV_npvs",),   # npvs weights of the signal graphs
+}
+
+
 class BranchError(Exception):
     def __init__(self, problems: list[str]):
         self.problems = list(problems)
@@ -50,6 +56,11 @@ def required_branches(channel: str) -> tuple[str, ...]:
     if channel not in PER_CHANNEL:
         raise BranchError([f"no required-branch list for channel {channel!r} (known: {sorted(PER_CHANNEL)})"])
     return COMMON + PER_CHANNEL[channel]
+
+
+def training_required_branches(channel: str) -> tuple[str, ...]:
+    """required_branches plus the branches only the training pipeline reads."""
+    return tuple(dict.fromkeys(required_branches(channel) + TRAINING_EXTRA.get(channel, ())))
 
 
 # Stage 0 cuts: vertex chi2, 3-muon and dimuon 4-vector masses, opposite-sign pairs.
