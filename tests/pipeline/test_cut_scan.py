@@ -264,3 +264,13 @@ def test_summary_write_dir(load, user, tmp_path):
     s = limit.summarize(cfg, tmp_path / "phase", write_dir=scratch)
     assert s["files"]["json"] == scratch / "limits.json" and (scratch / "limits.png").is_file()
     assert not (tmp_path / "phase" / "limits.json").exists()
+
+
+def test_summarize_cuts_explicit(tmp_path):
+    from tau3mu_gnn.pipeline.stages import limit
+    write_limit(tmp_path, 0.98, 2.0)
+    write_limit(tmp_path, 0.99, 1.5)
+    s = limit.summarize_cuts([0.98, 0.99], 0.9, tmp_path)
+    assert s["best_cut"] == 0.99 and s["cl"] == 0.9 and all(f.is_file() for f in s["files"].values())
+    s = limit.summarize_cuts([0.98, 0.99, 0.995], 0.9, tmp_path)
+    assert s["missing"] == [0.995]
