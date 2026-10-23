@@ -207,3 +207,50 @@ def test_stage_refuses_existing_folder(tmp_path, load_training, training_user):
     stage.run(cfg, "background", bkg, tmp_path / "g")
     with pytest.raises(FileExistsError):
         stage.run(cfg, "background", bkg, tmp_path / "g")
+
+
+def _set(data, name, values):
+    data[name] = ak.Array(values)
+
+
+def test_training_graph_equals_inference_graph_edge_cases(tmp_path):
+    """Event 0: two candidates (candidate 0 must be used: other pt, eta, phi than candidate 1).
+    Event 1: muon 1 at DeltaR 0.6 (cone grows). Event 2: tau and PF candidates near phi = +-pi."""
+    from test_gnn_scores import PF
+    from tau3mu_gnn.gnn_training.ScoreProducer import score_events
+    rng = np.random.default_rng(11)
+    data = _rich_events(3, rng)
+    cands = [[10.0, 50.0], [15.0], [20.0]]
+    one = training_events(cands, bdt=[0.9] * 3)   # per-candidate branches with 2 entries for event 0
+    for name, arr in one.items():
+        if name.startswith(P) or name.startswith("TauPlusMET_") or name == "nSelectedTauTo3Mu":
+            data[name] = arr
+    _set(data, f"{P}fitted_pt", cands)
+    _set(data, f"{P}fitted_eta", [[0.0, 0.3], [0.0], [0.0]])
+    _set(data, f"{P}fitted_phi", [[0.0, -0.2], [0.0], [3.1]])
+    _set(data, f"{P}mu1_eta", [[0.01, 0.31], [0.6], [0.01]])
+    for i in (1, 2, 3):
+        _set(data, f"{P}mu{i}_phi", [[0.0, -0.2], [0.0], [3.1]])
+    phis = [list(x) for x in ak.to_list(data[f"{PF}phi"])]
+    etas = [list(x) for x in ak.to_list(data[f"{PF}eta"])]
+    etas[1][0] = 0.6                                        # PF candidate on the far muon
+    etas[1][3], phis[1][3] = 0.55, 0.0                      # inside only because the cone grows to 0.6
+    etas[1][4], phis[1][4] = -0.52, 0.1                     # inside only because the cone grows to 0.6
+    phis[2] = [3.1, 3.1, 3.1] + [((p + 3.1 + np.pi) % (2 * np.pi)) - np.pi for p in phis[2][3:]]  # wraps at +-pi
+    _set(data, f"{PF}phi", phis)
+    _set(data, f"{PF}eta", etas)
+
+    training = _build(tmp_path, data, weights=None)
+    infile = write_tree(tmp_path / "inference.root", data)
+    rec = RecordingGNN()
+    score_events([str(infile)], {"rec": (rec, None)}, {"rec": {str(infile): str(tmp_path / "out.root")}},
+                 {"rec": tmp_path / "s.npz"}, "W", "delete_muons", 0.8, device=torch.device("cpu"))
+    assert len(training) == len(rec.graphs) == 3
+    inference = {round(float(g.graph_level_features[0, 0]), 4): g for g in rec.graphs}
+    assert sorted(inference) == [10.0, 15.0, 20.0]          # candidate 0 of event 0 in both
+    for t in training:
+        i = inference[round(float(t.graph_level_features[0, 0]), 4)]
+        assert torch.equal(t.x.float(), i.x.float())
+        assert torch.equal(t.graph_level_features.float(), i.graph_level_features.float())
+        edges = lambda g: sorted(zip(g.edge_index.T.tolist(), g.edge_attr.float().tolist()))  # noqa: E731
+        assert edges(t) == edges(i)
