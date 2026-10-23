@@ -5,7 +5,7 @@ BDT cut bdt_ISO >= graphs.bdt_preselection_cut -> sideband (background: candidat
 tau_mass +- sideband_half_width) -> random subset of graphs.max_events (seeded) -> one graph per
 event from candidate 0. npvs weights on the signal graphs only; background graphs weight 1.
 Writes <out_dir>/<sample>_<channel>/processed/<dataset_name>.pt, the layout Train_TauMuNet reads
-(data_base = out_dir). Training and inference build identical graphs (tests/pipeline/test_graphs.py).
+(data_base = out_dir); the input.root link is removed after the build. Training and inference build identical graphs (tests/pipeline/test_graphs.py).
 """
 from __future__ import annotations
 
@@ -57,17 +57,20 @@ def run(cfg: TrainingConfig, sample: str, bdt_file: str | Path, out_dir: str | P
     os.symlink(Path(bdt_file).resolve(), folder / "input.root")  # the producer reads every .root in its folder
     name = dataset_name(cfg, sample)
     g = cfg.graphs
-    from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+    try:
+        from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 
-    dataset = ConeGraphProducer(
-        str(folder), output_dataset_name=name, cone_size=g.cone_size, edge_connection_mode=g.connection,
-        k_knn=g.k if g.connection == "knn" else None, max_events_to_process=g.max_events,
-        use_relative_angles=True, save_edge_attributes=True, save_benchmark_score=True, weights=weights,
-        mask=not signal, label=1. if signal else 0., tau_channel=cfg.channel,
-        graph_level_branches=graph_level_branches(cfg.channel), slimmed=True, shuffle_bool=True,
-        use_displacement=g.use_displacement, unsculpting_mode=g.unsculpting_mode,
-        bdt_preselection_cut=g.bdt_preselection_cut, tau_mass=cfg.limit.tau_mass,
-        sideband_half_width=cfg.sideband_half_width,
-        npvs_weights_file=str(npvs_file) if signal else None, shuffle_seed=g.shuffle_seed, tree_name=tree)
+        dataset = ConeGraphProducer(
+            str(folder), output_dataset_name=name, cone_size=g.cone_size, edge_connection_mode=g.connection,
+            k_knn=g.k if g.connection == "knn" else None, max_events_to_process=g.max_events,
+            use_relative_angles=True, save_edge_attributes=True, save_benchmark_score=True, weights=weights,
+            mask=not signal, label=1. if signal else 0., tau_channel=cfg.channel,
+            graph_level_branches=graph_level_branches(cfg.channel), slimmed=True, shuffle_bool=True,
+            use_displacement=g.use_displacement, unsculpting_mode=g.unsculpting_mode,
+            bdt_preselection_cut=g.bdt_preselection_cut, tau_mass=cfg.limit.tau_mass,
+            sideband_half_width=cfg.sideband_half_width,
+            npvs_weights_file=str(npvs_file) if signal else None, shuffle_seed=g.shuffle_seed, tree_name=tree)
+    finally:
+        (folder / "input.root").unlink(missing_ok=True)  # storage.put of the folder must not copy the stage 2 file
     log.info("graphs: %s, %d graphs -> %s", sample, len(dataset), folder / "processed" / f"{name}.pt")
     return folder / "processed" / f"{name}.pt"

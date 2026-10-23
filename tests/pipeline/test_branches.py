@@ -189,3 +189,19 @@ def test_training_required_branches_add_pv_npvs():
     t = b.training_required_branches("W")
     assert "PV_npvs" in t and "PV_npvs" not in b.required_branches("W")
     assert set(b.required_branches("W")) <= set(t) and len(t) == len(set(t))
+
+
+def test_extra_branches_are_required_only_when_asked(tmp_path):
+    f = make_root_file(tmp_path / "a.root", REQ_W)
+    assert b.check_input_branches([str(f)], "Events", {}, "W") == [str(f)]
+    with pytest.raises(b.BranchError) as e:
+        b.check_input_branches([str(f)], "Events", {}, "W", extra=("PV_npvs",))
+    text = problems_of(e)
+    assert f"{f}: 1 required branch(es) missing" in text and "PV_npvs" in text
+
+
+def test_extra_branches_pass_when_present_raw_and_resonance_skimmed(tmp_path):
+    f = make_root_file(tmp_path / "a.root", [*REQ_W, "PV_npvs"])
+    assert b.check_input_branches([str(f)], "Events", {}, "W", extra=("PV_npvs",)) == [str(f)]
+    r = make_root_file(tmp_path / "r.root", list(b.raw_required_branches("W")) + ["PV_npvs"])
+    assert b.check_input_branches([str(r)], "Events", {}, "W", raw=True, extra=("PV_npvs",)) == [str(r)]

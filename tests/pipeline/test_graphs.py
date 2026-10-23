@@ -177,6 +177,8 @@ def test_stage_layout_and_names(tmp_path, load_training, training_user):
     b = list(ConeGraphProducer(str(out / "background_W"), output_dataset_name=f"W_decay_background_{NAME}"))
     assert sorted(float(g.w) for g in s) == [30.0, 40.0] and all(float(g.y) == 1 for g in s)
     assert all(float(g.w) == 1.0 and float(g.y) == 0 for g in b) and len(b) == 2
+    assert not (out / "signal_W" / "input.root").exists() and not (out / "background_W" / "input.root").exists()
+    assert sorted(p.name for p in (out / "signal_W").iterdir()) == ["processed"]
 
 
 def test_stage_signal_needs_npvs_background_refuses_it(tmp_path, load_training, training_user):

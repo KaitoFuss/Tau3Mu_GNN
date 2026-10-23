@@ -296,3 +296,11 @@ def test_regression_vs_old_skims(load, user, fake_repo, tmp_path):
             if x.ndim > 1:
                 assert ak.num(x, axis=1).tolist() == ak.num(y, axis=1).tolist(), (sample, name)
             np.testing.assert_array_equal(ak.to_numpy(ak.ravel(x)), ak.to_numpy(ak.ravel(y)), err_msg=f"{sample} {name}")
+
+
+def test_extra_branches_are_checked(load, user, tmp_path):
+    _inputs(user, tmp_path)
+    assert resonance_skim.run(load(user), tmp_path / "0_resonance_skim")["signal"]
+    with pytest.raises(b.BranchError, match="PV_npvs"):
+        resonance_skim.run(load(user), tmp_path / "0_resonance_skim", extra_branches=b.TRAINING_EXTRA["W"])
+    assert not (tmp_path / "0_resonance_skim").exists()

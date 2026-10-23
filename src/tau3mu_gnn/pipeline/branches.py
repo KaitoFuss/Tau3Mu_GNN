@@ -111,18 +111,21 @@ def _expand(inputs: Sequence[str], problems: list[str]) -> list[str]:
 
 
 def check_input_branches(inputs: Sequence[str], tree_name: str,
-                         branch_map: Mapping[str, str], channel: str, raw: bool = False) -> list[str]:
+                         branch_map: Mapping[str, str], channel: str, raw: bool = False,
+                         extra: Sequence[str] = ()) -> list[str]:
     """Check that every input file has every required branch after the branch map.
 
     inputs: config input entries (inputs.signal / inputs.background); each is a path or a glob.
     raw: inputs are raw NanoAOD (before stage 0); check raw_required_branches, and the
     branch map keys are raw analysis names (TauTo3Mu_*, PFCands_*).
+    extra: further required branches, used as given (e.g. TRAINING_EXTRA: PV_npvs has no Slimmed_ prefix).
     A file that holds both a mapped user name and its analysis name is an error.
     Reads branch names only (no events). Returns the expanded file list.
     Raises BranchError listing every problem of every file.
     """
     required = raw_required_branches(channel) if raw else required_branches(channel)
     problems = _check_map(branch_map, required)
+    required = tuple(dict.fromkeys((*required, *extra)))
     files = _expand(inputs, problems)
     for path in files:
         try:
