@@ -105,13 +105,15 @@ def graphs(cfg, phase_dir, upstream_dir, sample: str) -> None:
 
 
 def gnn_train(cfg, phase_dir, upstream_dir) -> None:
-    """gnn, last job: GNN training on <phase_dir>/graphs/ (Comet on). Writes the gnn manifest."""
+    """gnn, last job: GNN training on <phase_dir>/graphs/ (Comet on). Writes the gnn manifest (files only:
+    the model folder and name follow from the 'model' path)."""
     log.info("job gnn_train: %s, upstream %s", phase_dir, upstream_dir)
     scratch = _scratch("gnn_train")
     out = gnn_train_stage.run(cfg, _read(phase_dir, GRAPHS_DIR), scratch / GNN_TRAIN_DIR, comet_disabled=False)
     _put(scratch, phase_dir)
-    outputs = {"model_dir": _rel(out["model_dir"], scratch), "model_name": out["model_name"],
-               "npvs_weights": _npvs_file(cfg)}
+    model_dir = _rel(out["model_dir"], scratch)
+    outputs = {"model": f"{model_dir}/{out['model_name']}.pt", "normalization": f"{model_dir}/Normalization.pkl",
+               "arch_config": f"{model_dir}/arch_config.json", "npvs_weights": _npvs_file(cfg)}
     outputs.update({f"graphs_{s}": f"{GRAPHS_DIR}/{s}_{cfg.channel}/processed/"
                                    f"{graphs_stage.dataset_name(cfg, s)}.pt" for s in SAMPLES})
     outputs["gnn_train_summary"] = _rel(out["summary"], scratch)

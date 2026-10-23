@@ -80,7 +80,8 @@ def fake_stages(monkeypatch):
         seen["gnn_train"] = {"graphs_dir": Path(graphs_dir), "comet_disabled": comet_disabled}
         name = jobs.gnn_train_stage.model_name(cfg)
         model_dir = Path(out_dir) / name
-        _write(model_dir / f"{name}.pt")
+        for f in (f"{name}.pt", "Normalization.pkl", "arch_config.json"):
+            _write(model_dir / f)
         return {"model_dir": model_dir, "model_name": name, "best_epoch": 3, "epochs_run": 5,
                 "early_stopped": True, "auc_test": 0.9, "summary": _write(Path(out_dir) / "gnn_train_summary.json")}
 
@@ -146,6 +147,7 @@ def run_gnn(cfg, up):
 
 
 def test_gnn_phase(cfg, scratch, fake_stages):
+    from tau3mu_gnn.pipeline import manifest as _manifest
     from tau3mu_gnn.pipeline.manifest import read_manifest
     from tau3mu_gnn.pipeline.training import jobs
 
@@ -155,13 +157,15 @@ def test_gnn_phase(cfg, scratch, fake_stages):
     name = jobs.gnn_train_stage.model_name(cfg)
     ds = {s: jobs.graphs_stage.dataset_name(cfg, s) for s in SAMPLES}
     assert m["phase"] == "gnn" and m["upstream"] == "bdt_vs1"
-    assert m["outputs"] == {"model_dir": f"gnn_train/{name}", "model_name": name,
+    assert m["outputs"] == {"model": f"gnn_train/{name}/{name}.pt",
+                            "normalization": f"gnn_train/{name}/Normalization.pkl",
+                            "arch_config": f"gnn_train/{name}/arch_config.json",
                             "npvs_weights": "npvs/signal_W_npvs_weights.npz",
                             "graphs_signal": f"graphs/signal_W/processed/{ds['signal']}.pt",
                             "graphs_background": f"graphs/background_W/processed/{ds['background']}.pt",
                             "gnn_train_summary": "gnn_train/gnn_train_summary.json"}
-    assert (g / "gnn_train" / name).is_dir()
-    assert all((g / m["outputs"][k]).is_file() for k in m["outputs"] if k not in ("model_dir", "model_name"))
+    assert all((g / rel).is_file() for rel in m["outputs"].values())        # outputs are files only
+    assert _manifest.check_upstream(cfg, g, "next", {"next": "gnn"}, lambda c, p: m["settings"]) == m
     assert fake_stages["graphs"]["signal"] == {"bdt": True, "npvs": "w"}       # npvs file of this phase
     assert fake_stages["graphs"]["background"] == {"bdt": True, "npvs": None}
     assert fake_stages["npvs"] == {"signal": True, "background": True}
