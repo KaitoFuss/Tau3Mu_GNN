@@ -35,7 +35,7 @@ def _build(tmp_path, data, **kw):
     args = dict(cone_size=0.5, edge_connection_mode="knn", k_knn=10, slimmed=True, use_displacement=True,
                 unsculpting_mode="delete_muons", tau_channel="W", graph_level_branches=graph_level_branches("W"),
                 save_benchmark_score=True, save_edge_attributes=True, use_relative_angles=True,
-                first_candidate_only=True, bdt_cut=0.8, label=1.)
+                bdt_preselection_cut=0.8, label=1.)
     args.update(kw)
     return list(ConeGraphProducer(str(root), output_dataset_name="t", **args))
 
@@ -88,9 +88,9 @@ def test_event_limit_seeded(tmp_path):
     assert len(_build(tmp_path, data, max_events_to_process=50, shuffle_bool=True, shuffle_seed=1)) == 20
 
 
-def test_defaults_unchanged(tmp_path):
+def test_no_cut_one_graph_per_candidate(tmp_path):
     data = training_events([[10.0, 20.0]], bdt=[0.9])
-    g = _build(tmp_path, data, first_candidate_only=False, bdt_cut=None)
+    g = _build(tmp_path, data, bdt_preselection_cut=None)
     assert _pts(g) == [10.0, 20.0]
 
 
@@ -254,3 +254,11 @@ def test_training_graph_equals_inference_graph_edge_cases(tmp_path):
         assert torch.equal(t.graph_level_features.float(), i.graph_level_features.float())
         edges = lambda g: sorted(zip(g.edge_index.T.tolist(), g.edge_attr.float().tolist()))  # noqa: E731
         assert edges(t) == edges(i)
+
+
+def test_graph_creation_cli_takes_a_cut_value():
+    import subprocess, sys
+    out = subprocess.run([sys.executable, "-c",
+                          "import sys; sys.argv=['x','--graph_type','knn','--k','10','--bdt_preselection_cut','0.8','--help'];"
+                          "import tau3mu_gnn.scripts.GraphCreation"], capture_output=True, text=True)
+    assert "--bdt_preselection_cut BDT_PRESELECTION_CUT" in out.stdout

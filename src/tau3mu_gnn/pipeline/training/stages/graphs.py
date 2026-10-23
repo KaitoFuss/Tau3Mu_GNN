@@ -66,7 +66,7 @@ def run(cfg: TrainingConfig, sample: str, bdt_file: str | Path, out_dir: str | P
         mask=not signal, label=1. if signal else 0., tau_channel=cfg.channel,
         graph_level_branches=graph_level_branches(cfg.channel), slimmed=True, shuffle_bool=True,
         use_displacement=g.use_displacement, unsculpting_mode=g.unsculpting_mode,
-        bdt_cut=g.bdt_preselection_cut, first_candidate_only=True, tau_mass=cfg.limit.tau_mass,
+        bdt_preselection_cut=g.bdt_preselection_cut, tau_mass=cfg.limit.tau_mass,
         sideband_half_width=cfg.sideband_half_width,
         npvs_weights_file=str(npvs_file) if signal else None, shuffle_seed=g.shuffle_seed, tree_name=tree)
     log.info("graphs: %s, %d graphs -> %s", sample, len(dataset), folder / "processed" / f"{name}.pt")

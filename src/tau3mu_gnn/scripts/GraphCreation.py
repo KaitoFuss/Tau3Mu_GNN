@@ -12,7 +12,7 @@ parser.add_argument("--k", type=int, default=None, help="Number of nearest neigh
 parser.add_argument("--delta_r", type=float, default=None, help="Distance threshold for r_threshold")
 parser.add_argument("--tau_channel", type=str, default="W", help="Tau production channel ('W' or 'HF')")
 parser.add_argument("--unsculpting_mode", type=str, default=None, help="Unsculting mode. Please choose 'permutation', 'split_pt_uniformly', 'delete_muons', None")
-parser.add_argument("--bdt_preselection_cut", action="store_true", help="whether BDT ISO is saved as graph attr")
+parser.add_argument("--bdt_preselection_cut", type=float, default=None, help="BDT ISO cut: only events with bdt_ISO >= cut, one graph per event (candidate 0); not set: no cut")
 # parser.add_argument("--nevents", type=int, default=100, help="Max number of events to process")
 args = parser.parse_args()
 
@@ -46,7 +46,7 @@ def create_graph(
     tau_channel: str = "W",
     graph_level_branches: list = [],
     save_benchmark_score: bool = False,
-    bdt_preselection_cut: str = False,
+    bdt_preselection_cut: float | None = None,
 ):
     suffix = graph_suffix(use_displacement, cone_size, edge_connection_mode, k=k_knn, delta_r=delta_r_threshold,
                           unsculpting_mode=unsculpting_mode)
@@ -124,12 +124,12 @@ if __name__ == "__main__":
 
     prefix = "Selected_"
     graph_file_ident = "skimmed"
-    if bdt_preselection_cut:
-        graph_file_ident += f"_small_with_bdt_iso"
+    if bdt_preselection_cut is not None:
+        graph_file_ident += f"_BDT_cut_{bdt_preselection_cut}"
 
     if tau_channel == "W":
         base_direc_W_signal = "src/tau3mu_gnn/data/signal_W"
-        if bdt_preselection_cut:
+        if bdt_preselection_cut is not None:
             base_direc_W_signal += "/bdt_full"
         # base_direc_W_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W"
         root_W_signals_skimmed = [
@@ -177,7 +177,7 @@ if __name__ == "__main__":
             )
         
         base_direc_W_bkg = "src/tau3mu_gnn/data/background_W"
-        if bdt_preselection_cut:
+        if bdt_preselection_cut is not None:
             base_direc_W_bkg += "/bdt_full"
         # base_direc_W_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W"
     
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     elif tau_channel == "HF":
         # base_direc_HF_signal = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF"
         base_direc_HF_signal = "src/tau3mu_gnn/data/signal_HF"
-        if bdt_preselection_cut:
+        if bdt_preselection_cut is not None:
             base_direc_HF_signal += "/bdt_full"
 
         root_HF_signals_skimmed = [
@@ -258,7 +258,7 @@ if __name__ == "__main__":
         # base_direc_HF_bkg = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF"
         base_direc_HF_bkg = "src/tau3mu_gnn/data/background_HF"
 
-        if bdt_preselection_cut:
+        if bdt_preselection_cut is not None:
             base_direc_HF_bkg += "/bdt_full"
 
         root_bkgs_skimmed = [

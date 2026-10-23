@@ -85,9 +85,7 @@ class ConeGraphProducer(InMemoryDataset):
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,  
-        bdt_preselection_cut=False,
-        bdt_cut=None,
-        first_candidate_only=False,
+        bdt_preselection_cut=None,
         tau_mass=1.78,
         sideband_half_width=0.08,
         npvs_weights_file=None,
@@ -126,10 +124,11 @@ class ConeGraphProducer(InMemoryDataset):
             "knn": self.connect_knn,
             "r_threshold": self.connect_r_threshold,
         } 
+        # None: no cut, one graph per candidate. A value: event cut bdt_ISO >= value (before the sideband
+        # and the event limit), one graph per event from candidate 0 (background: candidate 0 in the
+        # sideband), bdt_iso stored per graph.
         self.bdt_preselection_cut = bdt_preselection_cut
         # Pipeline options (training stage graphs); the defaults keep the old behaviour.
-        self.bdt_cut = bdt_cut                            # event cut bdt_ISO >= bdt_cut, before the sideband and the limit
-        self.first_candidate_only = first_candidate_only  # one graph per event from candidate 0 (background: candidate 0 in the sideband)
         self.tau_mass = tau_mass
         self.sideband_half_width = sideband_half_width
         self.npvs_weights_file = npvs_weights_file        # None: <root>/signal_<channel>_npvs_weights.npz
@@ -233,7 +232,7 @@ class ConeGraphProducer(InMemoryDataset):
             #     )
             #     n_tau = int(ak.sum(raw_tau_mask))
             #     n_tau = min(n_tau, 1)
-            if self.first_candidate_only:
+            if self.bdt_preselection_cut is not None:
                 n_tau = min(event[f"n{n_prefix}TauTo3Mu"], 1)
             if n_tau == 0:
                 logging.warning(f"Skipping this event as selected mask deleted it")
@@ -247,9 +246,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_charge = event[f"{old_prefix}PFCands_charge"]
             pfcands_puppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
 
-            if self.bdt_preselection_cut:
-                n_tau = 1
-            if self.bdt_preselection_cut or self.bdt_cut is not None:
+            if self.bdt_preselection_cut is not None:
                 bdt_iso = event["bdt_ISO"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
@@ -533,7 +530,7 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.non_permuted_tau_eta = torch.tensor([fitted_tau_eta], dtype=torch.float)
                     graph.non_permuted_tau_phi = torch.tensor([fitted_tau_phi], dtype=torch.float)
 
-                if self.bdt_preselection_cut or self.bdt_cut is not None:
+                if self.bdt_preselection_cut is not None:
                     graph.bdt_iso = torch.tensor([bdt_iso], dtype=torch.float)
                 # Add previous isolation approach score if requested
                 if self.save_benchmark_score:
@@ -613,7 +610,7 @@ class ConeGraphProducer(InMemoryDataset):
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
-        if self.bdt_preselection_cut or self.bdt_cut is not None:
+        if self.bdt_preselection_cut is not None:
             branches_to_load += [f"bdt_ISO"]  # adjust branch name to whatever it's called in your ROOT files
 
         # self.graph_level_branches = [f"{prefix}{b}" for b in self.graph_level_features]
@@ -637,20 +634,13 @@ class ConeGraphProducer(InMemoryDataset):
             all_chunks.append(events)
 
         events = ak.concatenate(all_chunks)
-        # print(f"bdt preselection cut: {self.bdt_preselection_cut}")
-        # if self.bdt_preselection_cut is not None:
-        #     prev_event_num = len(events)
-        #     bdt_cut_mask = events[f"bdt_ISO"] > self.bdt_preselection_cut
-        #     events = events[bdt_cut_mask]
-        #     print(f"  BDT preselection > {self.bdt_preselection_cut}: {len(events):,} events out of {prev_event_num:,} remaining")
-        
-        if self.bdt_cut is not None:
-            events = events[events["bdt_ISO"] >= self.bdt_cut]
+        if self.bdt_preselection_cut is not None:
+            events = events[events["bdt_ISO"] >= self.bdt_preselection_cut]
         bkg_mask = None
         total_events = len(events)
         if self.mask:
             bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - self.tau_mass) > self.sideband_half_width
-            if self.first_candidate_only:
+            if self.bdt_preselection_cut is not None:
                 keep = ak.fill_none(ak.firsts(bkg_mask), False)   # candidate 0 in the sideband
             else:
                 keep = ak.any(bkg_mask, axis=1)   # Filters events that do not have single bkg-looking event
