@@ -77,7 +77,7 @@ def fake_stages(monkeypatch):
 
     def gnn_train(cfg, graphs_dir, out_dir, device=None, comet_disabled=False):
         seen["calls"].append("gnn_train")
-        seen["gnn_train"] = {"graphs_dir": Path(graphs_dir), "comet_disabled": comet_disabled}
+        seen["gnn_train"] = {"graphs_dir": Path(graphs_dir), "comet_disabled": comet_disabled, "device": device}
         name = jobs.gnn_train_stage.model_name(cfg)
         model_dir = Path(out_dir) / name
         for f in (f"{name}.pt", "Normalization.pkl", "arch_config.json"):
@@ -102,6 +102,7 @@ def fake_stages(monkeypatch):
     monkeypatch.setattr(jobs.graphs_stage, "run", graphs)
     monkeypatch.setattr(jobs.gnn_train_stage, "run", gnn_train)
     monkeypatch.setattr(jobs.benchmark_stage, "run", benchmark)
+    monkeypatch.setattr(jobs.torch.cuda, "is_available", lambda: True)
     return seen
 
 
@@ -171,6 +172,7 @@ def test_gnn_phase(cfg, scratch, fake_stages):
     assert fake_stages["npvs"] == {"signal": True, "background": True}
     assert fake_stages["gnn_train"]["graphs_dir"] == g / "graphs"
     assert fake_stages["gnn_train"]["comet_disabled"] is False
+    assert fake_stages["gnn_train"]["device"] == jobs.torch.device("cuda")
 
 
 @pytest.mark.parametrize("job", ["npvs", "graphs_background", "graphs_signal", "benchmark_limit"])
@@ -242,3 +244,48 @@ def test_main_required_arguments(cfg, monkeypatch, capsys, argv):
     with pytest.raises(SystemExit):
         jobs.main(argv[:1] + ["--config", "x.yaml", "--phase-dir", "p"] + argv[1:])
     assert f"job {argv[0]} needs" in capsys.readouterr().err
+
+
+def test_gnn_train_requires_cuda(cfg, scratch, fake_stages, monkeypatch):
+    from tau3mu_gnn.pipeline.training import jobs
+
+    monkeypatch.setattr(jobs.torch.cuda, "is_available", lambda: False)
+    with pytest.raises(RuntimeError, match="no CUDA device"):
+        jobs.gnn_train(cfg, "gnn_vs1", "bdt_vs1")
+    assert "gnn_train" not in fake_stages["calls"]
+
+
+@pytest.fixture
+def remote_cfg(load_training, training_user, tmp_path, monkeypatch):
+    training_user["paths"]["output_base"] = "root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/x"
+    training_user["paths"]["log_dir"] = str(tmp_path / "logs")
+    monkeypatch.delenv("X509_USER_PROXY", raising=False)
+    return load_training(training_user)
+
+
+def test_jobs_check_proxy_before_work(remote_cfg, scratch, fake_stages):
+    from tau3mu_gnn.pipeline.slurm import ProxyError
+    from tau3mu_gnn.pipeline.training import jobs
+
+    calls = [lambda: jobs.skim(remote_cfg, "p"), lambda: jobs.bdt_train(remote_cfg, "p"),
+             lambda: jobs.bdt_infer(remote_cfg, "p"), lambda: jobs.npvs(remote_cfg, "p", "u"),
+             lambda: jobs.graphs(remote_cfg, "p", "u", "signal"),
+             lambda: jobs.graphs(remote_cfg, "p", "u", "background"),
+             lambda: jobs.gnn_train(remote_cfg, "p", "u"),
+             lambda: jobs.benchmark_limit(remote_cfg, "p", "u", 0.5),
+             lambda: jobs.benchmark_summary(remote_cfg, "p", "u")]
+    for call in calls:
+        with pytest.raises(ProxyError):
+            call()
+    assert fake_stages["calls"] == []
+
+
+def test_jobs_check_proxy_with_own_time(cfg, scratch, fake_stages, monkeypatch):
+    from tau3mu_gnn.pipeline.training import jobs
+
+    seen = []
+    monkeypatch.setattr(jobs.slurm, "check_proxy", lambda c, hours: seen.append(hours))
+    run_gnn(cfg, run_bdt(cfg))
+    want = [jobs.slurm.time_hours(cfg.slurm.jobs[k].time) for k in
+            ("skim", "bdt_train", "bdt_infer", "graphs_background", "npvs", "graphs_signal", "gnn_train")]
+    assert seen == want

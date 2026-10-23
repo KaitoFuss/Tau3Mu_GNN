@@ -10,7 +10,9 @@ import argparse
 import logging
 from pathlib import Path
 
-from tau3mu_gnn.pipeline import storage
+import torch
+
+from tau3mu_gnn.pipeline import slurm, storage
 from tau3mu_gnn.pipeline.branches import TRAINING_EXTRA
 from tau3mu_gnn.pipeline.jobs import RESONANCE_DIR, SKIM_DIR, _name, _read, _scratch
 from tau3mu_gnn.pipeline.stages import limit as limit_stage
@@ -43,8 +45,15 @@ def _put(scratch: Path, phase_dir) -> None:
     storage.put(scratch, phase_dir)
 
 
+def _check_proxy(cfg, resources: str) -> None:
+    """The dCache proxy must outlive this job (its own SLURM time limit): storage.put runs at the end.
+    Raises slurm.ProxyError at once, before any work. No-op for a local output_base."""
+    slurm.check_proxy(cfg, slurm.time_hours(cfg.slurm.jobs[resources].time))
+
+
 def skim(cfg, phase_dir) -> None:
     """bdt, job 1: stage 0 (with the training branches) + stage 1."""
+    _check_proxy(cfg, "skim")
     log.info("job skim: %s", phase_dir)
     scratch = _scratch("skim")
     files = resonance_skim.run(cfg, scratch / RESONANCE_DIR, extra_branches=TRAINING_EXTRA.get(cfg.channel, ()))
@@ -58,6 +67,7 @@ def _skim_inputs(phase_dir) -> dict[str, Path]:
 
 def bdt_train(cfg, phase_dir) -> None:
     """bdt, job 2: ISO BDT training on <phase_dir>/1_skim/."""
+    _check_proxy(cfg, "bdt_train")
     log.info("job bdt_train: %s", phase_dir)
     scratch = _scratch("bdt_train")
     bdt_train_stage.run(cfg, _skim_inputs(phase_dir), scratch / BDT_TRAIN_DIR)
@@ -66,6 +76,7 @@ def bdt_train(cfg, phase_dir) -> None:
 
 def bdt_infer(cfg, phase_dir) -> None:
     """bdt, last job: stage 2 with the bdt_train classifier. Writes the bdt manifest."""
+    _check_proxy(cfg, "bdt_infer")
     log.info("job bdt_infer: %s", phase_dir)
     classifier = f"{BDT_TRAIN_DIR}/{bdt_train_stage.OUTPUTS['classifier']}"
     scratch = _scratch("bdt_infer")
@@ -84,6 +95,7 @@ def _npvs_file(cfg) -> str:
 
 def npvs(cfg, phase_dir, upstream_dir) -> None:
     """gnn, first job: npvs weights from the upstream stage 1 files. Checks the bdt version."""
+    _check_proxy(cfg, "npvs")
     log.info("job npvs: %s, upstream %s", phase_dir, upstream_dir)
     m = check_upstream(cfg, upstream_dir, "gnn")
     inputs = {s: _read(upstream_dir, m["outputs"][f"skim_{s}"]) for s in SAMPLES}
@@ -95,6 +107,7 @@ def npvs(cfg, phase_dir, upstream_dir) -> None:
 def graphs(cfg, phase_dir, upstream_dir, sample: str) -> None:
     """gnn: graphs of one sample. Signal reads the npvs weights of this phase; background has none and
     may start before npvs, so both check the bdt version."""
+    _check_proxy(cfg, f"graphs_{sample}")
     log.info("job graphs: %s, sample %s, upstream %s", phase_dir, sample, upstream_dir)
     m = check_upstream(cfg, upstream_dir, "gnn")
     npvs_file = _read(phase_dir, _npvs_file(cfg)) if sample == "signal" else None
@@ -107,9 +120,14 @@ def graphs(cfg, phase_dir, upstream_dir, sample: str) -> None:
 def gnn_train(cfg, phase_dir, upstream_dir) -> None:
     """gnn, last job: GNN training on <phase_dir>/graphs/ (Comet on). Writes the gnn manifest (files only:
     the model folder and name follow from the 'model' path)."""
+    _check_proxy(cfg, "gnn_train")
     log.info("job gnn_train: %s, upstream %s", phase_dir, upstream_dir)
+    if not torch.cuda.is_available():
+        raise RuntimeError("gnn_train: no CUDA device visible on this node (check the SLURM gres / partition); "
+                           "not training on CPU")
     scratch = _scratch("gnn_train")
-    out = gnn_train_stage.run(cfg, _read(phase_dir, GRAPHS_DIR), scratch / GNN_TRAIN_DIR, comet_disabled=False)
+    out = gnn_train_stage.run(cfg, _read(phase_dir, GRAPHS_DIR), scratch / GNN_TRAIN_DIR,
+                              device=torch.device("cuda"), comet_disabled=False)
     _put(scratch, phase_dir)
     model_dir = _rel(out["model_dir"], scratch)
     outputs = {"model": f"{model_dir}/{out['model_name']}.pt", "normalization": f"{model_dir}/Normalization.pkl",
@@ -123,6 +141,7 @@ def gnn_train(cfg, phase_dir, upstream_dir) -> None:
 def benchmark_limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
     """benchmark, first jobs: BDT-only limit for one cut. Checks the bdt version.
     cut_<cut>/ is copied also if the stage fails."""
+    _check_proxy(cfg, "benchmark_limit")
     log.info("job benchmark_limit: %s, cut %s, upstream %s", phase_dir, cut, upstream_dir)
     m = check_upstream(cfg, upstream_dir, "benchmark")
     inputs = {s: _read(upstream_dir, m["outputs"][f"bdt_{s}"]) for s in SAMPLES}
@@ -140,6 +159,7 @@ def benchmark_limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
 def benchmark_summary(cfg, phase_dir, upstream_dir) -> None:
     """benchmark, last job (afterany): limits.* from <phase_dir>/cut_*/. Writes the benchmark manifest,
     with the cuts that have no limit in 'missing'."""
+    _check_proxy(cfg, "benchmark_summary")
     log.info("job benchmark_summary: %s, upstream %s", phase_dir, upstream_dir)
     scratch = _scratch("benchmark_summary")
     s = benchmark_stage.summarize(cfg, storage.local_path(phase_dir), write_dir=scratch)
