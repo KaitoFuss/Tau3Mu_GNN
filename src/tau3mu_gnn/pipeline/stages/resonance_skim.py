@@ -14,6 +14,7 @@ aligned; PFCands_* -> Slimmed_PFCands_* (DeltaR < pf_dr_max to any passing candi
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 from tau3mu_gnn.pipeline.branches import check_input_branches, rename_columns
@@ -123,12 +124,13 @@ def _resonance_skim(df, columns: list[str], rs: ResonanceSkimConfig):
     return df, out
 
 
-def run(cfg: Config, out_dir: str | Path) -> dict[str, list[str]]:
-    """Return the input files of stage 1 per sample. Checks all inputs before any work."""
+def run(cfg: Config, out_dir: str | Path, extra_branches: Sequence[str] = ()) -> dict[str, list[str]]:
+    """Return the input files of stage 1 per sample. Checks all inputs before any work.
+    extra_branches: further required input branches (training: branches.TRAINING_EXTRA)."""
     inputs = cfg.inputs
     raw = not inputs.already_resonance_skimmed
     files = {sample: check_input_branches(getattr(inputs, sample), inputs.tree_name, cfg.branch_map, cfg.channel,
-                                          raw=raw)
+                                          raw=raw, extra=extra_branches)
              for sample in SAMPLES}
     identity_map = all(user == analysis for analysis, user in cfg.branch_map.items())
     if not raw and identity_map:

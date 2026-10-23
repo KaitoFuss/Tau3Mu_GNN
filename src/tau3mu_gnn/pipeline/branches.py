@@ -40,6 +40,12 @@ PER_CHANNEL: dict[str, tuple[str, ...]] = {
 }
 
 
+# Read by the training pipeline only (on top of required_branches).
+TRAINING_EXTRA: dict[str, tuple[str, ...]] = {
+    "W": ("PV_npvs",),   # npvs weights of the signal graphs
+}
+
+
 class BranchError(Exception):
     def __init__(self, problems: list[str]):
         self.problems = list(problems)
@@ -50,6 +56,11 @@ def required_branches(channel: str) -> tuple[str, ...]:
     if channel not in PER_CHANNEL:
         raise BranchError([f"no required-branch list for channel {channel!r} (known: {sorted(PER_CHANNEL)})"])
     return COMMON + PER_CHANNEL[channel]
+
+
+def training_required_branches(channel: str) -> tuple[str, ...]:
+    """required_branches plus the branches only the training pipeline reads."""
+    return tuple(dict.fromkeys(required_branches(channel) + TRAINING_EXTRA.get(channel, ())))
 
 
 # Stage 0 cuts: vertex chi2, 3-muon and dimuon 4-vector masses, opposite-sign pairs.
@@ -100,18 +111,21 @@ def _expand(inputs: Sequence[str], problems: list[str]) -> list[str]:
 
 
 def check_input_branches(inputs: Sequence[str], tree_name: str,
-                         branch_map: Mapping[str, str], channel: str, raw: bool = False) -> list[str]:
+                         branch_map: Mapping[str, str], channel: str, raw: bool = False,
+                         extra: Sequence[str] = ()) -> list[str]:
     """Check that every input file has every required branch after the branch map.
 
     inputs: config input entries (inputs.signal / inputs.background); each is a path or a glob.
     raw: inputs are raw NanoAOD (before stage 0); check raw_required_branches, and the
     branch map keys are raw analysis names (TauTo3Mu_*, PFCands_*).
+    extra: further required branches, used as given (e.g. TRAINING_EXTRA: PV_npvs has no Slimmed_ prefix).
     A file that holds both a mapped user name and its analysis name is an error.
     Reads branch names only (no events). Returns the expanded file list.
     Raises BranchError listing every problem of every file.
     """
     required = raw_required_branches(channel) if raw else required_branches(channel)
     problems = _check_map(branch_map, required)
+    required = tuple(dict.fromkeys((*required, *extra)))
     files = _expand(inputs, problems)
     for path in files:
         try:

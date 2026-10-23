@@ -1,5 +1,3 @@
-from comet_ml import Experiment
-
 from tau3mu_gnn.gnn_training.NormalizerUtils import OnTheFlyNormalizer
 from tau3mu_gnn.graph.graphDataLoader import GraphDataLoader
 from tau3mu_gnn.architectures.TauMuNet import TauMuNet
@@ -12,6 +10,7 @@ import os
 import pickle
 import numpy as np
 import json
+import random
 
 import tau3mu_gnn.gnn_training.EvaluationUtils as ueval
 import tau3mu_gnn.gnn_training.TrainingUtils as utrain
@@ -41,7 +40,9 @@ def str2bool(v):
 
 
 
-def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, conv_type, data_base, finetune=False, finetune_lr=1e-4, finetune_epochs=10, bdt_threshold=0.8):
+def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params, tau_channel, gnn_mode, conv_type, data_base, finetune=False, finetune_lr=1e-4, finetune_epochs=10, bdt_threshold=0.8,
+         experiment=None, patience=50, lr_scheduler_patience=10, dataset_fraction=(0.5, 0.5),
+         windows=None, seed=None, device=None):
     """Train the model and evaluate it.
 
     Args:
@@ -57,11 +58,23 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         gnn_mode(str): mode of GNN. Can be BDT, embed, final_layer
         conv_type(str: type of convolution in GNN (GINE, GAT, Transformer support)
         data_base(str): path to pt graphs, default is T3: /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data
-    Returns: -
+        experiment: Comet experiment (None: no logging)
+        patience(int): early stopping patience (the best epoch is always kept)
+        lr_scheduler_patience(int): ReduceLROnPlateau patience
+        dataset_fraction: class mix (signal, background)
+        windows: {"train": (lo, hi), "validation": (lo, hi), "test": (lo, hi)}; None: 0-0.6, 0.6-0.7, 0.7-1
+        seed(int): torch, numpy, random seed (None: not set)
+        device: torch device (None: cuda if available, else cpu)
+    Returns: summary dict (best_epoch, epochs_run, early_stopped, best_validation_loss, auc_test)
         
     """
 
     start = time.time()
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+    windows = windows or {"train": (0., 0.6), "validation": (0.6, 0.7), "test": (0.7, 1.)}
 
     ###--------- Prepare Model, Paths to input graphs  -----------------------------------------------------------
 
@@ -221,12 +234,12 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     ###--------- Prepare GraphDataLoader  -----------------------------------------------------------
     ## Specify the datasetfractions to train on and then create the dataloader for signal and background for training and validation
     
-    df = [0.5, 0.5] # Train on 50% background, and 50 % signal
+    df = list(dataset_fraction) # class mix: signal, background (default 50 / 50)
 
     # Create the data loaders for training and validation
     dataloader_training = GraphDataLoader(
         datasets,
-        window_to_load=[[0., 0.6] for _ in range(len(datasets))],
+        window_to_load=[list(windows["train"]) for _ in range(len(datasets))],
         dataset_fraction=df,
         batch_size=batch_size,
         normalizer=normalizer,
@@ -236,7 +249,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     
     dataloader_validation = GraphDataLoader(
         datasets,
-        window_to_load=[[0.6, 0.7] for _ in range(len(datasets))],
+        window_to_load=[list(windows["validation"]) for _ in range(len(datasets))],
         dataset_fraction=df,
         batch_size=batch_size,
         normalizer=normalizer,
@@ -265,10 +278,11 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     # Define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", patience = 10)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", patience = lr_scheduler_patience)
 
     # Load model on gpu if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
     print(f"torch.cuda.is_available(): {torch.cuda.is_available()}")
     model = model.to(device)
@@ -280,7 +294,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
 
     ###--------- Train the network -----------------------------------------------------------
 
-    training_losses, validation_losses = train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode)
+    training_losses, validation_losses, info = train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode, experiment=experiment, patience=patience)
     print(f"==> Training completed in {time.time()-start:.2f} seconds")
 
     print("==> Saving losses...")
@@ -323,10 +337,10 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
         optimizer_ft = torch.optim.Adam(model.parameters(), lr=finetune_lr)
         # no scheduler for fine-tuning — too few epochs for plateau detection to be meaningful
 
-        training_losses, validation_losses = train_and_validate(
+        training_losses, validation_losses, info = train_and_validate(
             model, finetune_epochs, dataloader_finetune, dataloader_validation,
             loss_criterion, device, optimizer_ft, disco_reg, name, 
-            scheduler=None, tau_channel=tau_channel, gnn_mode=gnn_mode, finetune=finetune
+            scheduler=None, tau_channel=tau_channel, gnn_mode=gnn_mode, finetune=finetune, experiment=experiment
         )
         print(f"==> Fine-tune completed in {time.time()-start_ft:.2f} seconds")
 
@@ -339,7 +353,7 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
     start_eva = time.time()
 
     # Run test dataset through model and save output in a dict 
-    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, disco_reg, window_to_load=[0.7,1])
+    evaluation_dict = ueval.Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model, device, tau_channel, disco_reg, window_to_load=list(windows["test"]))
 
     # Compute roc and auc, safe them also in pickels
     roc, auc = ueval.roc_auc(evaluation_dict, name, tau_channel, gnn_mode)
@@ -355,9 +369,29 @@ def main(epochs, batch_size, learning_rate, disco_reg, name, model_type, params,
 
     print(f"==> Evaluation completed in {time.time()-start_eva:.2f} seconds")
 
-    return auc
+    aucs = {key: float(value) for key, value in auc.items()}   # roc_auc: {evaluation key: AUC}
+    return {**info, "auc_test": next(iter(aucs.values())) if len(aucs) == 1 else aucs}
 
-def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode, finetune=False):
+def comet_settings(tau_channel):
+    """Comet workspace and API key for the old CLI: configs/training_defaults_<channel>.yaml, else the W file
+    (one Comet account for all channels; no key in the code)."""
+    import yaml
+    from tau3mu_gnn.pipeline.config import REPO_ROOT
+    path = REPO_ROOT / "configs" / f"training_defaults_{tau_channel}.yaml"
+    if not path.is_file():
+        path = REPO_ROOT / "configs" / "training_defaults_W.yaml"
+    with open(path) as f:
+        return yaml.safe_load(f)["comet"]
+
+
+class _NoExperiment:
+    """Stand-in when no Comet experiment is given."""
+
+    def log_metric(self, *args, **kwargs):
+        pass
+
+
+def train_and_validate(model, epochs, dataloader_training, dataloader_validation, loss_criterion, device, optimizer, disco_reg, name, scheduler, tau_channel, gnn_mode, finetune=False, experiment=None, patience=50):
     """Train and validate model.
 
     Args:
@@ -372,9 +406,11 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         name: name of output directory 
 
 
-    Returns: training_losses(List), validation_losses(List)
+    Returns: training_losses(List), validation_losses(List), info(dict: best_epoch, epochs_run,
+        early_stopped, best_validation_loss). The model holds the best epoch afterwards; <name>.pt too.
         
     """
+    experiment = experiment if experiment is not None else _NoExperiment()
 
     training_losses = []
     validation_losses = []
@@ -383,7 +419,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
     # initalize early stopping class
     if not finetune:
-        early_stop = utrain.early_stop()
+        early_stop = utrain.early_stop(patience=patience)
     else:
         early_stop = utrain.early_stop(patience=20)
 
@@ -508,6 +544,10 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         validation_full_losses.append(epoch_loss_validation)
         experiment.log_metric(f"Full validation validation", epoch_loss_validation, epoch=epoch)
 
+        if not np.isfinite(epoch_loss_validation):  # NaN would block early stopping and the checkpoint
+            raise FloatingPointError(f"validation loss is {epoch_loss_validation} in epoch {epoch} "
+                                     f"(BCE {epoch_bce_loss_validation}, DisCo {epoch_disco_validation})")
+
         if scheduler is not None:
             scheduler.step(epoch_loss_validation)
 
@@ -520,34 +560,20 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
 
 
-    # Safe output Model only if early stopping was not done
-    if not early_stop.early_stop:
-        print("==> Saving Model")      
-        torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-            }, os.path.join(output_path, name + ".pt"))
-        
-        # Safe val_disco and val_loss for disco_param
-        val_disco_loss = {
-            "last_validation_disco": validation_discos[-1],
-            "last_val_loss": validation_losses[-1],
-            "last_val_full_loss": validation_full_losses[-1],
-            "lambda": disco_reg,
-            "tau_channel": tau_channel,
-            "gnn_mode": gnn_mode,
-        }
-    else:
-        # Save val_disco and val_loss for disco_param
-        best_idx = np.where(np.array(validation_full_losses) == early_stop.best_loss)[0][-1]
-        val_disco_loss = {
-            "last_validation_disco": validation_discos[best_idx],
-            "last_val_loss": validation_losses[best_idx],
-            "last_val_full_loss": early_stop.best_loss,
-            "lambda": disco_reg,
-            "tau_channel": tau_channel,
-            "gnn_mode": gnn_mode,
-        }
+    # Always keep the best epoch (Kaito, 2026-10-23): early_stop saved it to <name>.pt; load it back
+    # so that the evaluation uses it. The old code overwrote <name>.pt with the last epoch when all
+    # epochs ran.
+    best_idx = early_stop.best_epoch
+    checkpoint = torch.load(os.path.join(output_path, name + ".pt"), map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    val_disco_loss = {
+        "last_validation_disco": validation_discos[best_idx],
+        "last_val_loss": validation_losses[best_idx],
+        "last_val_full_loss": early_stop.best_loss,
+        "lambda": disco_reg,
+        "tau_channel": tau_channel,
+        "gnn_mode": gnn_mode,
+    }
 
     print("Model saved to ", output_path + "/" + name + ".pt")
     
@@ -557,9 +583,10 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
     with open(os.path.join(output_path, name + f"_disco_loss{suffix}.pkl"), "wb") as f:
         pickle.dump(val_disco_loss, f)
 
-       
+    info = {"best_epoch": int(early_stop.best_epoch), "epochs_run": epoch + 1,
+            "early_stopped": bool(early_stop.early_stop), "best_validation_loss": float(early_stop.best_loss)}
+    return training_losses, validation_losses, info
 
-    return training_losses, validation_losses
 
 if __name__ == "__main__":
 
@@ -707,11 +734,9 @@ if __name__ == "__main__":
 
     print("==> Running TauMuNet ")
 
-    experiment = Experiment(
-        api_key="89gjTpDNiLT6Pnu5RjMpO4PID",
-        project_name=name,
-        workspace="kaitofuss"
-        )
+    from comet_ml import Experiment
+    comet = comet_settings(tau_channel)
+    experiment = Experiment(api_key=comet["api_key"], project_name=name, workspace=comet["workspace"])
     
     if arch == "random":
         model_params, arch_descr = get_arch_configs_random(tau_channel, disco_reg)
@@ -747,5 +772,5 @@ if __name__ == "__main__":
     experiment.log_parameters(hyper_params)
     experiment.set_name(name)
 
-    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, conv_type, args.data_base, finetune=finetune, finetune_lr=finetune_lr, finetune_epochs=finetune_epochs, bdt_threshold=bdt_threshold)
+    main(epochs, batch_size, learning_rate, disco_reg, name, model_type, model_params, tau_channel, gnn_mode, conv_type, args.data_base, finetune=finetune, finetune_lr=finetune_lr, finetune_epochs=finetune_epochs, bdt_threshold=bdt_threshold, experiment=experiment)
 

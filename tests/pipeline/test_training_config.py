@@ -98,3 +98,32 @@ def test_r_threshold_connection_rejected(load_training, training_user):
     load_training.defaults["graphs"]["connection"] = "r_threshold"
     with pytest.raises(ConfigError, match="graphs.connection"):
         load_training(training_user)
+
+
+def test_graph_shuffle_seed_frozen(load_training, training_user):
+    assert load_training(training_user).graphs.shuffle_seed == 1986
+    training_user["graphs"]["shuffle_seed"] = 1
+    with pytest.raises(ConfigError, match="'graphs.shuffle_seed' is a frozen training setting"):
+        load_training(training_user)
+
+
+@pytest.mark.parametrize("mode", ["permutation", "split_pt_uniformly", "", "Delete_Muons"])
+def test_unsculpting_mode_only_what_inference_reproduces(load_training, training_user, mode):
+    load_training.defaults["graphs"]["unsculpting_mode"] = mode
+    with pytest.raises(ConfigError, match="graphs.unsculpting_mode"):
+        load_training(training_user)
+
+
+def test_unsculpting_mode_none(load_training, training_user):
+    from tau3mu_gnn.pipeline.training.stages.graphs import model_type
+    load_training.defaults["graphs"]["unsculpting_mode"] = "none"
+    cfg = load_training(training_user)
+    assert cfg.graphs.unsculpting_mode is None and model_type(cfg).endswith("_knn_10_testing")
+
+
+def test_gnn_patience_and_seed(load_training, training_user):
+    cfg = load_training(training_user)
+    assert cfg.gnn_training.early_stopping_patience == 50 and cfg.gnn_training.seed == 1986
+    training_user["gnn_training"] = {"seed": 1}
+    with pytest.raises(ConfigError, match="'gnn_training.seed' is a frozen training setting"):
+        load_training(training_user)

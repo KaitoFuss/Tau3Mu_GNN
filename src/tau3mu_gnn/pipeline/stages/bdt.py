@@ -29,19 +29,25 @@ def check_inputs(inputs: Mapping[str, str | Path], tree_name: str, channel: str)
 
 
 def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> dict[str, Path]:
-    """Score inputs (sample -> stage 1 output file) into out_dir.
+    """Score inputs (sample -> stage 1 output file) into out_dir with the classifier of the config.
 
     Returns {'signal': ..., 'background': ..., 'scores_pickle': ...}.
     """
-    check_inputs(inputs, cfg.inputs.tree_name, cfg.channel)
+    return score(inputs, out_dir, cfg.bdt.classifier, cfg.channel, cfg.inputs.tree_name)
+
+
+def score(inputs: Mapping[str, str | Path], out_dir: str | Path, classifier: str | Path, channel: str,
+          tree_name: str) -> dict[str, Path]:
+    """Stage 2 with an explicit classifier (analysis: frozen pickle; training: the bdt_train output)."""
+    check_inputs(inputs, tree_name, channel)
     from tau3mu_gnn.bdt_training.BDT_ScoreProducer import score_events
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     outputs = {sample: out_dir / f"{sample}_with_bdt_scores.root" for sample in SAMPLES}
     outputs["scores_pickle"] = out_dir / PICKLE_NAME
-    log.info("stage 2 BDT: %s -> %s", {s: str(inputs[s]) for s in SAMPLES}, out_dir)
+    log.info("stage 2 BDT (%s): %s -> %s", classifier, {s: str(inputs[s]) for s in SAMPLES}, out_dir)
     score_events({str(inputs["signal"]): str(outputs["signal"])},
                  {str(inputs["background"]): str(outputs["background"])},
-                 cfg.bdt.classifier, cfg.channel, outputs["scores_pickle"], cfg.inputs.tree_name)
+                 classifier, channel, outputs["scores_pickle"], tree_name)
     return outputs

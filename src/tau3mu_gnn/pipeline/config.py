@@ -153,6 +153,19 @@ def _windows(v):
     return MappingProxyType(windows)
 
 
+UNSCULPTING_MODES = ("delete_muons", "none")
+
+
+def _unsculpting_mode(v):
+    """'delete_muons' or 'none' (-> None): the modes GNN inference (ScoreProducer) reproduces.
+    permutation / split_pt_uniformly change only the training graphs, so inference would differ."""
+    if v not in UNSCULPTING_MODES:
+        raise ValueError(f"must be one of {list(UNSCULPTING_MODES)} (GNN inference applies only "
+                         f"delete_muons; other modes would give training graphs that inference does not "
+                         f"reproduce), got {v!r}")
+    return None if v == "none" else v
+
+
 def _str_map(v):
     if v is None:
         return MappingProxyType({})
@@ -201,6 +214,12 @@ def _local_path(v):
     if not v.startswith("/"):
         raise ValueError(f"must be an absolute path, got {v!r}")
     return v
+
+
+def _models(v):
+    """'frozen' or the path of a training gnn_vsN folder (absolute or root://)."""
+    v = _non_empty_str(v)
+    return v if v == "frozen" else _abs_or_url(v)
 
 
 def _optional_local_path(v):
@@ -276,6 +295,7 @@ USER_FIELDS: dict[str, _Field] = {
     "branch_map": _Field(_str_map, required=False, default=None),
     "limit.signal_weight": _Field(_positive_number),
     "limit.gnn_score_cut": _Field(_number_list, required=False, default=[3.9]),
+    "models": _Field(_models, required=False, default="frozen"),
 }
 
 # Keys of the frozen defaults file. Paths are relative to the repo root.
@@ -293,7 +313,7 @@ DEFAULTS_FIELDS: dict[str, _Field] = {
     "gnn.model_name": _Field(_name),
     "gnn.conv_type": _Field(_non_empty_str),
     "gnn.gnn_mode": _Field(_non_empty_str),
-    "gnn.unsculpting_mode": _Field(_non_empty_str),
+    "gnn.unsculpting_mode": _Field(_unsculpting_mode),
     "gnn.graph_type": _Field(_non_empty_str),
     "gnn.bdt_preselection_cut": _Field(_open_unit_interval),
     "limit.tau_mass": _Field(_positive_number),
@@ -351,7 +371,7 @@ class GNNConfig:
     model_name: str
     conv_type: str
     gnn_mode: str
-    unsculpting_mode: str
+    unsculpting_mode: str | None    # None: no unsculpting
     graph_type: str
     bdt_preselection_cut: float
 
@@ -397,11 +417,17 @@ class Config:
     slurm: SlurmConfig
     user_file: Path
     defaults_file: Path
+    models: str = "frozen"   # or the path of a training gnn_vsN (the models then come from its manifests)
 
     @property
     def output_dir(self) -> str:
         """Run folder: <output_base>/<analysis_name>. String join, so xrootd URLs stay intact."""
         return f"{self.paths.output_base.rstrip('/')}/{self.analysis_name}"
+
+    @property
+    def run_name(self) -> str:
+        """Name shared with the training config (SLURM job names, log folder)."""
+        return self.analysis_name
 
 
 # ---------------------------------------------------------------- loading
@@ -546,7 +572,11 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
         raise ConfigError(problems)
     defaults, defaults_path = read
 
-    if {"bdt.classifier", "gnn.model_dir", "gnn.model_name"} <= defaults.keys():
+    trained = None
+    if user.get("models", "frozen") != "frozen":
+        from tau3mu_gnn.pipeline.models import read_trained_models
+        trained = read_trained_models(user["models"], problems)
+    elif {"bdt.classifier", "gnn.model_dir", "gnn.model_name"} <= defaults.keys():
         name = defaults["gnn.model_name"]
         model_dir = repo_root / defaults["gnn.model_dir"]
         for path in [repo_root / defaults["bdt.classifier"],
@@ -567,8 +597,16 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
         branch_map=user["branch_map"],
         resonance_skim=_resonance_skim(defaults),
         skim=_skim(defaults),
-        bdt=BDTConfig(classifier=repo_root / defaults["bdt.classifier"]),
+        bdt=BDTConfig(classifier=trained.classifier if trained else repo_root / defaults["bdt.classifier"]),
         gnn=GNNConfig(
+            model_dir=trained.model_dir,
+            model_name=trained.model_name,
+            conv_type=trained.conv_type,
+            gnn_mode=trained.gnn_mode,
+            unsculpting_mode=trained.unsculpting_mode,
+            graph_type=trained.graph_type,
+            bdt_preselection_cut=trained.bdt_preselection_cut,
+        ) if trained else GNNConfig(
             model_dir=repo_root / defaults["gnn.model_dir"],
             model_name=defaults["gnn.model_name"],
             conv_type=defaults["gnn.conv_type"],
@@ -588,4 +626,5 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
         slurm=SlurmConfig(account=defaults["slurm.account"], jobs=defaults["slurm.jobs"]),
         user_file=user_path.resolve(),
         defaults_file=defaults_path.resolve(),
+        models=user["models"],
     )

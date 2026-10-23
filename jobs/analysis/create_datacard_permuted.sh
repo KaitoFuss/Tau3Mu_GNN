@@ -64,7 +64,7 @@ echo "Running datacard test in: $JOB_SCRATCH"
 # Run datacard script
 #############################################
 
-python -m tau3mu_gnn.analysis.datacard_creation_GNN_permuted \
+python -m tau3mu_gnn.analysis.datacard \
   --model "$MODEL" \
   --channel "$CHANNEL" \
   --cut "$CUT" \

@@ -25,7 +25,7 @@ import time
 import copy
 from pathlib import Path
 import pandas as pd
-from tau3mu_gnn.gnn_training.gnn_inputs import gnn_branches, graph_level_branches
+from tau3mu_gnn.gnn_training.gnn_inputs import INFERENCE_GRAPH, gnn_branches, graph_level_branches
 from tau3mu_gnn.utils.score_merge import KEYS, scores_in_entry_order, write_with_score
 
 def __cast_unknown_type_branches(ak_array, field):
@@ -961,9 +961,11 @@ def score_events(inputs, models, outputs, npz_paths, tau_channel, unsculpting_mo
     npz_paths: name -> npz file. See the module docstring for the outputs."""
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    g = INFERENCE_GRAPH
     ScoreProducer(inputs=inputs, models=models, outputs=outputs, npz_paths=npz_paths, tree_name=tree_name,
-                  edge_connection_mode="knn", delta_r_threshold=None, k_knn=10,
+                  edge_connection_mode=g["connection"], delta_r_threshold=None, k_knn=g["k"],
+                  cone_size=g["cone_size"],
                   max_events_to_process=max_events_to_process, save_edge_attributes=True, verbose=True,
                   tau_channel=tau_channel, slimmed=True, shuffle_bool=max_events_to_process is not None,
-                  use_displacement=True, device=device, unsculpting_mode=unsculpting_mode,
+                  use_displacement=g["use_displacement"], device=device, unsculpting_mode=unsculpting_mode,
                   bdt_preselection_cut=bdt_preselection_cut)

@@ -1,5 +1,7 @@
 import os
 import numpy as np
+
+from tau3mu_gnn.utils.CorrectPileupDist import signal_event_weights
 import uproot
 import torch
 from torch_geometric.data import InMemoryDataset, Data
@@ -83,7 +85,12 @@ class ConeGraphProducer(InMemoryDataset):
         shuffle_bool=False,
         use_displacement=False,
         unsculpting_mode=None,  
-        bdt_preselection_cut=False,
+        bdt_preselection_cut=None,
+        tau_mass=1.78,
+        sideband_half_width=0.08,
+        npvs_weights_file=None,
+        shuffle_seed=None,
+        tree_name="Events",
     ):
 
         self.root = root
@@ -117,7 +124,16 @@ class ConeGraphProducer(InMemoryDataset):
             "knn": self.connect_knn,
             "r_threshold": self.connect_r_threshold,
         } 
+        # None: no cut, one graph per candidate. A value: event cut bdt_ISO >= value (before the sideband
+        # and the event limit), one graph per event from candidate 0 (background: candidate 0 in the
+        # sideband), bdt_iso stored per graph.
         self.bdt_preselection_cut = bdt_preselection_cut
+        # Pipeline options (training stage graphs); the defaults keep the old behaviour.
+        self.tau_mass = tau_mass
+        self.sideband_half_width = sideband_half_width
+        self.npvs_weights_file = npvs_weights_file        # None: <root>/signal_<channel>_npvs_weights.npz
+        self.shuffle_seed = shuffle_seed                  # None: unseeded np.random
+        self.tree_name = tree_name
 
         assert self.weights in ["xsec", None, "npvs_rescale"], "Only xsec, npvs_rescale and None are supported for the weights argument (more to be added later)"
 
@@ -192,7 +208,8 @@ class ConeGraphProducer(InMemoryDataset):
 
         # indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, i_stop), size=i_stop-i_start, replace=False)
         # for i_ev in tqdm(indices, disable=not self.verbose):
-        indices = range(i_start, i_stop) if not self.shuffle_bool else np.random.choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
+        choice = np.random.choice if self.shuffle_seed is None else np.random.default_rng(self.shuffle_seed).choice
+        indices = range(i_start, i_stop) if not self.shuffle_bool else choice(np.arange(i_start, len(events)), size=i_stop - i_start, replace=False)
         events = events[indices] 
 
         if self.mask:
@@ -215,6 +232,8 @@ class ConeGraphProducer(InMemoryDataset):
             #     )
             #     n_tau = int(ak.sum(raw_tau_mask))
             #     n_tau = min(n_tau, 1)
+            if self.bdt_preselection_cut is not None:
+                n_tau = min(event[f"n{n_prefix}TauTo3Mu"], 1)
             if n_tau == 0:
                 logging.warning(f"Skipping this event as selected mask deleted it")
                 continue
@@ -227,8 +246,7 @@ class ConeGraphProducer(InMemoryDataset):
             pfcands_charge = event[f"{old_prefix}PFCands_charge"]
             pfcands_puppiWeight = event[f"{old_prefix}PFCands_puppiWeight"]
 
-            if self.bdt_preselection_cut:
-                n_tau = 1
+            if self.bdt_preselection_cut is not None:
                 bdt_iso = event["bdt_ISO"]
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
@@ -474,7 +492,7 @@ class ConeGraphProducer(InMemoryDataset):
                 elif self.weights is None:
                     graph.w = 1.
                 elif self.weights == "npvs_rescale":
-                    graph.w = npvs_weights[event["PV_npvs"]]
+                    graph.w = signal_event_weights(np.array([event["PV_npvs"]]), npvs_weights)[0]
 
                 graph.tau_channel = self.tau_channel
 
@@ -512,7 +530,7 @@ class ConeGraphProducer(InMemoryDataset):
                     graph.non_permuted_tau_eta = torch.tensor([fitted_tau_eta], dtype=torch.float)
                     graph.non_permuted_tau_phi = torch.tensor([fitted_tau_phi], dtype=torch.float)
 
-                if self.bdt_preselection_cut:
+                if self.bdt_preselection_cut is not None:
                     graph.bdt_iso = torch.tensor([bdt_iso], dtype=torch.float)
                 # Add previous isolation approach score if requested
                 if self.save_benchmark_score:
@@ -551,7 +569,8 @@ class ConeGraphProducer(InMemoryDataset):
         if self.weights == "npvs_rescale":
             xsec = 1.
             gen_events_before_selection = None
-            npvs_weights = np.load(self.root + f"/signal_{self.tau_channel}_npvs_weights.npz")["weight_per_bin"]
+            npvs_file = self.npvs_weights_file or self.root + f"/signal_{self.tau_channel}_npvs_weights.npz"
+            npvs_weights = np.load(npvs_file)["weight_per_bin"]
 
         prefix = "Selected_" if self.slimmed else ""
         n_prefix = "Selected" if self.slimmed else ""
@@ -591,7 +610,7 @@ class ConeGraphProducer(InMemoryDataset):
             # f"{prefix}TauTo3Mu_iso_ptChargedFromPU_pT05",
         ]
 
-        if self.bdt_preselection_cut:
+        if self.bdt_preselection_cut is not None:
             branches_to_load += [f"bdt_ISO"]  # adjust branch name to whatever it's called in your ROOT files
 
         # self.graph_level_branches = [f"{prefix}{b}" for b in self.graph_level_features]
@@ -611,24 +630,22 @@ class ConeGraphProducer(InMemoryDataset):
         # with uproot.open(f"{file_name}:Events") as in_file:
         #     events = in_file.arrays(branches_to_load, library="ak")
         all_chunks = []
-        for events in uproot.iterate(f"{file_name}:Events", expressions=branches_to_load, library="ak", step_size="100 MB"):
+        for events in uproot.iterate(f"{file_name}:{self.tree_name}", expressions=branches_to_load, library="ak", step_size="100 MB"):
             all_chunks.append(events)
 
         events = ak.concatenate(all_chunks)
-        # print(f"bdt preselection cut: {self.bdt_preselection_cut}")
-        # if self.bdt_preselection_cut is not None:
-        #     prev_event_num = len(events)
-        #     bdt_cut_mask = events[f"bdt_ISO"] > self.bdt_preselection_cut
-        #     events = events[bdt_cut_mask]
-        #     print(f"  BDT preselection > {self.bdt_preselection_cut}: {len(events):,} events out of {prev_event_num:,} remaining")
-        
+        if self.bdt_preselection_cut is not None:
+            events = events[events["bdt_ISO"] >= self.bdt_preselection_cut]
         bkg_mask = None
         total_events = len(events)
         if self.mask:
-            bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - 1.78) > 0.08
-            # Filters events that do not have single bkg-looking event
-            events = events[ak.any(bkg_mask, axis=1)] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
-            bkg_mask = bkg_mask[ak.any(bkg_mask, axis=1)]
+            bkg_mask = abs(events[f"{prefix}TauTo3Mu_fitted_mass"] - self.tau_mass) > self.sideband_half_width
+            if self.bdt_preselection_cut is not None:
+                keep = ak.fill_none(ak.firsts(bkg_mask), False)   # candidate 0 in the sideband
+            else:
+                keep = ak.any(bkg_mask, axis=1)   # Filters events that do not have single bkg-looking event
+            events = events[keep] # This flattening is needed as otherwise the ak.type of bkg_mask and events would not coincide
+            bkg_mask = bkg_mask[keep]
             
         if gen_events_before_selection is None:
             gen_events_before_selection = total_events
@@ -656,6 +673,8 @@ class ConeGraphProducer(InMemoryDataset):
         for file in self.raw_file_names:
             print(f"Processing {file}")
             graphs += self.get_graphs(file)
+        if not graphs:  # collate of an empty list fails with an IndexError
+            raise ValueError(f"ConeGraphProducer: no graphs for {self.output_dataset_name} from {self.raw_file_names}")
         
         data, slices = self.collate(graphs)
         for key, value in data.items():

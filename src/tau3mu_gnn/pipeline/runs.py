@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Mapping
 
 import yaml
 
@@ -37,12 +38,13 @@ def is_complete(parent, name: str) -> bool:
     return storage.exists(storage.join(parent, name, MANIFEST))
 
 
-def create_version(cfg: Config, prefix: str, parent=None) -> str:
-    """Make the next <prefix>_vsN folder in parent (default: the run folder) with config_used.yaml."""
+def create_version(cfg: Config, prefix: str, parent=None, settings: dict | None = None) -> str:
+    """Make the next <prefix>_vsN folder in parent (default: the run folder) with config_used.yaml
+    (settings default: config_dict(cfg), the analysis settings)."""
     parent = parent if parent is not None else cfg.output_dir
     path = storage.join(parent, next_version(parent, prefix))
     storage.makedirs(path)
-    storage.write_text(storage.join(path, CONFIG_USED), yaml.safe_dump(config_dict(cfg), sort_keys=False))
+    storage.write_text(storage.join(path, CONFIG_USED), yaml.safe_dump(config_dict(cfg) if settings is None else settings, sort_keys=False))
     log.info("new version %s", path)
     return path
 
@@ -70,9 +72,10 @@ def pick_version(cfg: Config, phase: str, from_: str | None = None, complete: bo
     return storage.join(base, pool[-1])
 
 
-def pick_upstream(cfg: Config, phase: str, from_: str | None = None) -> str:
+def pick_upstream(cfg: Config, phase: str, from_: str | None = None,
+                  upstream_map: Mapping[str, str | None] = UPSTREAM) -> str:
     """Full path of the upstream version for `phase` (complete only). Raise UpstreamError if there is none."""
-    up = UPSTREAM[phase]
+    up = upstream_map[phase]
     if up is None:
         raise ValueError(f"{phase} has no upstream phase")
     return pick_version(cfg, up, from_)

@@ -13,7 +13,8 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 - [Infrastructure](#infrastructure)
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
-- [Analysis Pipeline (from a config file)](#analysis-pipeline-from-a-config-file)
+- [Analysis Pipeline (tau3mu-pipeline)](#analysis-pipeline-tau3mu-pipeline)
+- [Training Pipeline (tau3mu-train)](#training-pipeline-tau3mu-train)
 - [Quick Start](#quick-start)
 - [Pipeline Overview](#pipeline-overview)
   - [Step 0 — Skimming](#step-0--skimming-optional)
@@ -56,7 +57,7 @@ The work uses two clusters:
 > **This will change: move to lxplus.** A later step moves all work to lxplus (HTCondor and EOS). Then the split between T3 and lxplus stops. These README parts describe the T3 setup now and will change:
 > - [Infrastructure](#infrastructure): the clusters, the schedulers and the hardcoded paths.
 > - [CMS Combine](#cms-combine): the build on lxplus.
-> - [Analysis Pipeline](#analysis-pipeline-from-a-config-file): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
+> - [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
 > - [Quick Start](#quick-start) and [Pipeline Overview](#pipeline-overview): the copy steps between T3 and lxplus (Steps 1b, 2, 4).
 > - [Data Storage and Transfer](#data-storage-and-transfer): `/pnfs/`, `/work/`, the data flow.
 > - [Job Submission](#job-submission): SLURM on T3.
@@ -102,7 +103,7 @@ tau3mu_gnn/
     ├── model_eval/
     │   └── ModelEval.py          # Plotting: ROC, sculpting, score distributions
     ├── analysis/
-    │   ├── datacard_creation_GNN_permuted.py      # Generate CMS Combine datacards (GNN)
+    │   ├── datacard.py                            # CMS Combine datacards (GNN score or BDT ISO)
     │   ├── datacard_creation_ISO.py      # Generate CMS Combine datacards (ISO/BDT baseline)
     │   └── readout_limit.py              # Parse Combine output and save limits to JSON
     ├── utils/
@@ -163,7 +164,7 @@ which combine              # must be $CONDA_PREFIX/bin/combine
 
 ---
 
-## Analysis Pipeline (from a config file)
+## Analysis Pipeline (tau3mu-pipeline)
 
 This pipeline runs the frozen W analysis on **your** input files. You need only one config file.
 
@@ -208,8 +209,11 @@ Edit `my_W.yaml`. The comments in the file explain each key.
 | `branch_map` | Set it only if your branch names are different. For raw NanoAOD, use the raw names as keys (`TauTo3Mu_*`, `PFCands_*`). |
 | `limit.signal_weight` | **Required.** It has no default. See below. |
 | `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
+| `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/`. Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-train`). See below. |
 
 > **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
+
+> **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The config stops with an error if the folder is not a `gnn_vsN`, its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
 > **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
 
@@ -319,9 +323,71 @@ Each version folder also has these files:
 
 ---
 
+## Training Pipeline (tau3mu-train)
+
+Trains a new BDT and GNN on your inputs, and computes a BDT-only benchmark limit. You need it only if you want new models. Without it, the analysis uses the frozen models.
+
+### 1. Write the training config
+
+```bash
+cp configs/example_training_W.yaml my_training_W.yaml
+```
+
+The comments in the file explain each key. The frozen training settings (BDT and GNN recipe, graph settings, Comet ML, SLURM resources) are in `configs/training_defaults_W.yaml`. The shared settings (skim cuts, limit fit) come from `configs/analysis_defaults_W.yaml`.
+
+| Key | What it is |
+|---|---|
+| `training_name` | The name of the training folder. |
+| `paths`, `inputs`, `branch_map` | As in the analysis config. |
+| `graphs.bdt_preselection_cut` | **Required.** Only events with `bdt_ISO >= cut` go into the GNN training graphs. |
+| `graphs.max_events`, `bdt_training.max_events_per_class` | Optional. Defaults 600000 and 100000. |
+| `benchmark.bdt_score_cut` | **Required.** One cut or a list on `bdt_ISO` for the BDT-only benchmark limit. |
+| `limit.signal_weight` | **Required.** As in the analysis config. |
+
+### 2. Submit
+
+```bash
+voms-proxy-init --voms cms --valid 192:00     # the longest job chain is about 157 h
+tau3mu-train all --config my_training_W.yaml --dry-run
+tau3mu-train all --config my_training_W.yaml
+```
+
+`all` submits three phases. You can also submit one phase: `tau3mu-train bdt|gnn|benchmark --config ...` (`gnn` and `benchmark` take `--from bdt_vsN`).
+
+| Phase | Jobs | Needs |
+|---|---|---|
+| `bdt` | skim → BDT training → BDT inference | your inputs |
+| `gnn` | npvs weights → signal graphs; background graphs → GNN training (GPU) | a `bdt_vsN` |
+| `benchmark` | one BDT-only limit per cut → summary | a `bdt_vsN` |
+
+The jobs use the code of the folder you submit from. Do not change that folder while the jobs run. The GNN training runs on the `gpu` partition. Without a visible GPU it trains on CPU and writes a warning to its log. Each job checks at its start that the proxy is valid for its own time limit.
+
+### 3. Results
+
+```
+<output_base>/<training_name>/
+├── bdt_vsN/         1_skim/, bdt_train/ (ISO_classifiers.pck, plots), 2_bdt/
+├── gnn_vsN/         npvs/, graphs/, gnn_train/<model_name>/ (model, Normalization.pkl, arch_config.json)
+└── benchmark_vsN/   cut_<cut>/, limits.json, limits.txt, limits.png   (BDT-only limit, best cut)
+```
+
+Job names: `BDT<N>`, `GNN<N>`, `BEN<N>` plus the job, for example `GNN1.gnnT.my_training`.
+
+### 4. Use the new models in the analysis
+
+Set `models` in your analysis config to the `gnn_vsN` folder, then run the analysis as usual (`tau3mu-pipeline all`):
+
+```yaml
+models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/<you>/tau3mu_pipeline/<training_name>/gnn_vs1
+```
+
+The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `phase_c_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
+
+---
+
 ## Quick Start
 
-> **This will change: GNN training in the pipeline.** A later step adds the GNN training to `tau3mu-pipeline`. Then this section will change.
+> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline) and the [Training Pipeline](#training-pipeline-tau3mu-train) replace these steps. They are kept for reference.
 
 A short end-to-end run for the W channel.
 
@@ -365,7 +431,7 @@ sbatch jobs/analysis/create_datacard.sh
 
 ## Pipeline Overview
 
-> **This will change: GNN training in the pipeline.** A later step adds the GNN training to `tau3mu-pipeline`. Then this section will change.
+> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-train) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline) Steps 5–7. They are kept for reference.
 
 Do the steps in this order. Each step has a job script in `jobs/`.
 
@@ -565,7 +631,7 @@ You need a valid CMS VOMS proxy and CMS Combine.
 
 ```bash
 # jobs/analysis/create_datacard.sh
-python -m tau3mu_gnn.analysis.datacard_creation_GNN_permuted \
+python -m tau3mu_gnn.analysis.datacard \
   --model   <model_name> \
   --channel W \
   --cut     <score_cut>

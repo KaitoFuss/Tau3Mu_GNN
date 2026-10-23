@@ -30,9 +30,10 @@ def cut_dir_name(cut: float) -> str:
     return f"cut_{cut}"
 
 
-def check_inputs(inputs: Mapping[str, str | Path], tree_name: str) -> None:
-    """Raise BranchError if a stage 3 output is missing or has no GNN_score / fitted mass."""
-    check_stage_inputs({s: inputs[s] for s in INPUTS}, tree_name, REQUIRED_BRANCHES, "limit")
+def check_inputs(inputs: Mapping[str, str | Path], tree_name: str, score_branch: str = "GNN_score") -> None:
+    """Raise BranchError if an input is missing or has no score branch / fitted mass."""
+    check_stage_inputs({s: inputs[s] for s in INPUTS}, tree_name,
+                       (score_branch, "Selected_TauTo3Mu_fitted_mass"), "limit")
 
 
 def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path, cut: float) -> dict:
@@ -43,17 +44,27 @@ def run(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path, cut:
     lim = cfg.limit
     if cut not in lim.gnn_score_cut:
         raise ValueError(f"cut {cut} is not in limit.gnn_score_cut {list(lim.gnn_score_cut)}")
+    return run_cut(inputs, out_dir, cut, score_branch="GNN_score", signal_weight=lim.signal_weight,
+                   tau_mass=lim.tau_mass, mass_window=lim.mass_window, fit_range=lim.fit_range, cl=lim.cl,
+                   tree_name=cfg.inputs.tree_name)
+
+
+def run_cut(inputs: Mapping[str, str | Path], out_dir: str | Path, cut: float, *, score_branch: str,
+            signal_weight: float, tau_mass: float, mass_window: float, fit_range: tuple[float, float],
+            cl: float, tree_name: str) -> dict:
+    """Datacard, Combine and limit for <score_branch> > cut into <out_dir>/cut_<cut>/ (stage 5 and the
+    BDT-only benchmark). Returns {"cut", "limit", "limitErr", "dir", "datacard", "limit_json"}."""
     card_dir = Path(out_dir) / cut_dir_name(cut)
     (card_dir / "limit.json").unlink(missing_ok=True)  # a failed rerun must not leave the old limit
-    check_inputs(inputs, cfg.inputs.tree_name)
+    check_inputs(inputs, tree_name, score_branch)
     combine_executable()  # fail before the datacard work if Combine is missing
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
 
-    log.info("stage 5 limit: cut %s, %s -> %s", cut, {s: str(inputs[s]) for s in INPUTS}, card_dir)
-    card = make_datacard([inputs["signal"]], [inputs["background"]], cut, lim.signal_weight, card_dir,
-                         tau_mass=lim.tau_mass, mass_window=lim.mass_window, fit_range=lim.fit_range,
-                         tree_name=cfg.inputs.tree_name)
-    limits = read_limit(run_combine(card_dir, lim.cl))
+    log.info("limit: %s > %s, %s -> %s", score_branch, cut, {s: str(inputs[s]) for s in INPUTS}, card_dir)
+    card = make_datacard([inputs["signal"]], [inputs["background"]], cut, signal_weight, card_dir,
+                         tau_mass=tau_mass, mass_window=mass_window, fit_range=fit_range,
+                         tree_name=tree_name, score_branch=score_branch)
+    limits = read_limit(run_combine(card_dir, cl))
     if not limits:
         raise RuntimeError(f"Combine wrote no median expected limit; see {card_dir / 'combine_asymptotic.log'} "
                            f"and {card_dir / 'combine_fitdiagnostics.log'}")
@@ -81,7 +92,12 @@ def run_scan(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path)
 
 
 def summarize(cfg: Config, out_dir: str | Path, write_dir: str | Path | None = None) -> dict:
-    """Table of the cut scan: reads <out_dir>/cut_<cut>/limit.json for each cut of limit.gnn_score_cut.
+    """Table of the GNN cut scan (cuts of limit.gnn_score_cut); see summarize_cuts."""
+    return summarize_cuts(cfg.limit.gnn_score_cut, cfg.limit.cl, out_dir, write_dir)
+
+
+def summarize_cuts(cuts, cl: float, out_dir: str | Path, write_dir: str | Path | None = None) -> dict:
+    """Table of a cut scan: reads <out_dir>/cut_<cut>/limit.json for each cut of cuts.
 
     A cut without a finite limit is a missing row (warning). Best cut = lowest limit, the smaller cut on a tie.
     Writes limits.json, limits.txt, limits.png into write_dir (default out_dir). Raises RuntimeError if no cut
@@ -93,10 +109,10 @@ def summarize(cfg: Config, out_dir: str | Path, write_dir: str | Path | None = N
     files = {k: write_dir / name for k, name in SUMMARY_FILES.items()}
     for f in files.values():
         f.unlink(missing_ok=True)  # a failed summary must not leave the table of an earlier scan
-    rows = [_read_cut(out_dir, cut) for cut in sorted(cfg.limit.gnn_score_cut)]
+    rows = [_read_cut(out_dir, cut) for cut in sorted(cuts)]
     found = [r for r in rows if r["limit"] is not None]
     if not found:
-        raise RuntimeError(f"no limit for any cut {sorted(cfg.limit.gnn_score_cut)} in {out_dir}; "
+        raise RuntimeError(f"no limit for any cut {sorted(cuts)} in {out_dir}; "
                            f"see the cut_<cut>/combine_*.log files")
     missing = [r["cut"] for r in rows if r["limit"] is None]
     if missing:
@@ -104,7 +120,7 @@ def summarize(cfg: Config, out_dir: str | Path, write_dir: str | Path | None = N
     best = min(found, key=lambda r: r["limit"])
     for r in rows:
         r["best"] = r is best
-    summary = {"cl": cfg.limit.cl, "best_cut": best["cut"], "best_limit": best["limit"],
+    summary = {"cl": cl, "best_cut": best["cut"], "best_limit": best["limit"],
                "missing": missing, "rows": rows}
     files["json"].write_text(json.dumps(summary, indent=2) + "\n")
     files["txt"].write_text(_table(summary))

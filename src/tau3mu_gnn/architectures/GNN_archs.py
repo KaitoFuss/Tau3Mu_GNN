@@ -51,8 +51,7 @@ def _detect_registry_path():
         return "/eos/user/k/kfuss/SVJ_GNN/output/"
     elif os.path.exists("/work/kfuss/"):
         return "/work/kfuss/SVJ_GNN/output/"
-    else:
-        raise RuntimeError("Unknown cluster — cannot determine REGISTRY_PATH")
+    return None  # unknown machine: no registry (get_arch_configs still works)
 
 REGISTRY_PATH = _detect_registry_path()
 
@@ -87,6 +86,8 @@ def sample_new_config(registry, max_attempts=10_000):
 
 def get_arch_configs_random(tau_channel, disco_reg, registry_path=REGISTRY_PATH):
     disco_reg = str(disco_reg)
+    if registry_path is None:
+        raise RuntimeError("random architecture search needs a registry path (unknown machine: REGISTRY_PATH is None)")
     registry_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry_0.8_dropout.npz"
     registry = load_registry(registry_path)
     fc, fusion, key, unique_ident = sample_new_config(registry)
@@ -129,14 +130,15 @@ def get_arch_configs(arch: str, tau_channel: str, disco_reg: int, registry_path:
     if fusion_idx not in SCALE_DOWN_PARAMS_OPTIONS:
         raise ValueError(f"sd index {fusion_idx} not in SCALE_DOWN_PARAMS_OPTIONS (valid: 1–{len(SCALE_DOWN_PARAMS_OPTIONS)}).")
 
-    # Registry
-    reg_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry_0.8_dropout.npz"
-    registry = load_registry(reg_path)
-    key      = repr((fc_idx, fusion_idx))
+    # Registry (skipped with registry_path=None, e.g. in the pipeline)
+    if registry_path is not None:
+        reg_path = registry_path + tau_channel + f"_disco_{disco_reg}_arch_registry_0.8_dropout.npz"
+        registry = load_registry(reg_path)
+        key      = repr((fc_idx, fusion_idx))
 
-    if not key in registry:
-        registry.add(key)
-        save_registry(reg_path, registry)
+        if not key in registry:
+            registry.add(key)
+            save_registry(reg_path, registry)
 
     # Build config
     fc_params     = inject_dropout(FC_PARAMS_OPTIONS[fc_idx],     0.8)

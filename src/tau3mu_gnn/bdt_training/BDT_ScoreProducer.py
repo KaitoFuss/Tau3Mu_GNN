@@ -29,12 +29,15 @@ def deltaphi(phi1, phi2):
     return delta_phi
 
 
-def _load(files, tree_name, branches, label):
-    """One row per event (first candidate), so the (run, luminosityBlock, event) keys in _write_with_scores are unique."""
+def _load(files, tree_name, branches, label, event_filter=None):
+    """One row per event (first candidate), so the (run, luminosityBlock, event) keys in _write_with_scores are unique.
+    event_filter(events) -> one bool per event, applied before the first candidate is taken."""
     all_chunks = []
     print(f"Going to load {label} events")
     for file in files:
         for events in uproot.iterate(f"{file}:{tree_name}", expressions=branches, library="ak", step_size="100 MB"):
+            if event_filter is not None:
+                events = events[event_filter(events)]
             new_fields = {}
             for branch in events.fields:
                 if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
@@ -45,6 +48,8 @@ def _load(files, tree_name, branches, label):
             events_stripped = ak.zip(new_fields)
             all_chunks.append(ak.to_dataframe(events_stripped))
 
+    if not all_chunks:  # no entries at all
+        return pd.DataFrame(columns=branches)
     df = pd.concat(all_chunks, ignore_index=True)
     df = df.dropna()
     print(df.shape)

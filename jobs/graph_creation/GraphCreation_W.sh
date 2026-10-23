@@ -16,7 +16,7 @@ export TMPDIR=/scratch/$USER/${SLURM_JOB_ID}
 source /work/kfuss/miniforge3/bin/activate Tau3Mu
 
 # python -m tau3mu_gnn.scripts.GraphCreation --graph_type knn --k 10 --tau_channel W --unsculpting_mode split_pt_uniformly
-python -m tau3mu_gnn.scripts.GraphCreation --graph_type knn --k 10 --tau_channel W --unsculpting_mode delete_muons --bdt_preselection_cut #delete bdt_preselection_cut if not wanted
+python -m tau3mu_gnn.scripts.GraphCreation --graph_type knn --k 10 --tau_channel W --unsculpting_mode delete_muons --bdt_preselection_cut 0.8 #delete bdt_preselection_cut if not wanted
 
 # cleaning of temporal working dir when job was completed:
 rm  -rf /scratch/$USER/${SLURM_JOB_ID}

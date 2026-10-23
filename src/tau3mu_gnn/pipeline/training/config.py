@@ -19,7 +19,7 @@ from tau3mu_gnn.pipeline.config import (
     SlurmConfig, _abs_or_url, _bool, _channel, _Field, _increasing_number_list, _inputs,
     _LEAF_KEYS, _linspace, _local_path, _name, _non_empty_str, _number, _number_list, _open_unit_interval,
     _optional_local_path, _parse, _paths, _positive_int, _positive_number, _read_yaml,
-    _resonance_skim, _skim, _slurm_jobs_parser, _str_map, _user_path_list, _windows, read_analysis_defaults,
+    _resonance_skim, _skim, _slurm_jobs_parser, _str_map, _unsculpting_mode, _user_path_list, _windows, read_analysis_defaults,
 )
 
 TRAINING_SLURM_JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal",
@@ -108,7 +108,8 @@ TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "graphs.k": _Field(_positive_int),
     "graphs.cone_size": _Field(_positive_number),
     "graphs.use_displacement": _Field(_bool),
-    "graphs.unsculpting_mode": _Field(_non_empty_str),
+    "graphs.unsculpting_mode": _Field(_unsculpting_mode),
+    "graphs.shuffle_seed": _Field(_positive_int),
     "gnn_training.conv_type": _Field(_non_empty_str),
     "gnn_training.gnn_mode": _Field(_non_empty_str),
     "gnn_training.arch": _Field(_non_empty_str),
@@ -120,6 +121,7 @@ TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "gnn_training.lr_scheduler_patience": _Field(_positive_int),
     "gnn_training.class_fraction": _Field(_class_fraction),
     "gnn_training.windows": _Field(_windows),
+    "gnn_training.seed": _Field(_positive_int),
     "comet.workspace": _Field(_non_empty_str),
     "comet.api_key": _Field(_non_empty_str),
     "slurm.account": _Field(_non_empty_str),
@@ -164,14 +166,15 @@ class GraphsConfig:
     k: int
     cone_size: float
     use_displacement: bool        # "dzd0" in the name
-    unsculpting_mode: str
+    unsculpting_mode: str | None  # None: no unsculpting
+    shuffle_seed: int             # random subset of max_events
 
     @property
     def graph_type(self) -> str:
         """Graph name as in the analysis gnn.graph_type, e.g. skimmed_dzd0_cone_size_0.5_knn_10."""
-        dzd0 = "_dzd0" if self.use_displacement else ""
-        name = f"skimmed{dzd0}_cone_size_{self.cone_size}_{self.connection}"  # same format as GraphCreation.py
-        return f"{name}_{self.k}" if self.connection == "knn" else name
+        from tau3mu_gnn.graph.naming import graph_suffix
+        return "skimmed" + graph_suffix(self.use_displacement, self.cone_size, self.connection, k=self.k,
+                                        with_unsculpting=False)
 
 
 @dataclass(frozen=True)
@@ -187,6 +190,7 @@ class GNNTrainingConfig:
     lr_scheduler_patience: int
     class_fraction: tuple[float, float]           # signal, background
     windows: Mapping[str, tuple[float, float]]    # train / validation / test
+    seed: int                                     # torch, numpy, random
 
 
 @dataclass(frozen=True)
@@ -235,6 +239,11 @@ class TrainingConfig:
     def output_dir(self) -> str:
         """Run folder: <output_base>/<training_name>. String join, so xrootd URLs stay intact."""
         return f"{self.paths.output_base.rstrip('/')}/{self.training_name}"
+
+    @property
+    def run_name(self) -> str:
+        """Name shared with the analysis config (SLURM job names, log folder)."""
+        return self.training_name
 
 
 # ---------------------------------------------------------------- loading

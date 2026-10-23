@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uproot
 import pandas as pd
+from contextlib import contextmanager
 
 
 
@@ -141,6 +142,20 @@ def get_model_parameters(model_type, tau_channel):
     
     return num_node_features, num_edge_features, num_graph_level_features
 
+_OUTPUT_BASE = None  # None: <cwd>/output
+
+
+@contextmanager
+def output_base(path):
+    """Within the block, output_directory(name) is <path>/<name> instead of <cwd>/output/<name>."""
+    global _OUTPUT_BASE
+    previous, _OUTPUT_BASE = _OUTPUT_BASE, str(path)
+    try:
+        yield
+    finally:
+        _OUTPUT_BASE = previous
+
+
 def output_directory(name):
     """Create output directory with the name of the training and
         return the path s.t. I can save everything in it.
@@ -151,7 +166,7 @@ def output_directory(name):
     Returns: path to output directory (str)
         
     """
-    output_path =  os.path.join(os.getcwd(),"output",name)
+    output_path =  os.path.join(_OUTPUT_BASE or os.path.join(os.getcwd(), "output"), name)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
         print(f"==> Created directory {output_path}")

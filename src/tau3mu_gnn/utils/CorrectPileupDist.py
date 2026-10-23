@@ -5,105 +5,88 @@ import os
 import matplotlib.pyplot as plt
 
 
-def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path: str, tau_channel, col_name="PV_npvs", bins=np.linspace(0, 100, 101)):
-    # Ensure the output directory exists
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+OLD_VAR_BINS = [0, 10, 15, 18, 20] + list(np.linspace(21, 60, 40, dtype=int)) + [65, 100]
 
-    # Read signal data
-    # f_signal = uproot.open(signal_filepath)
-    # f_signal = uproot.concatenate(
-    #     [f"{fp}:Events" for fp in signal_filepaths],
-    #     library="ak"
-    # )
-    # df_signal = f_signal["Events"].arrays([col_name])
-    f_signal = uproot.concatenate(
-        [f"{fp}:Events" for fp in signal_filepaths],
-        library="ak",
-        filter_name=[col_name]   # optional, only read this column
-    )
-    npvs_signal = ak.to_numpy(f_signal[col_name])
-    # npvs_signal = ak.to_numpy(ak.concatenate([df_signal[col_name]]))
 
-    # Read background data
-    # f_bkg = uproot.open(bkg_filepath)
-    f_bkg = uproot.concatenate(
-        [f"{fp}:Events" for fp in bkg_filepaths],
-        library="ak",
-        filter_name=[col_name] 
-    )
-    # df_bkg = f_bkg["Events"].arrays([col_name])
-    # npvs_bkg = ak.to_numpy(ak.concatenate([df_bkg[col_name]]))
-    npvs_bkg = ak.to_numpy(f_bkg[col_name])
+def read_npvs(files, tree_name="Events", col_name="PV_npvs"):
+    """col_name of all entries of files, as one numpy array."""
+    arrays = uproot.concatenate([f"{fp}:{tree_name}" for fp in files], library="ak", filter_name=[col_name])
+    return ak.to_numpy(arrays[col_name])
 
-    # Compute histograms
-    var_bins = [0,10,15,18,20]  + list(np.linspace(21,60,40,dtype=int)) + [65,100]
+
+def npvs_weights(npvs_signal, npvs_bkg, var_bins, uniform_bins):
+    """Weights for SIGNAL events only (background events keep weight 1): signal -> background weights of the normalised npvs histograms on var_bins, mapped onto
+    uniform_bins: a uniform bin gets the weight of the variable bin that holds its centre.
+    Variable bins without signal get weight 0. Raise ValueError if a sample has no entry in var_bins."""
     hist_signal, _ = np.histogram(npvs_signal, bins=var_bins)
     hist_bkg, _ = np.histogram(npvs_bkg, bins=var_bins)
+    for name, hist in (("signal", hist_signal), ("background", hist_bkg)):
+        if hist.sum() == 0:
+            raise ValueError(f"npvs weights: {name} has no events inside the bins {var_bins[0]}-{var_bins[-1]}")
 
     hist_signal_norm = hist_signal / np.sum(hist_signal)
     hist_bkg_norm = hist_bkg / np.sum(hist_bkg)
-
-    # Compute bin-wise weights (e.g. for reweighting signal to match background)
     with np.errstate(divide='ignore', invalid='ignore'):
         weight_per_bin = np.true_divide(hist_bkg_norm, hist_signal_norm)
         weight_per_bin[~np.isfinite(weight_per_bin)] = 0
 
-    uniform_bins = np.linspace(0, 100, 101)
     uniform_bin_centers = 0.5 * (uniform_bins[:-1] + uniform_bins[1:])
-    rescaled_weights = np.zeros_like(uniform_bins[:-1], dtype=float)  # 100 elements for 100 bins
-
+    rescaled_weights = np.zeros_like(uniform_bins[:-1], dtype=float)
     var_bins_np = np.array(var_bins)
     for i in range(len(var_bins_np) - 1):
         mask = (uniform_bin_centers >= var_bins_np[i]) & (uniform_bin_centers < var_bins_np[i+1])
         rescaled_weights[mask] = weight_per_bin[i]
+    return rescaled_weights
 
-    # Create figure and two y-axes
+
+def signal_event_weights(npvs_signal, weight_per_bin):
+    """Per-event weight of signal events: weight_per_bin[PV_npvs], with PV_npvs clipped to the
+    table (values >= len(weight_per_bin) get the last bin's weight)."""
+    index = np.clip(np.asarray(npvs_signal, dtype=np.int64), 0, len(weight_per_bin) - 1)
+    return np.asarray(weight_per_bin)[index]
+
+
+def plot_npvs(npvs_signal, npvs_bkg, weight_per_bin, uniform_bins, title, out_npvs, out_weights):
+    """Signal, background and rescaled signal npvs (log y), and the weight distribution."""
     fig, ax1 = plt.subplots()
-    # ax2 = ax1.twinx()
-
-    # Plot histograms on primary y-axis
-    ax1.hist(npvs_signal, bins=bins, alpha=0.7, color='blue', label="signal", density=True)
-    ax1.hist(npvs_bkg, bins=bins, alpha=0.7, color='red', label="background", density=True)
-    
-    # Compute which bin each signal event falls into
-    signal_bin_indices = np.digitize(npvs_signal, bins=uniform_bins) - 1  # subtract 1 to get 0-based index
-    # Clip indices to be in [0, len(rescaled_weights)-1]
-    signal_bin_indices = np.clip(signal_bin_indices, 0, len(rescaled_weights) - 1)
-    # Create per-event weights
-    event_weights = rescaled_weights[signal_bin_indices]
-    ax1.hist(npvs_signal, bins=bins, weights=event_weights, alpha=0.7, color='green', label="rescaled signal", density=True)
+    ax1.hist(npvs_signal, bins=uniform_bins, alpha=0.7, color='blue', label="signal", density=True)
+    ax1.hist(npvs_bkg, bins=uniform_bins, alpha=0.7, color='red', label="background", density=True)
+    event_weights = signal_event_weights(npvs_signal, weight_per_bin)
+    ax1.hist(npvs_signal, bins=uniform_bins, weights=event_weights, alpha=0.7, color='green',
+             label="rescaled signal", density=True)
     ax1.set_ylabel("Normalised Counts")
     ax1.set_xlabel("Number of PVs")
     ax1.set_yscale('log')
     ax1.legend(loc="upper left")
     ax1.grid(True)
-
-    # # Plot step on secondary y-axis
-    # ax2.step(uniform_bin_centers, rescaled_weights, where='mid', color='lightblue', label="weight")
-    # ax2.set_ylabel("Weight (bkg/sig)")
-    # ax2.legend(loc="upper right")
-
-    plt.title(f"Comparison of Number of PVs {tau_channel} channel")
-    output_name = output_path + "_npvs"
-    plt.savefig(output_name, dpi=300)
+    plt.title(f"Comparison of Number of PVs {title}")
+    plt.savefig(out_npvs, dpi=300)
     plt.close()
 
+    plt.figure()
+    plt.hist(weight_per_bin, bins=np.linspace(0, 25, 26), color='blue', alpha=0.7)
+    plt.xlabel("Weight (bkg/sig)")
+    plt.ylabel("Counts")
+    plt.grid(True)
+    plt.title(f"Weights distribution {title}")
+    plt.savefig(out_weights, dpi=300)
+    plt.close()
+
+
+def create_weight_array(signal_filepaths: list, bkg_filepaths: list, output_path: str, tau_channel, col_name="PV_npvs", bins=np.linspace(0, 100, 101)):
+    # Ensure the output directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    npvs_signal = read_npvs(signal_filepaths, col_name=col_name)
+    npvs_bkg = read_npvs(bkg_filepaths, col_name=col_name)
+    uniform_bins = np.linspace(0, 100, 101)
+    rescaled_weights = npvs_weights(npvs_signal, npvs_bkg, OLD_VAR_BINS, uniform_bins)
+    plot_npvs(npvs_signal, npvs_bkg, rescaled_weights, bins, f"{tau_channel} channel",
+              output_path + "_npvs", output_path + "_weights")
     # Save weight array and bin edges
     np.savez(output_path + f"_npvs_weights.npz",
              weight_per_bin=rescaled_weights,
              bins=uniform_bins)
 
-    plt.figure()
-    plt.hist(rescaled_weights, bins=np.linspace(0, 25, 26), color='blue', alpha=0.7)
-    plt.xlabel("Weight (bkg/sig)")
-    plt.ylabel("Counts")
-    plt.grid(True)
-    plt.title(f"Weights distribution {tau_channel} channel")
-    output_name = output_path + "_weights"
-    plt.savefig(output_name, dpi=300)
-    plt.close()
-
-    
 
 if __name__ == "__main__":
     signal_filepaths = ["/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/signal_skimmed_no_resonances.root"]

@@ -10,6 +10,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Callable, Mapping
 
 from tau3mu_gnn.pipeline import storage
 from tau3mu_gnn.pipeline.config import REPO_ROOT, Config
@@ -21,9 +22,9 @@ JOBS_FILE = "jobs.json"
 PHASES = ("phase_a", "phase_b", "phase_c")
 UPSTREAM = {"phase_a": None, "phase_b": "phase_a", "phase_c": "phase_b"}
 PHASE_SECTIONS = {
-    "phase_a": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt"),
-    "phase_b": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt", "gnn"),
-    "phase_c": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt", "gnn", "limit"),
+    "phase_a": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt"),
+    "phase_b": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn"),
+    "phase_c": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn", "limit"),
 }
 
 
@@ -54,6 +55,7 @@ def config_dict(cfg: Config) -> dict:
                            "veto_masses": list(rs.veto_masses), "veto_half_width": rs.veto_half_width,
                            "pf_dr_max": rs.pf_dr_max},
         "skim": {"dz_max": cfg.skim.dz_max, "cos_alpha_2d_min": cfg.skim.cos_alpha_2d_min},
+        "models": cfg.models,   # frozen or the training gnn_vsN the models come from
         "bdt": {"classifier": rel(cfg.bdt.classifier)},
         "gnn": {"model_dir": rel(g.model_dir), "model_name": g.model_name, "conv_type": g.conv_type,
                 "gnn_mode": g.gnn_mode, "unsculpting_mode": g.unsculpting_mode, "graph_type": g.graph_type,
@@ -101,15 +103,16 @@ def _git_commit() -> str:
 
 
 def write_manifest(cfg: Config, phase_dir, phase: str, upstream: str | None, outputs: dict[str, str],
-                   missing=()) -> dict:
-    """Write <phase_dir>/manifest.json. outputs: key -> path relative to phase_dir."""
+                   missing=(), settings: dict | None = None) -> dict:
+    """Write <phase_dir>/manifest.json. outputs: key -> path relative to phase_dir.
+    settings default: phase_settings(cfg, phase) (the analysis sections)."""
     jobs_file = storage.join(phase_dir, JOBS_FILE)
     data = {
         "phase": phase,
         "version": storage.join(phase_dir).rsplit("/", 1)[-1],
         "upstream": upstream,
         "outputs": dict(outputs),
-        "settings": phase_settings(cfg, phase),
+        "settings": phase_settings(cfg, phase) if settings is None else settings,
         "missing": list(missing),
         "git_commit": _git_commit(),
         "created": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -130,17 +133,18 @@ def read_manifest(phase_dir) -> dict:
         raise UpstreamError(f"{path} is not valid JSON: {e}") from e
 
 
-def check_upstream(cfg: Config, upstream_dir, phase: str) -> dict:
+def check_upstream(cfg: Config, upstream_dir, phase: str, upstream_map: Mapping[str, str | None] = UPSTREAM,
+                   settings_of: Callable[[Config, str], dict] = phase_settings) -> dict:
     """Run by the first job(s) of `phase`. Raise UpstreamError if the upstream manifest or one of its
     output files is missing, or the folder is of the wrong phase. Warn if its settings differ."""
-    expected = UPSTREAM[phase]
+    expected = upstream_map[phase]
     m = read_manifest(upstream_dir)
     if m.get("phase") != expected:
         raise UpstreamError(f"{upstream_dir} is a {m.get('phase')} folder; {phase} needs a {expected} folder")
     missing = [rel for rel in m["outputs"].values() if not storage.exists(storage.join(upstream_dir, rel))]
     if missing:
         raise UpstreamError(f"{upstream_dir}: files listed in {MANIFEST} are missing: {missing}")
-    diff = settings_diff(m["settings"], phase_settings(cfg, expected))
+    diff = settings_diff(m["settings"], settings_of(cfg, expected))
     if diff:
         log.warning("upstream %s was made with other settings than the current config:\n  %s",
                     m["version"], "\n  ".join(diff))
