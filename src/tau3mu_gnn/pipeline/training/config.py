@@ -121,6 +121,7 @@ TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "gnn_training.lr_scheduler_patience": _Field(_positive_int),
     "gnn_training.class_fraction": _Field(_class_fraction),
     "gnn_training.windows": _Field(_windows),
+    "gnn_training.seed": _Field(_positive_int),
     "comet.workspace": _Field(_non_empty_str),
     "comet.api_key": _Field(_non_empty_str),
     "slurm.account": _Field(_non_empty_str),
@@ -189,6 +190,7 @@ class GNNTrainingConfig:
     lr_scheduler_patience: int
     class_fraction: tuple[float, float]           # signal, background
     windows: Mapping[str, tuple[float, float]]    # train / validation / test
+    seed: int                                     # torch, numpy, random
 
 
 @dataclass(frozen=True)

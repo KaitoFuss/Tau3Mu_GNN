@@ -17,6 +17,7 @@ def test_example_training_w_loads_the_recipe(monkeypatch):
     assert cfg.bdt_training.max_events_per_class == 100000
     assert (cfg.gnn_training.learning_rate, cfg.gnn_training.batch_size, cfg.gnn_training.epochs) == (0.0016, 128, 1000)
     assert cfg.gnn_training.arch == "fl8_sd4" and cfg.gnn_training.conv_type == "GINE"
+    assert (cfg.gnn_training.early_stopping_patience, cfg.gnn_training.seed) == (50, 1986)
     assert len(cfg.npvs.var_bins) == 47 and cfg.npvs.var_bins[-2:] == (65.0, 100.0)
     j = cfg.slurm.jobs["gnn_train"]
     assert (j.partition, j.account, j.gres) == ("gpu", "gpu_gres", "gpu:1")

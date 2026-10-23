@@ -119,3 +119,11 @@ def test_unsculpting_mode_none(load_training, training_user):
     load_training.defaults["graphs"]["unsculpting_mode"] = "none"
     cfg = load_training(training_user)
     assert cfg.graphs.unsculpting_mode is None and model_type(cfg).endswith("_knn_10_testing")
+
+
+def test_gnn_patience_and_seed(load_training, training_user):
+    cfg = load_training(training_user)
+    assert cfg.gnn_training.early_stopping_patience == 50 and cfg.gnn_training.seed == 1986
+    training_user["gnn_training"] = {"seed": 1}
+    with pytest.raises(ConfigError, match="'gnn_training.seed' is a frozen training setting"):
+        load_training(training_user)

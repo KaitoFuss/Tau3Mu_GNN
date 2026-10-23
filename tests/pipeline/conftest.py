@@ -128,7 +128,7 @@ TOY_TRAINING_DEFAULTS = {
     "graphs": {"connection": "knn", "k": 10, "cone_size": 0.5, "use_displacement": True,
                "unsculpting_mode": "delete_muons", "shuffle_seed": 1986},
     "gnn_training": {"conv_type": "GINE", "gnn_mode": "final_layer", "arch": "fl8_sd4", "learning_rate": 0.0016,
-                     "batch_size": 128, "disco": 0.0, "epochs": 1000, "early_stopping_patience": 20,
+                     "batch_size": 128, "disco": 0.0, "epochs": 1000, "early_stopping_patience": 50, "seed": 1986,
                      "lr_scheduler_patience": 10, "class_fraction": [0.5, 0.5],
                      "windows": {"train": [0.0, 0.6], "validation": [0.6, 0.7], "test": [0.7, 1.0]}},
     "comet": {"workspace": "toy_ws", "api_key": "toy-key"},

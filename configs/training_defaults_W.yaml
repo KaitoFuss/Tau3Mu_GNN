@@ -41,10 +41,11 @@ gnn_training:                  # from scripts/Train_TauMuNet.py + jobs/condor/tr
   batch_size: 128
   disco: 0.0
   epochs: 1000                 # upper limit; early stopping ends the training
-  early_stopping_patience: 20
+  early_stopping_patience: 50  # default of the normal training (utrain.early_stop); 20 was the fine-tune value
   lr_scheduler_patience: 10    # ReduceLROnPlateau
   class_fraction: [0.5, 0.5]   # signal, background
   windows: {train: [0.0, 0.6], validation: [0.6, 0.7], test: [0.7, 1.0]}
+  seed: 1986                   # torch, numpy, random; GPU training is still not bit-exact
 
 comet:                         # Comet ML logging of the GNN training (Kaito: plain key here is fine)
   workspace: kaitofuss
