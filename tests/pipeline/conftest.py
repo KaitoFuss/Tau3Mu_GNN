@@ -114,3 +114,73 @@ def write_tree(path, data, tree="Events"):
         f.mktree(tree, {k: ak.type(v) if isinstance(v, ak.Array) else v.dtype for k, v in data.items()})
         f[tree].extend(data)
     return path
+
+
+VAR_BINS = [0, 10, 15, 18, 20] + list(range(21, 61)) + [65, 100]
+
+TOY_TRAINING_DEFAULTS = {
+    "sideband_half_width": 0.08,
+    "bdt_training": {"max_depth": 8, "learning_rate": 0.005, "n_estimators": 1000, "early_stopping_rounds": 100,
+                     "subsample": 0.6, "colsample_bytree": 0.7, "gamma": 10, "reg_alpha": 0.6, "reg_lambda": 1.2,
+                     "min_child_weight_fraction": 1.0e-6, "kfold": 6, "test_size": 0.4,
+                     "split_seed": 1986, "sample_seed": 42},
+    "npvs": {"var_bins": VAR_BINS, "uniform_bins": [0, 100, 101]},
+    "graphs": {"connection": "knn", "k": 10, "cone_size": 0.5, "use_displacement": True,
+               "unsculpting_mode": "delete_muons"},
+    "gnn_training": {"conv_type": "GINE", "gnn_mode": "final_layer", "arch": "fl8_sd4", "learning_rate": 0.0016,
+                     "batch_size": 128, "disco": 0.0, "epochs": 1000, "early_stopping_patience": 20,
+                     "lr_scheduler_patience": 10, "class_fraction": [0.5, 0.5],
+                     "windows": {"train": [0.0, 0.6], "validation": [0.6, 0.7], "test": [0.7, 1.0]}},
+    "comet": {"workspace": "toy_ws", "api_key": "toy-key"},
+    "slurm": {
+        "account": "t3",
+        "jobs": {**{name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
+                    for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background",
+                                 "benchmark_limit", "benchmark_summary")},
+                 "gnn_train": {"partition": "gpu", "mem": "4G", "time": "0-01:00:00", "cpus": 1,
+                               "account": "gpu_gres", "gres": "gpu:1"}},
+    },
+}
+
+TOY_TRAINING_USER = {
+    "training_name": "toy_train",
+    "channel": "W",
+    "paths": {"output_base": "/tmp/toy_out", "log_dir": "/tmp/toy_logs"},
+    "inputs": {
+        "signal": ["/data/sig.root"],
+        "background": ["/data/bkg_*.root"],
+        "already_resonance_skimmed": True,
+    },
+    "graphs": {"bdt_preselection_cut": 0.8},
+    "benchmark": {"bdt_score_cut": [0.98, 0.99]},
+    "limit": {"signal_weight": 1.9e-5},
+}
+
+
+@pytest.fixture
+def training_user():
+    return copy.deepcopy(TOY_TRAINING_USER)
+
+
+class _TrainingLoader:
+    """load_training(user_dict) writes .defaults as training_defaults_W.yaml, then loads."""
+
+    def __init__(self, repo):
+        self.repo = repo
+        self.defaults = copy.deepcopy(TOY_TRAINING_DEFAULTS)
+
+    def __call__(self, user_dict=None, raw_text=None):
+        from tau3mu_gnn.pipeline.training.config import load_training_config
+
+        write_yaml(self.repo / "configs" / "training_defaults_W.yaml", self.defaults)
+        path = self.repo / "training_user.yaml"
+        if raw_text is not None:
+            path.write_text(raw_text)
+        else:
+            write_yaml(path, user_dict)
+        return load_training_config(path, defaults_dir=self.repo / "configs")
+
+
+@pytest.fixture
+def load_training(fake_repo):
+    return _TrainingLoader(fake_repo)
