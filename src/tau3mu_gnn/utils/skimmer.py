@@ -2,7 +2,7 @@ import glob
 import argparse
 from typing import Sequence
 
-from tau3mu_gnn.pipeline.config import load_config
+from tau3mu_gnn.pipelines.analysis.config import load_config
 
 
 def skim(files: Sequence[str], output: str, tree_name: str, dz_max: float, cos_alpha_2d_min: float) -> None:

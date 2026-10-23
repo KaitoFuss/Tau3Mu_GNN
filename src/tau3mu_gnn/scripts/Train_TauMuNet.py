@@ -376,7 +376,7 @@ def comet_settings(tau_channel):
     """Comet workspace and API key for the old CLI: configs/training_defaults_<channel>.yaml, else the W file
     (one Comet account for all channels; no key in the code)."""
     import yaml
-    from tau3mu_gnn.pipeline.config import REPO_ROOT
+    from tau3mu_gnn.pipelines.common.config import REPO_ROOT
     path = REPO_ROOT / "configs" / f"training_defaults_{tau_channel}.yaml"
     if not path.is_file():
         path = REPO_ROOT / "configs" / "training_defaults_W.yaml"

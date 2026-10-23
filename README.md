@@ -102,6 +102,10 @@ tau3mu_gnn/
     │   └── BDT_ScoreProducer.py  # Score production for BDT
     ├── model_eval/
     │   └── ModelEval.py          # Plotting: ROC, sculpting, score distributions
+    ├── pipelines/                # tau3mu-pipeline and tau3mu-train
+    │   ├── common/               # shared: config parts, storage, SLURM, manifests, shared stages
+    │   ├── analysis/             # analysis pipeline (phases A, B, C)
+    │   └── training/             # training pipeline (phases bdt, gnn, benchmark)
     ├── analysis/
     │   ├── datacard.py                            # CMS Combine datacards (GNN score or BDT ISO)
     │   ├── datacard_creation_ISO.py      # Generate CMS Combine datacards (ISO/BDT baseline)
@@ -281,7 +285,7 @@ tau3mu-pipeline phase-c --config my_W.yaml [--from phase_b_vs1]
 tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
 ```
 
-**Help.** `tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipeline.cli` is the same command.
+**Help.** `tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipelines.analysis.cli` is the same command (training: `python -m tau3mu_gnn.pipelines.training.cli`).
 
 ### 4. Results
 
