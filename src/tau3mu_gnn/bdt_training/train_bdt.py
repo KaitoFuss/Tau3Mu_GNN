@@ -2,8 +2,8 @@
 
 Events and derived features come from the stage 2 code (BDT_ScoreProducer._load / _add_features,
 bdt_inputs.bdt_branches), so training and inference see the same columns in the same order:
-one row per event (candidate 0), rows with NaN dropped. Signal: all events. Background: events
-with all candidates in the sideband. The classifier pickle {fold: XGBClassifier} is the format
+one row per event (candidate 0), rows with NaN or inf dropped. Signal: all events. Background:
+events with all candidates in the sideband. Both classes get the same total weight. The classifier pickle {fold: XGBClassifier} is the format
 stage 2 reads.
 """
 from __future__ import annotations
@@ -58,7 +58,10 @@ def load_training_data(signal_files, background_files, tree_name: str, channel: 
     sig, bkg = (df[np.isfinite(df[bdt_features].to_numpy(dtype=float)).all(axis=1)].reset_index(drop=True)
                 for df in (sig, bkg))
     sig["target"], bkg["target"] = 1, 0
-    sig["weight"], bkg["weight"] = 1., 1.
+    # Equal total weight per class (Kaito, PR #28): corrects for dropped rows and a class below the
+    # max_events_per_class limit; mean weight 1. The old script used weight 1 for both classes.
+    n_total = len(sig) + len(bkg)
+    sig["weight"], bkg["weight"] = n_total / (2 * len(sig)), n_total / (2 * len(bkg))
     data = pd.concat([sig, bkg], ignore_index=True)
     data["id"] = np.arange(len(data))
     return data, bdt_features

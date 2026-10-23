@@ -141,3 +141,12 @@ def uproot_read(path):
     import uproot
     with uproot.open(path) as f:
         return f["Events"].arrays(library="ak")
+
+
+def test_class_weights_balance_unequal_classes(tmp_path):
+    rng = np.random.default_rng(6)
+    data, _ = train_bdt.load_training_data(
+        [_toy(tmp_path / "s.root", 60, rng, True)], [_toy(tmp_path / "b.root", 20, rng, False, first_event=100)],
+        "Events", "W", 1.78, 0.08, 1000, 42)
+    sums = data.groupby("target")["weight"].sum()
+    assert sums[0] == pytest.approx(sums[1]) and data["weight"].sum() == pytest.approx(len(data))
