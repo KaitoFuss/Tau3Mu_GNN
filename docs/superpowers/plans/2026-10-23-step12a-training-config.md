@@ -310,7 +310,7 @@ def test_comet_key_not_in_repr(load_training, training_user):
 | `slurm.account` | `t3` |
 | `slurm.jobs` | `skim` {long, 128G, 1-00:00:00, 4}; `bdt_train` {standard, 64G, 0-06:00:00, 4}; `bdt_infer` {standard, 128G, 0-06:00:00, 1}; `npvs` {standard, 32G, 0-01:00:00, 1}; `graphs_signal`, `graphs_background` {long, 256G, 2-00:00:00, 1}; `gnn_train` {gpu, 128G, 3-00:00:00, 5, account: gpu_gres, gres: "gpu:1"}; `benchmark_limit` {standard, 128G, 0-01:30:00, 1}; `benchmark_summary` {short, 4G, 0-00:30:00, 1}. Header comment: first values, Kaito raises them after the first real run. |
 
-`example_training_W.yaml`: header comments like `example_W.yaml`; `training_name: kaito_W_train`; `paths` and `inputs` copied from `configs/example_W.yaml` (old skimmed inputs: this is the 12i check); `graphs: {bdt_preselection_cut: 0.8}` (plus commented `max_events: 600000`); commented `bdt_training: {max_events_per_class: 100000}`; `benchmark: {bdt_score_cut: [0.98, 0.985, 0.986, 0.99]}`; `limit: {signal_weight: 0.000019}` with the same comment as `example_W.yaml`.
+`example_training_W.yaml`: header comments like `example_W.yaml`; `training_name: kaito_W_train`; `paths` and `inputs` copied from `configs/example_W.yaml` (old skimmed inputs: this is the 12i check); `graphs: {bdt_preselection_cut: 0.8}` (plus commented `max_events: 600000`); commented `bdt_training: {max_events_per_class: 100000}`; `benchmark: {bdt_score_cut: [0.98, 0.982, 0.984, 0.986, 0.988, 0.99, 0.992, 0.994, 0.996]}`; `limit: {signal_weight: 0.000019}` with the same comment as `example_W.yaml`.
 
 - [ ] **Step 1: Write the failing test** `tests/pipeline/test_real_training_configs.py`:
 
