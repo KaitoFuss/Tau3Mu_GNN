@@ -171,9 +171,9 @@ class GraphsConfig:
     @property
     def graph_type(self) -> str:
         """Graph name as in the analysis gnn.graph_type, e.g. skimmed_dzd0_cone_size_0.5_knn_10."""
-        dzd0 = "_dzd0" if self.use_displacement else ""
-        name = f"skimmed{dzd0}_cone_size_{self.cone_size}_{self.connection}"  # same format as GraphCreation.py
-        return f"{name}_{self.k}" if self.connection == "knn" else name
+        from tau3mu_gnn.graph.naming import graph_suffix
+        return "skimmed" + graph_suffix(self.use_displacement, self.cone_size, self.connection, k=self.k,
+                                        with_unsculpting=False)
 
 
 @dataclass(frozen=True)

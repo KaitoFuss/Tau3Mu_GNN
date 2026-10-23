@@ -2,6 +2,8 @@ from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
 # from tau3mu_gnn.graph.ConeGraphProducer_Dataset import ConeGraphProducer_Dataset
 import logging
 import argparse
+
+from tau3mu_gnn.graph.naming import graph_suffix
 import os
 
 parser = argparse.ArgumentParser()
@@ -46,16 +48,8 @@ def create_graph(
     save_benchmark_score: bool = False,
     bdt_preselection_cut: str = False,
 ):
-    dzd0 = "_dzd0" if use_displacement else ""
-    suffix = f"{dzd0}_cone_size_{cone_size}_{edge_connection_mode}"
-    if edge_connection_mode == "knn":
-        suffix += f"_{k_knn}"
-    elif edge_connection_mode == "r_threshold":
-        suffix += f"_{delta_r_threshold}"
-    if unsculpting_mode:
-        suffix += f"_{unsculpting_mode}"
-    else:
-        suffix += f"_testing"
+    suffix = graph_suffix(use_displacement, cone_size, edge_connection_mode, k=k_knn, delta_r=delta_r_threshold,
+                          unsculpting_mode=unsculpting_mode)
     output_dataset_name = output_ident + suffix
 
     print(output_dataset_name)

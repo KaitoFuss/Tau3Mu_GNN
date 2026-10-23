@@ -15,6 +15,7 @@ from pathlib import Path
 
 from tau3mu_gnn.bdt_training.bdt_inputs import expression_names
 from tau3mu_gnn.gnn_training.gnn_inputs import gnn_branches, graph_level_branches
+from tau3mu_gnn.graph.naming import graph_suffix
 from tau3mu_gnn.pipeline.branches import check_stage_inputs
 from tau3mu_gnn.pipeline.training.config import TrainingConfig
 
@@ -25,7 +26,9 @@ SAMPLES = ("signal", "background")
 
 def model_type(cfg: TrainingConfig) -> str:
     """Graph name part after '<prefix>_<sample>_', e.g. skimmed_dzd0_cone_size_0.5_knn_10_delete_muons."""
-    return f"{cfg.graphs.graph_type}_{cfg.graphs.unsculpting_mode}"
+    g = cfg.graphs
+    return "skimmed" + graph_suffix(g.use_displacement, g.cone_size, g.connection, k=g.k,
+                                    unsculpting_mode=g.unsculpting_mode)
 
 
 def dataset_name(cfg: TrainingConfig, sample: str) -> str:

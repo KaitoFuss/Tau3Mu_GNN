@@ -254,7 +254,7 @@ class ConeGraphProducer(InMemoryDataset):
             
             # Iterating over all tau3mu candidates in event and creating for all a graph in its vicinity 
             for nt in range(n_tau):
-                tau_mask = bkg_mask[i_ev] if self.mask and not self.first_candidate_only else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
+                tau_mask = bkg_mask[i_ev] if self.mask else ak.ones_like(event[f"{prefix}{self.tau_collection_name}_pt"], dtype=bool)
                 
                 # Read data for fitted tau from event
                 fitted_tau_pt = event[f"{prefix}{self.tau_collection_name}_pt"][tau_mask][nt] 
