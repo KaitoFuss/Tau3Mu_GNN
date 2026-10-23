@@ -311,9 +311,14 @@ def test_iso_old_cli_builds_old_paths(monkeypatch, tmp_path):
 
     def fake(sig, bkg, cut, weight, out_dir, **kw):
         calls.update(sig=sig, bkg=bkg, cut=cut, weight=weight, out_dir=out_dir, **kw)
+        (Path(out_dir) / "mass.pdf").write_bytes(b"%PDF")
 
     monkeypatch.setattr(iso, "make_datacard", fake)
+    monkeypatch.setattr(iso, "OLD_OUTPUT_ROOT", str(tmp_path / "output"))
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "output" / "m").mkdir(parents=True)
     iso.main(["--model", "m", "--channel", "W", "--cut", "0.986"])
+    assert (tmp_path / "output" / "m" / "mass_0.986.pdf").is_file()   # as the old script (raw --cut string)
     base = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data"
     assert calls["sig"] == [f"{base}/background_W/m/selected_signal_skimmed_no_resonances_with_scores_bdt_full.root"]
     assert calls["bkg"] == [f"{base}/background_W/m/selected_data_skimmed_no_resonances_with_scores_bdt_full.root"]
