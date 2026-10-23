@@ -33,6 +33,19 @@
 
 ---
 
+### Task 0: Training stage bdt_infer + end-to-end chain test (added 2026-10-23, Kaito)
+
+The training chain needs BDT inference with the **new** classifier before the graphs. Stage 2 (`pipeline/stages/bdt.py`) takes the analysis config (`cfg.bdt.classifier` = frozen pickle).
+
+**Files:** Modify `src/tau3mu_gnn/pipeline/stages/bdt.py`; create `src/tau3mu_gnn/pipeline/training/stages/bdt_infer.py`; tests `tests/pipeline/test_bdt_scores.py` (unchanged, must pass), `tests/pipeline/test_training_chain.py` (new).
+
+**Interfaces:**
+- `stages/bdt.score(inputs: Mapping[str, str | Path], out_dir, classifier: str | Path, channel: str, tree_name: str) -> dict[str, Path]` — today's body of `run`; `run(cfg, inputs, out_dir)` = `score(inputs, out_dir, cfg.bdt.classifier, cfg.channel, cfg.inputs.tree_name)` (analysis unchanged).
+- `training/stages/bdt_infer.run(cfg: TrainingConfig, inputs, classifier: str | Path, out_dir) -> dict[str, Path]` — `classifier` = the `bdt_train` output; same outputs as stage 2.
+
+- [ ] Failing tests: `test_bdt_infer_uses_given_classifier` (toy classifier pickle as in `test_bdt_scores.py`, training config; scores match the toy classifier); `test_chain_bdt_train_infer_graphs` (toy events with every BDT and graph branch, signal/background overlapping in fitted pt; `bdt_train` → `bdt_infer` with the new pickle → `npvs` → `graphs` for both samples with `graphs.bdt_preselection_cut` 0.5 → both `.pt` files exist, every graph has `bdt_iso >= 0.5`).
+- [ ] Implement; run `tests/pipeline` → pass; commit `feat(training): stage bdt_infer (stage 2 with the trained classifier) + chain test`.
+
 ### Task 1: Config fixes and side-effect-free architecture lookup
 
 **Files:**
