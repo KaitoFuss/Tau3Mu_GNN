@@ -246,13 +246,16 @@ def test_main_required_arguments(cfg, monkeypatch, capsys, argv):
     assert f"job {argv[0]} needs" in capsys.readouterr().err
 
 
-def test_gnn_train_requires_cuda(cfg, scratch, fake_stages, monkeypatch):
+def test_gnn_train_cpu_fallback_warns(cfg, scratch, fake_stages, monkeypatch, caplog):
+    """Kaito, 2026-10-23: CPU fallback is allowed; the log must say so."""
     from tau3mu_gnn.pipeline.training import jobs
 
     monkeypatch.setattr(jobs.torch.cuda, "is_available", lambda: False)
-    with pytest.raises(RuntimeError, match="no CUDA device"):
-        jobs.gnn_train(cfg, "gnn_vs1", "bdt_vs1")
-    assert "gnn_train" not in fake_stages["calls"]
+    up = run_bdt(cfg)
+    with caplog.at_level("WARNING"):
+        run_gnn(cfg, up)
+    assert fake_stages["gnn_train"]["device"] == jobs.torch.device("cpu")
+    assert any("no CUDA device" in r.getMessage() and r.levelname == "WARNING" for r in caplog.records)
 
 
 @pytest.fixture

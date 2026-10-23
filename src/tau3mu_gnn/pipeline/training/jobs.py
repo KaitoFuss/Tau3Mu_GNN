@@ -122,12 +122,15 @@ def gnn_train(cfg, phase_dir, upstream_dir) -> None:
     the model folder and name follow from the 'model' path)."""
     _check_proxy(cfg, "gnn_train")
     log.info("job gnn_train: %s, upstream %s", phase_dir, upstream_dir)
-    if not torch.cuda.is_available():
-        raise RuntimeError("gnn_train: no CUDA device visible on this node (check the SLURM gres / partition); "
-                           "not training on CPU")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:  # allowed (Kaito, 2026-10-23), but much slower: say so in the log
+        log.warning("gnn_train: no CUDA device visible on this node (check the SLURM gres / partition); "
+                    "training on CPU")
+        device = torch.device("cpu")
     scratch = _scratch("gnn_train")
     out = gnn_train_stage.run(cfg, _read(phase_dir, GRAPHS_DIR), scratch / GNN_TRAIN_DIR,
-                              device=torch.device("cuda"), comet_disabled=False)
+                              device=device, comet_disabled=False)
     _put(scratch, phase_dir)
     model_dir = _rel(out["model_dir"], scratch)
     outputs = {"model": f"{model_dir}/{out['model_name']}.pt", "normalization": f"{model_dir}/Normalization.pkl",
