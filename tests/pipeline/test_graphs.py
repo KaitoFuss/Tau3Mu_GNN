@@ -92,3 +92,60 @@ def test_defaults_unchanged(tmp_path):
     data = training_events([[10.0, 20.0]], bdt=[0.9])
     g = _build(tmp_path, data, first_candidate_only=False, bdt_cut=None)
     assert _pts(g) == [10.0, 20.0]
+
+
+class RecordingGNN(torch.nn.Module):
+    """Keeps every graph it is called with; score = 0."""
+
+    def __init__(self):
+        super().__init__()
+        self.graphs = []
+
+    def forward(self, data):
+        self.graphs.append(data.clone())
+        return torch.zeros((1, 1))
+
+
+def _rich_events(n, rng):
+    """n signal events (one candidate, distinct pt) with varied PF candidates: three on the muons
+    (removed by delete_muons), 15 inside the cone, 2 outside; varied pt, charge, pdgId, d0, dz."""
+    from test_gnn_scores import MU_ETA, PF
+    data = training_events([[10.0 + 5 * i] for i in range(n)], bdt=[0.9] * n)
+    etas, phis = [], []
+    for _ in range(n):
+        inside = rng.uniform(-0.3, 0.3, (15, 2))
+        etas.append([MU_ETA[1], MU_ETA[2], MU_ETA[3], *inside[:, 0], 2.5, -2.5])
+        phis.append([0.0, 0.0, 0.0, *inside[:, 1], 1.0, -1.0])
+    n_pf = len(etas[0])
+    data[f"{PF}eta"], data[f"{PF}phi"] = ak.Array(etas), ak.Array(phis)
+    data[f"{PF}pt"] = ak.Array([list(rng.uniform(0.5, 20, n_pf)) for _ in range(n)])
+    data[f"{PF}charge"] = ak.Array([list(rng.choice([-1, 0, 1], n_pf)) for _ in range(n)])
+    data[f"{PF}pdgId"] = ak.Array([list(rng.choice([211, -211, 22, 130], n_pf)) for _ in range(n)])
+    for name in ("d0", "dz"):
+        data[f"{PF}{name}"] = ak.Array([list(rng.normal(0, 0.05, n_pf)) for _ in range(n)])
+    data[f"{PF}mass"] = ak.Array([list(rng.uniform(0, 0.5, n_pf)) for _ in range(n)])
+    data[f"{PF}puppiWeight"] = ak.Array([list(rng.uniform(0, 1, n_pf)) for _ in range(n)])
+    return data
+
+
+def test_training_graph_equals_inference_graph(tmp_path):
+    from tau3mu_gnn.gnn_training.ScoreProducer import score_events
+    data = _rich_events(5, np.random.default_rng(7))
+    training = _build(tmp_path, data, weights=None)
+    infile = write_tree(tmp_path / "inference.root", data)
+    rec = RecordingGNN()
+    score_events([str(infile)], {"rec": (rec, None)}, {"rec": {str(infile): str(tmp_path / "out.root")}},
+                 {"rec": tmp_path / "s.npz"}, "W", "delete_muons", 0.8, device=torch.device("cpu"))
+    assert len(training) == len(rec.graphs) == 5
+
+    def key(g):
+        return round(float(g.graph_level_features[0, 0]), 4)
+
+    inference = {key(g): g for g in rec.graphs}
+    for t in training:
+        i = inference[key(t)]
+        assert torch.equal(t.x.float(), i.x.float())
+        assert torch.equal(t.graph_level_features.float(), i.graph_level_features.float())
+        edges = lambda g: sorted(zip(g.edge_index.T.tolist(), g.edge_attr.float().tolist()))  # noqa: E731
+        assert edges(t) == edges(i)
+        assert t.x.shape[0] > 11   # knn with k = 10 really selects
