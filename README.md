@@ -102,7 +102,7 @@ tau3mu_gnn/
     ├── model_eval/
     │   └── ModelEval.py          # Plotting: ROC, sculpting, score distributions
     ├── analysis/
-    │   ├── datacard_creation_GNN_permuted.py      # Generate CMS Combine datacards (GNN)
+    │   ├── datacard.py                            # CMS Combine datacards (GNN score or BDT ISO)
     │   ├── datacard_creation_ISO.py      # Generate CMS Combine datacards (ISO/BDT baseline)
     │   └── readout_limit.py              # Parse Combine output and save limits to JSON
     ├── utils/
@@ -565,7 +565,7 @@ You need a valid CMS VOMS proxy and CMS Combine.
 
 ```bash
 # jobs/analysis/create_datacard.sh
-python -m tau3mu_gnn.analysis.datacard_creation_GNN_permuted \
+python -m tau3mu_gnn.analysis.datacard \
   --model   <model_name> \
   --channel W \
   --cut     <score_cut>

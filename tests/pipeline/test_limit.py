@@ -51,7 +51,7 @@ def expected_counts(path, cut, window=None):
 
 
 def test_make_datacard_writes_files_and_counts(toy_inputs, tmp_path):
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
 
     sig, bkg = toy_inputs
     out = tmp_path / "card"
@@ -71,7 +71,7 @@ def test_make_datacard_writes_files_and_counts(toy_inputs, tmp_path):
 
 
 def test_datacard_text_matches_result(toy_inputs, tmp_path):
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
 
     res = make_datacard([toy_inputs[0]], [toy_inputs[1]], 3.9, SIG_WEIGHT, tmp_path / "card")
     text = res.datacard.read_text()
@@ -88,7 +88,7 @@ def test_datacard_text_matches_result(toy_inputs, tmp_path):
 
 def test_data_tree_is_blinded(toy_inputs, tmp_path):
     import uproot
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
 
     out = tmp_path / "card"
     make_datacard([toy_inputs[0]], [toy_inputs[1]], 0.0, SIG_WEIGHT, out)
@@ -99,7 +99,7 @@ def test_data_tree_is_blinded(toy_inputs, tmp_path):
 
 
 def test_old_cli_builds_old_paths(monkeypatch, tmp_path):
-    from tau3mu_gnn.analysis import datacard_creation_GNN_permuted as dc
+    from tau3mu_gnn.analysis import datacard as dc
 
     calls = {}
 
@@ -123,7 +123,7 @@ def test_old_cli_builds_old_paths(monkeypatch, tmp_path):
 
 def test_old_cli_missing_output_folder_does_not_fail(monkeypatch, tmp_path):
     """Old ROOT SaveAs only printed an error for a missing output/<model>/; the old job (set -e) must go on."""
-    from tau3mu_gnn.analysis import datacard_creation_GNN_permuted as dc
+    from tau3mu_gnn.analysis import datacard as dc
 
     monkeypatch.setattr(dc, "make_datacard", lambda *a, **kw: (tmp_path / "mass.pdf").write_bytes(b"%PDF"))
     monkeypatch.setattr(dc, "OLD_OUTPUT_ROOT", str(tmp_path / "output"))
@@ -173,7 +173,7 @@ def test_run_combine_failure_raises_and_keeps_log(monkeypatch, tmp_path):
 @needs_combine
 def test_run_combine_on_toy_card(toy_inputs, tmp_path):
     from tau3mu_gnn.analysis.combine import ASYMPTOTIC_OUTPUT, run_combine
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
 
     out = tmp_path / "card"
     make_datacard([toy_inputs[0]], [toy_inputs[1]], 3.9, SIG_WEIGHT, out)
@@ -296,7 +296,7 @@ def _renamed_copy(src, dst, old="GNN_score", new="bdt_ISO"):
 
 
 def test_score_branch_gives_same_card(toy_inputs, tmp_path):
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
     sig, bkg = toy_inputs
     a = make_datacard([sig], [bkg], 3.9, SIG_WEIGHT, tmp_path / "gnn")
     sig2, bkg2 = _renamed_copy(sig, tmp_path / "iso" / "s.root"), _renamed_copy(bkg, tmp_path / "iso" / "b.root")

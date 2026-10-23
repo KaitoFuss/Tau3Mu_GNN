@@ -58,7 +58,7 @@ def run_cut(inputs: Mapping[str, str | Path], out_dir: str | Path, cut: float, *
     (card_dir / "limit.json").unlink(missing_ok=True)  # a failed rerun must not leave the old limit
     check_inputs(inputs, tree_name, score_branch)
     combine_executable()  # fail before the datacard work if Combine is missing
-    from tau3mu_gnn.analysis.datacard_creation_GNN_permuted import make_datacard
+    from tau3mu_gnn.analysis.datacard import make_datacard
 
     log.info("limit: %s > %s, %s -> %s", score_branch, cut, {s: str(inputs[s]) for s in INPUTS}, card_dir)
     card = make_datacard([inputs["signal"]], [inputs["background"]], cut, signal_weight, card_dir,
