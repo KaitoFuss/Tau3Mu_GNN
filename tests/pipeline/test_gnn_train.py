@@ -23,3 +23,98 @@ def test_arch_import_no_side_effects(monkeypatch):
     finally:
         monkeypatch.undo()
         importlib.reload(archs)
+
+
+import numpy as np
+import pytest
+import torch
+
+from test_graphs import training_events
+
+
+def _varied(n, rng, signal, first_event):
+    """Toy events with every feature varying (Normalize divides by the std; constant features -> NaN)."""
+    import awkward as ak
+    from test_graphs import _rich_events
+    data = _rich_events(n, rng)
+    data["event"] = np.arange(first_event, first_event + n, dtype=np.uint64)
+    for name in list(data):
+        if (name.startswith(("Selected_TauTo3Mu_", "TauPlusMET_")) and not name.endswith(("_eta", "_phi", "_mass"))
+                and "iso_" not in name):
+            data[name] = ak.Array([[float(abs(rng.normal(1.0, 0.4))) + 0.3] for _ in range(n)])
+    data["Selected_TauTo3Mu_fitted_pt"] = ak.Array([[float(rng.normal(45 if signal else 30, 8))] for _ in range(n)])
+    # varied masses (constant masses make the DisCo term 0/0 = NaN); background in the sideband
+    data["Selected_TauTo3Mu_fitted_mass"] = ak.Array(
+        [[float(rng.normal(1.78, 0.01) if signal else rng.choice([rng.uniform(1.62, 1.69), rng.uniform(1.87, 1.98)]))]
+         for _ in range(n)])
+    data["TauPlusMET_Puppi_phi"] = ak.Array([[float(rng.uniform(-3, 3))] for _ in range(n)])
+    return data
+
+
+def _toy_graphs(tmp_path, cfg, n=60):
+    """n signal + n background events through the 12d graph stage -> data_base for the training."""
+    from conftest import write_tree
+    from tau3mu_gnn.pipeline.training.stages import graphs
+    rng = np.random.default_rng(5)
+    sig = write_tree(tmp_path / "in" / "s.root", _varied(n, rng, True, 0))
+    bkg = write_tree(tmp_path / "in" / "b.root", _varied(n, rng, False, 1000))
+    npz = tmp_path / "in" / "w.npz"
+    np.savez(npz, weight_per_bin=np.ones(100), bins=np.linspace(0, 100, 101))
+    out = tmp_path / "graphs"
+    graphs.run(cfg, "signal", sig, out, npvs_file=npz)
+    graphs.run(cfg, "background", bkg, out)
+    return out
+
+
+@pytest.fixture
+def small(load_training, training_user):
+    load_training.defaults["gnn_training"].update(epochs=3, batch_size=4)
+    return load_training(training_user)
+
+
+def _train(tmp_path, cfg, data_base, out="model"):
+    from tau3mu_gnn.gnn_training import train_gnn
+    from tau3mu_gnn.pipeline.training.stages.graphs import model_type
+    exp = train_gnn.make_experiment(cfg.comet, "test", disabled=True)
+    return train_gnn.train(data_base, model_type(cfg), "W", cfg.gnn_training, cfg.graphs.unsculpting_mode,
+                           "toy_model", tmp_path / out, exp, device=torch.device("cpu"))
+
+
+def test_train_writes_model_files(tmp_path, small):
+    import json
+    from tau3mu_gnn.architectures.GNN_archs import get_arch_configs
+    s = _train(tmp_path, small, _toy_graphs(tmp_path, small))
+    folder = tmp_path / "model" / "toy_model"
+    assert s["model_dir"] == folder
+    for f in ("toy_model.pt", "Normalization.pkl", "arch_config.json"):
+        assert (folder / f).is_file(), f
+    assert json.loads((folder / "arch_config.json").read_text()) == json.loads(
+        json.dumps(get_arch_configs("fl8_sd4", "W", 0.0, registry_path=None)[0]))
+    assert s["epochs_run"] == 3 and 0 <= s["best_epoch"] < 3 and "auc_test" in s
+    assert not (tmp_path / "output").exists()        # nothing in cwd/output
+
+
+def test_best_epoch_kept(tmp_path, small, monkeypatch):
+    import tau3mu_gnn.gnn_training.TrainingUtils as utrain
+    fake = [0.9, 0.1, 0.5]                           # epoch 1 is the best of 3; no early stop
+
+    class FakeStop(utrain.early_stop):
+        def __call__(self, validation_loss, model, epoch, output_path, name):
+            super().__call__(fake[epoch], model, epoch, output_path, name)
+            if epoch == 1:
+                FakeStop.best_state = {k: v.clone() for k, v in model.state_dict().items()}
+
+    monkeypatch.setattr(utrain, "early_stop", FakeStop)
+    s = _train(tmp_path, small, _toy_graphs(tmp_path, small))
+    saved = torch.load(tmp_path / "model" / "toy_model" / "toy_model.pt", map_location="cpu")
+    assert s["best_epoch"] == 1 and saved["epoch"] == 1 and s["early_stopped"] is False
+    assert all(torch.equal(saved["model_state_dict"][k], v) for k, v in FakeStop.best_state.items())
+
+
+def test_seed_reproducible_on_cpu(tmp_path, small):
+    data_base = _toy_graphs(tmp_path, small)
+    _train(tmp_path, small, data_base, out="a")
+    _train(tmp_path, small, data_base, out="b")
+    a = torch.load(tmp_path / "a" / "toy_model" / "toy_model.pt", map_location="cpu")["model_state_dict"]
+    b = torch.load(tmp_path / "b" / "toy_model" / "toy_model.pt", map_location="cpu")["model_state_dict"]
+    assert all(torch.equal(a[k], b[k]) for k in a)

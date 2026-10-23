@@ -157,8 +157,9 @@ def Evaluate_model(datasets_signal, datasets_bkg, batch_size, normalizer, model,
                 benchmark = np.concatenate([benchmark_signal, benchmark_bkg])
             # benchmark_pt05 = np.append(benchmark_signal_pt05, benchmark_bkg_pt05)
 
-            sample = torch.tensor(np.random.choice(np.arange(0, len(test_scores)), size=5000, replace=False))
-            normedweight = torch.ones(5000)
+            n_sample = min(5000, len(test_scores))  # small test samples (pipeline tests)
+            sample = torch.tensor(np.random.choice(np.arange(0, len(test_scores)), size=n_sample, replace=False))
+            normedweight = torch.ones(n_sample)
             disco = utrain.distance_corr(test_scores[sample], tau_mass[sample], normedweight)  # Penalising just learning the tau mass
 
             print("DisCo = ", disco)
