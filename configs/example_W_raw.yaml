@@ -1,0 +1,43 @@
+# Example user config (W channel), starting from RAW NanoAOD: stage 0 (resonance skim) runs.
+# For resonance-skimmed inputs (stage 0 skipped), see example_W.yaml. Copy this file and edit it.
+# Frozen analysis settings live in analysis_defaults_W.yaml and must NOT be set here.
+
+analysis_name: kaito_W_raw                 # letters, digits, _ - . only; used as folder name
+
+channel: W                                 # selects configs/analysis_defaults_W.yaml
+
+paths:
+  # All outputs go to <output_base>/<analysis_name>.
+  # Jobs write to /scratch first and then xrdcp to this location.
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
+  # Logs are also copied next to the results (<phase>_vsN/logs/).
+  log_dir: /work/$USER/SVJ_GNN/tau3mu_logs
+  # Optional. Conda env that the jobs activate. Not set: the env that is active when you submit.
+  conda_env: /work/$USER/miniforge3/envs/Tau3Mu
+
+inputs:
+  # Globs are allowed. A single path is also fine.
+  # Riccardo's raw W NanoAOD (TauTo3Mu_*, PFCands_* branches, no Slimmed_*).
+  signal:
+    - /pnfs/psi.ch/cms/trivcat/store/user/manzoni/tau3mu_gnn/WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8/05may25v2__WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8_RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2_MINIAODSIM/250506_093818/*/*.root
+  # All 8 ParkingDoubleMuonLowMass streams, Run2024B-I. Only the era folders (they start with "_"):
+  # the 29apr2025 folders of streams 0-4 are older copies of eras B-E. The old skims used only
+  # the era folders (checked 2026-10-21: no event that is only in 29apr2025 is in the old skim).
+  background:
+    - /pnfs/psi.ch/cms/trivcat/store/user/manzoni/tau3mu_gnn/ParkingDoubleMuonLowMass*/_ParkingDoubleMuonLowMass*_Run2024*/*/*/*.root
+  tree_name: Events                        # optional, default: Events
+  already_resonance_skimmed: false         # false: inputs are raw NanoAOD, stage 0 runs; true: skip stage 0
+
+# Map from the analysis branch names (left) to the names in YOUR ntuples (right).
+# Only list branches whose name differs. Leave empty if your names are the same.
+# Raw NanoAOD (already_resonance_skimmed: false): use the raw names on the left (TauTo3Mu_*, PFCands_*).
+branch_map: {}
+#   TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
+
+limit:
+  # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
+  # Compute it for YOUR dataset. 0.000019 is valid only for Kaito's W dataset.
+  signal_weight: 0.000019
+  # One cut or a list of cuts on the GNN score. A list runs a cut scan. Default: 3.9
+  gnn_score_cut: 3.9

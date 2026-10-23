@@ -20,7 +20,7 @@ def test_phase_settings_sections(load, user):
     from tau3mu_gnn.pipeline.manifest import phase_settings
 
     cfg = load(user)
-    assert list(phase_settings(cfg, "phase_a")) == ["channel", "inputs", "branch_map", "skim", "bdt"]
+    assert list(phase_settings(cfg, "phase_a")) == ["channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt"]
     assert list(phase_settings(cfg, "phase_b"))[-1] == "gnn"
     assert list(phase_settings(cfg, "phase_c"))[-2:] == ["gnn", "limit"]
 
@@ -46,7 +46,7 @@ def test_write_and_read_manifest(load, user, tmp_path):
     assert data["phase"] == "phase_b" and data["version"] == "phase_b_vs2" and data["upstream"] == "phase_a_vs1"
     assert data["outputs"] == {"gnn_signal": "3_gnn/s.root"} and data["missing"] == []
     assert data["slurm_jobs"] == {"eval": "125"}
-    assert set(data["settings"]) == {"channel", "inputs", "branch_map", "skim", "bdt", "gnn"}
+    assert set(data["settings"]) == {"channel", "inputs", "branch_map", "resonance_skim", "skim", "bdt", "gnn"}
     assert data["git_commit"] and data["created"]
 
 

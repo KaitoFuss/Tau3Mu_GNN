@@ -23,10 +23,11 @@ inputs:
   background:
     - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/old_data/data_skimmed_no_resonances.root
   tree_name: Events                        # optional, default: Events
-  already_resonance_skimmed: true          # true: skip stage 0 (resonance skim)
+  already_resonance_skimmed: true          # true: skip stage 0 (resonance skim); false: inputs are raw NanoAOD
 
 # Map from the analysis branch names (left) to the names in YOUR ntuples (right).
 # Only list branches whose name differs. Leave empty if your names are the same.
+# Raw NanoAOD (already_resonance_skimmed: false): use the raw names on the left (TauTo3Mu_*, PFCands_*).
 branch_map: {}
 #   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
 

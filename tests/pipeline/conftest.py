@@ -22,6 +22,8 @@ if _imported_from != REPO_ROOT:
 TOY_MODEL = "toy_model"
 
 TOY_DEFAULTS = {
+    "resonance_skim": {"vtx_chi2_max": 20, "mass_range": [1.0, 3.0], "veto_masses": [0.78266, 1.019461],
+                       "veto_half_width": 0.04, "pf_dr_max": 1.0},
     "skim": {"dz_max": 0.5, "cos_alpha_2d_min": 0.5},
     "bdt": {"classifier": "models/W/bdt/toy.pck"},
     "gnn": {

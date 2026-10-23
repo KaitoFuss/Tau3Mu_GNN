@@ -232,6 +232,11 @@ USER_FIELDS: dict[str, _Field] = {
 # Keys of the frozen defaults file. Paths are relative to the repo root.
 # The channel is not repeated here: the user file selects analysis_defaults_<channel>.yaml.
 DEFAULTS_FIELDS: dict[str, _Field] = {
+    "resonance_skim.vtx_chi2_max": _Field(_positive_number),
+    "resonance_skim.mass_range": _Field(_range),
+    "resonance_skim.veto_masses": _Field(_number_list),
+    "resonance_skim.veto_half_width": _Field(_positive_number),
+    "resonance_skim.pf_dr_max": _Field(_positive_number),
     "skim.dz_max": _Field(_positive_number),
     "skim.cos_alpha_2d_min": _Field(_number),
     "bdt.classifier": _Field(_non_empty_str),
@@ -269,6 +274,15 @@ class InputsConfig:
     background: tuple[str, ...]
     tree_name: str
     already_resonance_skimmed: bool
+
+
+@dataclass(frozen=True)
+class ResonanceSkimConfig:
+    vtx_chi2_max: float
+    mass_range: tuple[float, float]     # GeV, on the 3-muon 4-vector mass
+    veto_masses: tuple[float, ...]      # GeV, vetoed opposite-sign dimuon masses
+    veto_half_width: float              # GeV
+    pf_dr_max: float                    # PF candidates kept within this DeltaR of a tau candidate
 
 
 @dataclass(frozen=True)
@@ -324,6 +338,7 @@ class Config:
     paths: PathsConfig
     inputs: InputsConfig
     branch_map: Mapping[str, str]
+    resonance_skim: ResonanceSkimConfig
     skim: SkimConfig
     bdt: BDTConfig
     gnn: GNNConfig
@@ -462,6 +477,13 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
             already_resonance_skimmed=user["inputs.already_resonance_skimmed"],
         ),
         branch_map=user["branch_map"],
+        resonance_skim=ResonanceSkimConfig(
+            vtx_chi2_max=defaults["resonance_skim.vtx_chi2_max"],
+            mass_range=defaults["resonance_skim.mass_range"],
+            veto_masses=defaults["resonance_skim.veto_masses"],
+            veto_half_width=defaults["resonance_skim.veto_half_width"],
+            pf_dr_max=defaults["resonance_skim.pf_dr_max"],
+        ),
         skim=SkimConfig(dz_max=defaults["skim.dz_max"], cos_alpha_2d_min=defaults["skim.cos_alpha_2d_min"]),
         bdt=BDTConfig(classifier=repo_root / defaults["bdt.classifier"]),
         gnn=GNNConfig(
