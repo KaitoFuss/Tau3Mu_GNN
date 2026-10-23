@@ -96,3 +96,29 @@ def test_plot_training_writes_files(tmp_path, params):
     paths = train_bdt.plot_training(summary, test, classifiers, feats, tmp_path / "plots")
     assert sorted(p.name for p in paths) == ["logloss_fold_1.png", "logloss_fold_2.png", "roc.png"]
     assert all(p.is_file() for p in paths)
+
+
+def test_stage_writes_outputs(tmp_path, load_training, training_user):
+    import json
+    from tau3mu_gnn.pipeline.training.stages import bdt_train as stage
+    load_training.defaults["bdt_training"].update(n_estimators=30, kfold=2, early_stopping_rounds=5)
+    cfg = load_training(training_user)
+    rng = np.random.default_rng(3)
+    inputs = {"signal": _toy(tmp_path / "s.root", 100, rng, True),
+              "background": _toy(tmp_path / "b.root", 100, rng, False, first_event=500)}
+    out = stage.run(cfg, inputs, tmp_path / "bdt_train")
+    assert out["classifier"].name == "ISO_classifiers.pck" and len(pickle.loads(out["classifier"].read_bytes())) == 2
+    s = json.loads(out["summary"].read_text())
+    assert {"n_signal", "n_background", "auc_test", "features"} <= set(s) and "logloss" not in s
+    assert len(out["plots"]) == 3 and all(p.is_file() for p in out["plots"])
+
+
+def test_stage_missing_branch_raises(tmp_path, load_training, training_user):
+    from tau3mu_gnn.pipeline.branches import BranchError
+    from tau3mu_gnn.pipeline.training.stages import bdt_train as stage
+    rng = np.random.default_rng(4)
+    sig = _toy(tmp_path / "s.root", 10, rng, True)
+    bkg = write_tree(tmp_path / "b.root", {"event": np.arange(3, dtype=np.uint64)})
+    with pytest.raises(BranchError, match="b.root"):
+        stage.run(load_training(training_user), {"signal": sig, "background": bkg}, tmp_path / "o")
+    assert not (tmp_path / "o" / "ISO_classifiers.pck").exists()
