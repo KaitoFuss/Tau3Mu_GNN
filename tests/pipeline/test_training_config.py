@@ -87,3 +87,14 @@ def test_kfold_needs_two_folds(load_training, training_user):
 
 def test_comet_key_not_in_repr(load_training, training_user):
     assert "toy-key" not in repr(load_training(training_user))
+
+
+def test_graph_type_keeps_cone_size_format_of_old_graph_code(load_training, training_user):
+    load_training.defaults["graphs"]["cone_size"] = 1.0
+    assert load_training(training_user).graphs.graph_type == "skimmed_dzd0_cone_size_1.0_knn_10"
+
+
+def test_r_threshold_connection_rejected(load_training, training_user):
+    load_training.defaults["graphs"]["connection"] = "r_threshold"
+    with pytest.raises(ConfigError, match="graphs.connection"):
+        load_training(training_user)
