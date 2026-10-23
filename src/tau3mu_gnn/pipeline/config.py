@@ -112,6 +112,47 @@ def _range(v):
     return (lo, hi)
 
 
+def _positive_int(v):
+    if isinstance(v, bool) or not isinstance(v, int):
+        raise ValueError(f"must be a whole number, got {v!r}")
+    if v <= 0:
+        raise ValueError(f"must be > 0, got {v!r}")
+    return v
+
+
+def _increasing_number_list(v):
+    if not isinstance(v, list) or len(v) < 2:
+        raise ValueError(f"must be a list of at least 2 numbers, got {v!r}")
+    numbers = tuple(_number(i) for i in v)
+    if any(a >= b for a, b in zip(numbers, numbers[1:])):
+        raise ValueError(f"must be strictly increasing, got {v!r}")
+    return numbers
+
+
+def _linspace(v):
+    if not isinstance(v, list) or len(v) != 3:
+        raise ValueError(f"must be a list [start, stop, num], got {v!r}")
+    start, stop = _range(v[:2])
+    num = v[2]
+    if isinstance(num, bool) or not isinstance(num, int) or num < 2:
+        raise ValueError(f"num must be a whole number >= 2, got {num!r}")
+    return (start, stop, num)
+
+
+_WINDOWS = ("train", "validation", "test")
+
+
+def _windows(v):
+    if not isinstance(v, dict) or set(v) != set(_WINDOWS):
+        raise ValueError(f"must be a mapping with exactly the keys {list(_WINDOWS)}, got {v!r}")
+    windows = {name: _range(v[name]) for name in _WINDOWS}
+    edges = [windows[n] for n in _WINDOWS]
+    if edges[0][0] != 0 or edges[-1][1] != 1 or any(a[1] != b[0] for a, b in zip(edges, edges[1:])):
+        raise ValueError(f"train, validation, test must follow each other without gap or overlap "
+                         f"and cover [0, 1], got {v!r}")
+    return MappingProxyType(windows)
+
+
 def _str_map(v):
     if v is None:
         return MappingProxyType({})
@@ -168,40 +209,48 @@ def _optional_local_path(v):
 
 SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")
 _SLURM_KEYS = ("partition", "mem", "time", "cpus")
+_SLURM_OPTIONAL_KEYS = ("account", "gres")
 _MEM_RE = re.compile(r"^\d+[KMGT]?$")
 _TIME_RE = re.compile(r"^(\d+-)?\d{1,2}:\d{2}:\d{2}$")
 
 
-def _slurm_jobs(v):
-    if not isinstance(v, dict):
-        raise ValueError(f"must be a mapping job -> {{{', '.join(_SLURM_KEYS)}}}, got {v!r}")
-    reasons = [f"missing job '{j}'" for j in SLURM_JOBS if j not in v]
-    reasons += [f"unknown job '{j}'" for j in v if j not in SLURM_JOBS]
-    jobs = {}
-    for name in SLURM_JOBS:
-        if name not in v:
-            continue
-        spec = v[name]
-        if not isinstance(spec, dict):
-            reasons.append(f"job '{name}' must be a mapping, got {spec!r}")
-            continue
-        reasons += [f"job '{name}': missing key '{k}'" for k in _SLURM_KEYS if k not in spec]
-        reasons += [f"job '{name}': unknown key '{k}'" for k in spec if k not in _SLURM_KEYS]
-        if not set(_SLURM_KEYS) <= set(spec):
-            continue
-        partition, mem, time, cpus = (spec[k] for k in _SLURM_KEYS)
-        if not isinstance(partition, str) or not partition.strip():
-            reasons.append(f"job '{name}': partition must be a non-empty string, got {partition!r}")
-        if not isinstance(mem, str) or not _MEM_RE.match(mem):
-            reasons.append(f"job '{name}': mem must look like 64G, got {mem!r}")
-        if not isinstance(time, str) or not _TIME_RE.match(time):
-            reasons.append(f"job '{name}': time must look like 1-00:00:00 or 06:00:00, got {time!r}")
-        if isinstance(cpus, bool) or not isinstance(cpus, int) or cpus < 1:
-            reasons.append(f"job '{name}': cpus must be an integer >= 1, got {cpus!r}")
-        jobs[name] = SlurmJob(partition, mem, time, cpus)
-    if reasons:
-        raise ValueError("; ".join(reasons))
-    return MappingProxyType(jobs)
+def _slurm_jobs_parser(job_names: tuple[str, ...]):
+    """Parser of a SLURM job table with exactly the jobs job_names."""
+    def parse(v):
+        if not isinstance(v, dict):
+            raise ValueError(f"must be a mapping job -> {{{', '.join(_SLURM_KEYS)}}}, got {v!r}")
+        reasons = [f"missing job '{j}'" for j in job_names if j not in v]
+        reasons += [f"unknown job '{j}'" for j in v if j not in job_names]
+        jobs = {}
+        for name in job_names:
+            if name not in v:
+                continue
+            spec = v[name]
+            if not isinstance(spec, dict):
+                reasons.append(f"job '{name}' must be a mapping, got {spec!r}")
+                continue
+            reasons += [f"job '{name}': missing key '{k}'" for k in _SLURM_KEYS if k not in spec]
+            reasons += [f"job '{name}': unknown key '{k}'" for k in spec
+                        if k not in _SLURM_KEYS + _SLURM_OPTIONAL_KEYS]
+            if not set(_SLURM_KEYS) <= set(spec):
+                continue
+            partition, mem, time, cpus = (spec[k] for k in _SLURM_KEYS)
+            if not isinstance(partition, str) or not partition.strip():
+                reasons.append(f"job '{name}': partition must be a non-empty string, got {partition!r}")
+            if not isinstance(mem, str) or not _MEM_RE.match(mem):
+                reasons.append(f"job '{name}': mem must look like 64G, got {mem!r}")
+            if not isinstance(time, str) or not _TIME_RE.match(time):
+                reasons.append(f"job '{name}': time must look like 1-00:00:00 or 06:00:00, got {time!r}")
+            if isinstance(cpus, bool) or not isinstance(cpus, int) or cpus < 1:
+                reasons.append(f"job '{name}': cpus must be an integer >= 1, got {cpus!r}")
+            for key in _SLURM_OPTIONAL_KEYS:
+                if key in spec and (not isinstance(spec[key], str) or not spec[key].strip()):
+                    reasons.append(f"job '{name}': {key} must be a non-empty string, got {spec[key]!r}")
+            jobs[name] = SlurmJob(partition, mem, time, cpus, spec.get("account"), spec.get("gres"))
+        if reasons:
+            raise ValueError("; ".join(reasons))
+        return MappingProxyType(jobs)
+    return parse
 
 
 # ---------------------------------------------------------------- field tables
@@ -252,7 +301,7 @@ DEFAULTS_FIELDS: dict[str, _Field] = {
     "limit.fit_range": _Field(_range),
     "limit.cl": _Field(_open_unit_interval),
     "slurm.account": _Field(_non_empty_str),
-    "slurm.jobs": _Field(_slurm_jobs),
+    "slurm.jobs": _Field(_slurm_jobs_parser(SLURM_JOBS)),
 }
 
 # Keys whose value is a mapping but must not be flattened.
@@ -323,6 +372,8 @@ class SlurmJob:
     mem: str
     time: str        # D-HH:MM:SS or HH:MM:SS
     cpus: int
+    account: str | None = None   # None: slurm.account
+    gres: str | None = None      # e.g. gpu:1
 
 
 @dataclass(frozen=True)

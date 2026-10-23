@@ -134,3 +134,53 @@ def test_user_path_list_single_string_and_list():
     assert c._user_path_list(["/a.root", "/b*.root"]) == ("/a.root", "/b*.root")
     with pytest.raises(ValueError):
         c._user_path_list([])
+
+
+@pytest.mark.parametrize("bad", [6e5, 600000.0, 600000.5, "600k", 0, -3, True, None])
+def test_positive_int_rejects(bad):
+    with pytest.raises(ValueError):
+        c._positive_int(bad)
+
+
+def test_positive_int():
+    assert c._positive_int(600000) == 600000
+
+
+def test_increasing_number_list():
+    assert c._increasing_number_list([0, 10, 15]) == (0.0, 10.0, 15.0)
+    for bad in ([5], [0, 10, 10], [10, 0], "0,10"):
+        with pytest.raises(ValueError):
+            c._increasing_number_list(bad)
+
+
+def test_linspace():
+    assert c._linspace([0, 100, 101]) == (0.0, 100.0, 101)
+    for bad in ([0, 100], [100, 0, 101], [0, 100, 1], [0, 100, 10.5]):
+        with pytest.raises(ValueError):
+            c._linspace(bad)
+
+
+def test_windows():
+    ok = {"train": [0.0, 0.6], "validation": [0.6, 0.7], "test": [0.7, 1.0]}
+    assert c._windows(ok)["validation"] == (0.6, 0.7)
+    for bad in ({**ok, "validation": [0.5, 0.7]},          # overlap
+                {**ok, "validation": [0.65, 0.7]},         # gap
+                {**ok, "test": [0.7, 1.1]},                # outside [0, 1]
+                {"train": [0.0, 0.6], "test": [0.6, 1.0]}, # missing key
+                {**ok, "extra": [0, 1]}):                  # unknown key
+        with pytest.raises(ValueError):
+            c._windows(bad)
+
+
+def test_slurm_jobs_parser_optional_account_and_gres():
+    parse = c._slurm_jobs_parser(("a", "b"))
+    jobs = parse({"a": {"partition": "gpu", "mem": "128G", "time": "3-00:00:00", "cpus": 5,
+                        "account": "gpu_gres", "gres": "gpu:1"},
+                  "b": {"partition": "long", "mem": "256G", "time": "2-00:00:00", "cpus": 1}})
+    assert (jobs["a"].account, jobs["a"].gres) == ("gpu_gres", "gpu:1")
+    assert (jobs["b"].account, jobs["b"].gres) == (None, None)
+    with pytest.raises(ValueError, match="missing job 'b'"):
+        parse({"a": {"partition": "x", "mem": "1G", "time": "01:00:00", "cpus": 1}})
+    with pytest.raises(ValueError, match="account must be a non-empty string"):
+        parse({"a": {"partition": "x", "mem": "1G", "time": "01:00:00", "cpus": 1, "account": ""},
+               "b": {"partition": "x", "mem": "1G", "time": "01:00:00", "cpus": 1}})
