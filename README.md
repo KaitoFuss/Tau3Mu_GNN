@@ -13,7 +13,7 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 - [Infrastructure](#infrastructure)
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
-- [Analysis Pipeline (from a config file)](#analysis-pipeline-from-a-config-file)
+- [Analysis Pipeline (tau3mu-pipeline)](#analysis-pipeline-tau3mu-pipeline)
 - [Training Pipeline (tau3mu-train)](#training-pipeline-tau3mu-train)
 - [Quick Start](#quick-start)
 - [Pipeline Overview](#pipeline-overview)
@@ -57,7 +57,7 @@ The work uses two clusters:
 > **This will change: move to lxplus.** A later step moves all work to lxplus (HTCondor and EOS). Then the split between T3 and lxplus stops. These README parts describe the T3 setup now and will change:
 > - [Infrastructure](#infrastructure): the clusters, the schedulers and the hardcoded paths.
 > - [CMS Combine](#cms-combine): the build on lxplus.
-> - [Analysis Pipeline](#analysis-pipeline-from-a-config-file): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
+> - [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
 > - [Quick Start](#quick-start) and [Pipeline Overview](#pipeline-overview): the copy steps between T3 and lxplus (Steps 1b, 2, 4).
 > - [Data Storage and Transfer](#data-storage-and-transfer): `/pnfs/`, `/work/`, the data flow.
 > - [Job Submission](#job-submission): SLURM on T3.
@@ -164,7 +164,7 @@ which combine              # must be $CONDA_PREFIX/bin/combine
 
 ---
 
-## Analysis Pipeline (from a config file)
+## Analysis Pipeline (tau3mu-pipeline)
 
 This pipeline runs the frozen W analysis on **your** input files. You need only one config file.
 
@@ -387,7 +387,7 @@ The analysis then uses the new BDT and GNN, and the settings that belong to them
 
 ## Quick Start
 
-> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-from-a-config-file) and the [Training Pipeline](#training-pipeline-tau3mu-train) replace these steps. They are kept for reference.
+> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline) and the [Training Pipeline](#training-pipeline-tau3mu-train) replace these steps. They are kept for reference.
 
 A short end-to-end run for the W channel.
 
@@ -431,7 +431,7 @@ sbatch jobs/analysis/create_datacard.sh
 
 ## Pipeline Overview
 
-> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-train) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-from-a-config-file) Steps 5–7. They are kept for reference.
+> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-train) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline) Steps 5–7. They are kept for reference.
 
 Do the steps in this order. Each step has a job script in `jobs/`.
 
