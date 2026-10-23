@@ -118,3 +118,35 @@ def test_seed_reproducible_on_cpu(tmp_path, small):
     a = torch.load(tmp_path / "a" / "toy_model" / "toy_model.pt", map_location="cpu")["model_state_dict"]
     b = torch.load(tmp_path / "b" / "toy_model" / "toy_model.pt", map_location="cpu")["model_state_dict"]
     assert all(torch.equal(a[k], b[k]) for k in a)
+
+
+def test_model_name(load_training, training_user):
+    from tau3mu_gnn.pipeline.training.stages.gnn_train import model_name
+    assert model_name(load_training(training_user)) == "toy_train_W_fl_8_sd_4_GINE_delete_muons"
+
+
+def test_stage_missing_graphs(tmp_path, small):
+    from tau3mu_gnn.pipeline.training.stages import gnn_train
+    with pytest.raises(FileNotFoundError, match="signal_W"):
+        gnn_train.run(small, tmp_path / "empty", tmp_path / "out", device=torch.device("cpu"), comet_disabled=True)
+
+
+def test_stage_model_loads_in_analysis(tmp_path, load_training, training_user):
+    import json
+    from tau3mu_gnn.gnn_training import model_loading
+    from tau3mu_gnn.graph.ConeGraphProducer import ConeGraphProducer
+    from tau3mu_gnn.pipeline.training.stages import gnn_train
+    load_training.defaults["gnn_training"].update(epochs=2, batch_size=4)
+    cfg = load_training(training_user)
+    data_base = _toy_graphs(tmp_path, cfg)
+    out = gnn_train.run(cfg, data_base, tmp_path / "gnn_train", device=torch.device("cpu"), comet_disabled=True)
+    name = gnn_train.model_name(cfg)
+    assert json.loads(out["summary"].read_text())["model_name"] == name
+    model, normalizer = model_loading.load_model(tmp_path / "gnn_train", name, "GINE", "final_layer",
+                                                 "skimmed_dzd0_cone_size_0.5_knn_10", "W", torch.device("cpu"))
+    assert not model.training and {"means_x", "stds_graph"} <= set(normalizer)
+    from torch_geometric.data import Batch
+    g = ConeGraphProducer(str(data_base / "signal_W"), next((data_base / "signal_W" / "processed").glob("W_decay*.pt")).stem)[0]
+    with torch.no_grad():
+        score = model(Batch.from_data_list([g]))
+    assert torch.isfinite(score).all()
