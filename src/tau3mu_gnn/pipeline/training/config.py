@@ -19,7 +19,7 @@ from tau3mu_gnn.pipeline.config import (
     SlurmConfig, _abs_or_url, _bool, _channel, _Field, _increasing_number_list, _inputs,
     _LEAF_KEYS, _linspace, _local_path, _name, _non_empty_str, _number, _number_list, _open_unit_interval,
     _optional_local_path, _parse, _paths, _positive_int, _positive_number, _read_yaml,
-    _resonance_skim, _skim, _slurm_jobs_parser, _str_map, _user_path_list, _windows, read_analysis_defaults,
+    _resonance_skim, _skim, _slurm_jobs_parser, _str_map, _unsculpting_mode, _user_path_list, _windows, read_analysis_defaults,
 )
 
 TRAINING_SLURM_JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal",
@@ -108,7 +108,7 @@ TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "graphs.k": _Field(_positive_int),
     "graphs.cone_size": _Field(_positive_number),
     "graphs.use_displacement": _Field(_bool),
-    "graphs.unsculpting_mode": _Field(_non_empty_str),
+    "graphs.unsculpting_mode": _Field(_unsculpting_mode),
     "graphs.shuffle_seed": _Field(_positive_int),
     "gnn_training.conv_type": _Field(_non_empty_str),
     "gnn_training.gnn_mode": _Field(_non_empty_str),
@@ -165,7 +165,7 @@ class GraphsConfig:
     k: int
     cone_size: float
     use_displacement: bool        # "dzd0" in the name
-    unsculpting_mode: str
+    unsculpting_mode: str | None  # None: no unsculpting
     shuffle_seed: int             # random subset of max_events
 
     @property

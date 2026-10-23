@@ -153,6 +153,19 @@ def _windows(v):
     return MappingProxyType(windows)
 
 
+UNSCULPTING_MODES = ("delete_muons", "none")
+
+
+def _unsculpting_mode(v):
+    """'delete_muons' or 'none' (-> None): the modes GNN inference (ScoreProducer) reproduces.
+    permutation / split_pt_uniformly change only the training graphs, so inference would differ."""
+    if v not in UNSCULPTING_MODES:
+        raise ValueError(f"must be one of {list(UNSCULPTING_MODES)} (GNN inference applies only "
+                         f"delete_muons; other modes would give training graphs that inference does not "
+                         f"reproduce), got {v!r}")
+    return None if v == "none" else v
+
+
 def _str_map(v):
     if v is None:
         return MappingProxyType({})
@@ -293,7 +306,7 @@ DEFAULTS_FIELDS: dict[str, _Field] = {
     "gnn.model_name": _Field(_name),
     "gnn.conv_type": _Field(_non_empty_str),
     "gnn.gnn_mode": _Field(_non_empty_str),
-    "gnn.unsculpting_mode": _Field(_non_empty_str),
+    "gnn.unsculpting_mode": _Field(_unsculpting_mode),
     "gnn.graph_type": _Field(_non_empty_str),
     "gnn.bdt_preselection_cut": _Field(_open_unit_interval),
     "limit.tau_mass": _Field(_positive_number),
@@ -351,7 +364,7 @@ class GNNConfig:
     model_name: str
     conv_type: str
     gnn_mode: str
-    unsculpting_mode: str
+    unsculpting_mode: str | None    # None: no unsculpting
     graph_type: str
     bdt_preselection_cut: float
 
