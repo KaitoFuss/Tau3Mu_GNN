@@ -5,6 +5,7 @@ dependencies = []
 
 [project.scripts]
 tau3mu-pipeline = "tau3mu_gnn.pipeline.cli:main"
+tau3mu-train = "tau3mu_gnn.pipeline.training.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

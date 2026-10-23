@@ -49,12 +49,17 @@ def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None, after
                          after=tuple(j.name for j in limits), dependency="afterany", after_ids=after_ids)]
 
 
-def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, proxy=True) -> Submission:
-    """jobs_for(version_dir) -> job list. Shared tail of submit_phase / submit_stage / submit_all (steps 3-7)."""
+def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, proxy=True, create=None) \
+        -> Submission:
+    """jobs_for(version_dir) -> job list. Shared tail of submit_phase / submit_stage / submit_all (steps 3-7).
+    create(): makes the version folder (default: runs.create_version with the analysis settings)."""
     if proxy:
         check_proxy(cfg, chain_hours(cfg, jobs_for("<version>")))
     name = runs.next_version(parent, prefix)
-    version_dir = storage.join(parent, name) if dry_run else runs.create_version(cfg, prefix, parent=parent)
+    if dry_run:
+        version_dir = storage.join(parent, name)
+    else:
+        version_dir = create() if create is not None else runs.create_version(cfg, prefix, parent=parent)
     name = version_dir.rsplit("/", 1)[-1]
     log_folder = Path(cfg.paths.log_dir, cfg.run_name, *log_parts, name)
     ids = submit_jobs(cfg, jobs_for(version_dir), version_dir, log_folder, env, dry_run=dry_run)
