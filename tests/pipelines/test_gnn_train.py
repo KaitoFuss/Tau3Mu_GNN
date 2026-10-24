@@ -169,3 +169,35 @@ def test_old_cli_comet_settings_for_any_channel():
     for channel in ("W", "HF"):
         c = comet_settings(channel)
         assert c["workspace"] and c["api_key"]
+
+
+class RecordingExperiment:
+    """Records the Comet calls of the training."""
+
+    def __init__(self):
+        self.metrics = []
+
+    def log_metric(self, name, value, step=None, epoch=None, **kw):
+        self.metrics.append((name, step, epoch))
+
+    def log_parameters(self, *a, **kw):
+        pass
+
+    def set_name(self, *a, **kw):
+        pass
+
+
+def test_metrics_logged_with_step(tmp_path, small):
+    """Comet charts use the step as x-axis (without it: 'No data'). step = optimizer steps so far (training
+    batches), epoch = the epoch; one value per metric and epoch, logged at the end of the epoch."""
+    from tau3mu_gnn.gnn_training import train_gnn
+    from tau3mu_gnn.pipelines.training.stages.graphs import model_type
+    exp = RecordingExperiment()
+    train_gnn.train(_toy_graphs(tmp_path, small), model_type(small), "W", small.gnn_training,
+                    small.graphs.unsculpting_mode, "toy_model", tmp_path / "m", exp, device=torch.device("cpu"))
+    assert exp.metrics and all(isinstance(step, int) for _, step, _ in exp.metrics)
+    assert {e for _, _, e in exp.metrics} == {0, 1, 2}
+    step_of = {epoch: step for _, step, epoch in exp.metrics}
+    assert all(len({s for _, s, e in exp.metrics if e == ep}) == 1 for ep in step_of)   # one step per epoch
+    per_epoch = step_of[0]                                    # batches per epoch (same every epoch)
+    assert per_epoch > 1 and step_of == {0: per_epoch, 1: 2 * per_epoch, 2: 3 * per_epoch}

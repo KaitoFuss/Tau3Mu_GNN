@@ -425,7 +425,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
     # get output_path
     output_path = utrain.output_directory(name)
-    
+    global_step = 0  # optimizer steps so far: the Comet x-axis (`step`); `epoch` is logged as well
 
     for epoch in range(0,epochs):
         #training
@@ -471,6 +471,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
             loss_.backward()
             optimizer.step()
+            global_step += 1
             batch_counter += 1
             
             del loss_, score, out
@@ -481,9 +482,9 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         epoch_bce = bce_per_batch/batch_counter
         epoch_disco = disco_per_batch/batch_counter
         training_losses.append(epoch_loss_training)
-        experiment.log_metric(f"Full training loss", epoch_loss_training, epoch=epoch)
-        experiment.log_metric(f"BCE training loss", epoch_bce, epoch=epoch)
-        experiment.log_metric(f"Disco training", epoch_disco, epoch=epoch)
+        experiment.log_metric(f"Full training loss", epoch_loss_training, step=global_step, epoch=epoch)
+        experiment.log_metric(f"BCE training loss", epoch_bce, step=global_step, epoch=epoch)
+        experiment.log_metric(f"Disco training", epoch_disco, step=global_step, epoch=epoch)
 
 
         # validation
@@ -534,15 +535,15 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         # calculate loss per epoch and log it
         epoch_bce_loss_validation = bce_per_batch/batch_counter
         validation_losses.append(epoch_bce_loss_validation)
-        experiment.log_metric(f"BCE validation loss", epoch_bce_loss_validation, epoch=epoch)
+        experiment.log_metric(f"BCE validation loss", epoch_bce_loss_validation, step=global_step, epoch=epoch)
 
         epoch_disco_validation = disco_per_batch/batch_counter
         validation_discos.append(epoch_disco_validation)
-        experiment.log_metric(f"Disco validation", epoch_disco_validation, epoch=epoch)
+        experiment.log_metric(f"Disco validation", epoch_disco_validation, step=global_step, epoch=epoch)
 
         epoch_loss_validation = loss_per_batch/batch_counter
         validation_full_losses.append(epoch_loss_validation)
-        experiment.log_metric(f"Full validation validation", epoch_loss_validation, epoch=epoch)
+        experiment.log_metric(f"Full validation validation", epoch_loss_validation, step=global_step, epoch=epoch)
 
         if not np.isfinite(epoch_loss_validation):  # NaN would block early stopping and the checkpoint
             raise FloatingPointError(f"validation loss is {epoch_loss_validation} in epoch {epoch} "
@@ -556,7 +557,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
         if early_stop.early_stop:
             break
         ## log the average loss as well
-        experiment.log_metric(f"Average full validation loss", early_stop.avg_loss, epoch=epoch) # over last 10 epochs 
+        experiment.log_metric(f"Average full validation loss", early_stop.avg_loss, step=global_step, epoch=epoch) # over last 10 epochs 
 
 
 
