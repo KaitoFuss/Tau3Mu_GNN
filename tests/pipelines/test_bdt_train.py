@@ -75,7 +75,7 @@ def test_train_then_stage2_scores(tmp_path, params):
     sig = _toy(tmp_path / "s.root", 300, rng, True)
     bkg = _toy(tmp_path / "b.root", 300, rng, False, first_event=1000)
     data, feats = train_bdt.load_training_data([sig], [bkg], "Events", "W", 1.78, 0.08, 100_000, 42)
-    classifiers, summary, test = train_bdt.train_iso_bdt(data, feats, params)
+    classifiers, summary, train, test = train_bdt.train_iso_bdt(data, feats, params)
     assert sorted(classifiers) == [0, 1] and summary["auc_test"] > 0.95
     assert summary["n_signal"] == summary["n_background"] == 300
     clf = tmp_path / "ISO.pck"
@@ -87,15 +87,58 @@ def test_train_then_stage2_scores(tmp_path, params):
     assert 0 <= b.min() and s.max() <= 1 and s.mean() > b.mean() + 0.5
 
 
+def test_train_iso_bdt_scores_both_splits(tmp_path, params):
+    rng = np.random.default_rng(7)
+    data, feats = train_bdt.load_training_data(
+        [_toy(tmp_path / "s.root", 100, rng, True)], [_toy(tmp_path / "b.root", 100, rng, False)],
+        "Events", "W", 1.78, 0.08, 100_000, 42)
+    classifiers, summary, train, test = train_bdt.train_iso_bdt(data, feats, params)
+    assert len(train) + len(test) == len(data) and set(train.id).isdisjoint(test.id)
+    for split in (train, test):   # mean fold score, as stage 2
+        mean = np.mean([c.predict_proba(split[feats])[:, 1] for c in classifiers.values()], axis=0)
+        assert np.allclose(split["score"], mean)
+    assert set(summary["ks_pvalue"]) == {"signal", "background"}
+    assert all(0 <= v <= 1 for v in summary["ks_pvalue"].values())
+
+
+PLOTS = ["corr_bkg.png", "corr_sig.png", "feat_importance.png", "logloss_fold_1.png", "logloss_fold_2.png",
+         "overtrain.png", "overtrain_log.png", "roc.png", "roc_log.png"]
+
+
 def test_plot_training_writes_files(tmp_path, params):
     rng = np.random.default_rng(2)
     data, feats = train_bdt.load_training_data(
         [_toy(tmp_path / "s.root", 100, rng, True)], [_toy(tmp_path / "b.root", 100, rng, False)],
         "Events", "W", 1.78, 0.08, 100_000, 42)
-    classifiers, summary, test = train_bdt.train_iso_bdt(data, feats, params)
-    paths = train_bdt.plot_training(summary, test, classifiers, feats, tmp_path / "plots")
-    assert sorted(p.name for p in paths) == ["logloss_fold_1.png", "logloss_fold_2.png", "roc.png"]
+    classifiers, summary, train, test = train_bdt.train_iso_bdt(data, feats, params)
+    paths = train_bdt.plot_training(summary, train, test, classifiers, feats, tmp_path / "plots")
+    assert sorted(p.name for p in paths) == PLOTS
     assert all(p.is_file() for p in paths)
+
+
+def test_feature_importance_sums_folds():
+    class Booster:
+        def __init__(self, scores):
+            self.scores = scores
+
+        def get_fscore(self):
+            return self.scores
+
+    class Clf:
+        def __init__(self, scores):
+            self.booster = Booster(scores)
+
+        def get_booster(self):
+            return self.booster
+
+    imp = train_bdt.feature_importance({0: Clf({"a": 3, "b": 1}), 1: Clf({"a": 1})}, ["a", "b", "c"])
+    assert imp == {"a": 4 / 5, "b": 1 / 5, "c": 0.0}   # c: never split on
+
+
+def test_working_points():
+    # roc_curve point k = (score >= thr[k]); the point of cut c is the last one with thr > c (score > c)
+    fpr, tpr, thr = np.array([0., .5, 1.]), np.array([0., .8, 1.]), np.array([np.inf, .9, .1])
+    assert train_bdt.working_points(fpr, tpr, thr, [0.95, 0.5, 0.05]) == ([0., .5, 1.], [0., .8, 1.])
 
 
 def test_stage_writes_outputs(tmp_path, load_training, training_user):
@@ -110,7 +153,11 @@ def test_stage_writes_outputs(tmp_path, load_training, training_user):
     assert out["classifier"].name == "ISO_classifiers.pck" and len(pickle.loads(out["classifier"].read_bytes())) == 2
     s = json.loads(out["summary"].read_text())
     assert {"n_signal", "n_background", "auc_test", "features"} <= set(s) and "logloss" not in s
-    assert len(out["plots"]) == 3 and all(p.is_file() for p in out["plots"])
+    assert {"ks_pvalue", "auc_test"} <= set(s)
+    assert sorted(p.name for p in out["plots"]) == PLOTS and all(p.is_file() for p in out["plots"])
+    roc = pickle.loads(out["roc"].read_bytes())
+    assert out["roc"].name == "roc.pck" and set(roc) == {"fpr", "tpr", "threshold", "auc"}
+    assert roc["auc"] == s["auc_test"]
 
 
 def test_stage_missing_branch_raises(tmp_path, load_training, training_user):
