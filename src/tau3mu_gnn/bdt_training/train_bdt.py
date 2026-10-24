@@ -27,7 +27,7 @@ from xgboost import XGBClassifier  # noqa: E402
 from tau3mu_gnn.bdt_training.BDT_ScoreProducer import PREFIX, _add_features, _load  # noqa: E402
 from tau3mu_gnn.bdt_training.bdt_inputs import bdt_branches  # noqa: E402
 
-ROC_WORKING_POINTS = [0.80, 0.82, 0.84, 0.86, 0.89]   # BDT cuts marked on the ROC (as Train_XGB_W.py)
+ROC_WORKING_POINTS = [0.80, 0.85, 0.90, 0.925, 0.95, 0.975, 0.99]   # BDT cuts marked on the ROC (Kaito, PR #37)
 MASS = f"{PREFIX}TauTo3Mu_fitted_mass"
 
 
@@ -159,7 +159,7 @@ def _plot_roc(roc: dict, path: Path, log_x: bool) -> None:
     wp_x, wp_y = working_points(roc["fpr"], roc["tpr"], roc["threshold"], ROC_WORKING_POINTS)
     plt.scatter(wp_x, wp_y)
     for cut, x, y in zip(ROC_WORKING_POINTS, wp_x, wp_y):
-        plt.annotate(f"{cut:.2f}", (x, y))
+        plt.annotate(f"{cut:g}", (x, y))
     if log_x:
         plt.xscale("log")
         plt.xlim(1e-5, 1)
