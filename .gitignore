@@ -184,7 +184,7 @@ src/tau3mu_gnn/model_eval/signal_histo.py
 
 # Ignore the tests folder, except the pipeline unit tests
 tests/*
-!tests/pipeline/
+!tests/pipelines/
 
 # Ignore notebook folder
 notebooks/
