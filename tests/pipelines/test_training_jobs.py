@@ -166,7 +166,7 @@ def test_gnn_phase(cfg, scratch, fake_stages):
                             "graphs_background": f"graphs/background_W/processed/{ds['background']}.pt",
                             "gnn_train_summary": "gnn_train/gnn_train_summary.json"}
     assert all((g / rel).is_file() for rel in m["outputs"].values())        # outputs are files only
-    assert _manifest.check_upstream(cfg, g, "next", {"next": "gnn"}, lambda c, p: m["settings"]) == m
+    assert _manifest.check_upstream(cfg, g, "next", {"next": "gnn"}, lambda c, p: m["settings"], "training") == m
     assert fake_stages["graphs"]["signal"] == {"bdt": True, "npvs": "w"}       # npvs file of this phase
     assert fake_stages["graphs"]["background"] == {"bdt": True, "npvs": None}
     assert fake_stages["npvs"] == {"signal": True, "background": True}

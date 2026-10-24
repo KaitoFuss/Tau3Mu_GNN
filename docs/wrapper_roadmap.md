@@ -101,7 +101,7 @@ From `jobs/gnn_score_creation/create_score_W_*.sh` and `jobs/analysis/create_dat
 ## 5. Design (agreed in chat, 2026-10-07)
 
 - **Config**: frozen repo defaults + one short user file (see 5.1). The same user file is used for **all** phases. Each phase reads only the sections it needs.
-- One Python driver with one sub-command per phase (`phase-a`, `phase-b`, `phase-c`). Each stage is also callable alone.
+- One Python driver with one sub-command per phase (`bdt`, `gnn`, `limit`; were `phase-a`, `phase-b`, `phase-c` until step 12k). Each stage is also callable alone.
 - One thin bash wrapper that activates the env and calls the driver.
 - **Hand-off between phases**: each phase run writes to a new version folder `<phase>_vsN` under `<output_base>/<analysis_name>/`, plus a small manifest (list of output files + snapshot of the config used). The next phase uses the highest complete upstream version, or the one given with `--from`. It reads the manifest, checks the files exist, and compares the upstream settings to the current config. These checks run **inside the first job of the phase** (at run time), not at submit time, because with `all` the upstream outputs do not exist yet when the job is submitted.
 - Each stage is a plain Python function/CLI. It knows **nothing** about SLURM, HTCondor or dCache.
@@ -111,18 +111,18 @@ From `jobs/gnn_score_creation/create_score_W_*.sh` and `jobs/analysis/create_dat
 
 ```
 <output_base>/<analysis_name>/                  results (dCache or local)
-├── phase_a_vs1/
+├── bdt_vs1/                                     (phase_a_vs1 before step 12k)
 │   ├── manifest.json
 │   ├── config_used.yaml                        user file + defaults as loaded (merged view)
 │   ├── 0_resonance_skim/                       only if stage 0 copies (non-empty branch map)
 │   ├── 1_skim/{signal,background}.root
 │   ├── 2_bdt/...                               stage 2 outputs (ROOT + pickle)
 │   └── logs/<job>-<jobid>.{out,err}
-├── phase_b_vs1/
+├── gnn_vs1/                                     (phase_b_vs1 before step 12k)
 │   ├── manifest.json, config_used.yaml, logs/
 │   ├── 3_gnn/{signal,background}_with_gnn_scores.root, raw_scores_and_tau_mass_{signal,background}.npz
 │   └── 4_eval/*.png
-├── phase_c_vs1/
+├── limit_vs1/                                   (phase_c_vs1 before step 12k)
 │   ├── manifest.json, config_used.yaml, logs/
 │   ├── cut_<cut>/...                           stage 5 per cut (step 8)
 │   └── limits.{json,txt,png}                   summarize (step 8b)
@@ -271,6 +271,7 @@ Each step is small, testable, and keeps the old job scripts working.
     - 12g ✅ Training driver: `pipelines/training/{driver,cli,jobs}.py`, command `tau3mu-train {all,bdt,gnn,benchmark} --config FILE [--dry-run]`, `gnn` / `benchmark` take `--from bdt_vsN` (default: highest complete bdt). Phases bdt (`skim` → `bdt_train` → `bdt_infer`), gnn (`npvs` → `graphs_signal`; `graphs_background` does not wait for `npvs`; both → `gnn_train`), benchmark (`benchmark_limit_<cut>` per cut → `benchmark_summary`, afterany); `all` = bdt, then gnn and benchmark wait afterok on `bdt_infer`. Folders `<output_base>/<training_name>/{bdt,gnn,benchmark}_vsN`, logs `<log_dir>/<training_name>/<phase>_vsN`. GPU job `gnn_train`: per-job `account` / `gres` (`#SBATCH --gres`). Deferred: `stage` single-stage debug runs. Note: run `pip install -e .` again to get the new console script `tau3mu-train`.
     - 12h ✅ Analysis key `models:` (`frozen` default, or a training `gnn_vsN` path): `pipelines/analysis/models.py` (`read_trained_models`) reads the gnn manifest and its bdt upstream manifest; `bdt.classifier`, `gnn.model_dir` / `model_name` (from the `model` output path), `conv_type`, `gnn_mode`, `unsculpting_mode`, `graph_type` (via `graph/naming.graph_suffix`), `bdt_preselection_cut` from the training. Config errors for a non-gnn folder, an unfinished training, missing files. `models` recorded in `config_used.yaml` and in the settings of all analysis phases. Plan `docs/superpowers/plans/2026-10-23-step12h-models-key.md`.
     - 12j ✅ BDT training plots (Kaito, 2026-10-24): 12c ported only `logloss_fold_<i>.png` and a plain log ROC. `train_bdt.plot_training` now writes all ISO plots of the old `Train_XGB_W.py`: `roc.png` / `roc_log.png` (working points 0.80, 0.85, 0.90, 0.925, 0.95, 0.975, 0.99 marked; PR #37 review, the old script had 0.80–0.89), `overtrain.png` / `overtrain_log.png` (train vs test score, KS p-values), `feat_importance.png`, `corr_sig.png` / `corr_bkg.png` (features + score + fitted mass); plus `roc.pck` (fpr, tpr, threshold, auc; was `_roc_log*.pck`). `train_iso_bdt` also scores the train split (mean fold score, as the old script) and puts `ks_pvalue` in `bdt_train_summary.json`. Working-point fix: the old index `(thr > cut).sum()` took the point one step past the cut; now the last point with `thr > cut`. Plain matplotlib (seaborn is not a dependency). No rerun of 12i: plots for future trainings only.
+    - 12k ✅ Analysis phase names (Kaito, 2026-10-24): `phase_a` / `phase_b` / `phase_c` → `bdt` / `gnn` / `limit`, as the training phases. Commands `tau3mu-pipeline {all,bdt,gnn,limit,stage}`, folders `bdt_vsN` / `gnn_vsN` / `limit_vsN`, job names `BDT<N>.` / `GNN<N>.` / `LIM<N>.` (debug: `D<N>.`, now from the `debug/` parent folder, because debug and phase folders share names like `bdt_vs1`). Every manifest gets `pipeline: analysis|training`: the upstream check and the `models:` key refuse a folder of the other pipeline (an analysis `gnn_vsN` is no model folder). A manifest without `pipeline` (written before) passes. Clean break: no alias; old `phase_*_vsN` folders are not found by `--from` (results stay readable).
     - 12i Real check (Kaito queues): train on the old skimmed inputs, analysis with the new models, limit ≈ 1.29 (Kaito judges). README sections.
 Order (Kaito, 2026-10-24): 13b → 13c → 13 (HF). The labels stay, so older references to "step 13" (HF) and "step 14" (lxplus) stay correct.
 13b. Full W analysis from raw NanoAOD with the new skim (Kaito, 2026-10-24). The skim criteria changed compared to the old samples (step 3c: χ² < 20, 1 < m < 3 GeV, ω/φ veto ±40 MeV), so the whole chain runs again on Riccardo's raw NanoAOD: `tau3mu-train all` on the raw inputs (a training config like `example_training_W.yaml` with the inputs and `already_resonance_skimmed: false` of `example_W_raw.yaml`), then `tau3mu-pipeline all` on the raw inputs (`example_W_raw.yaml`) with `models:` = the new `gnn_vsN`. Results: new BDT and GNN, new benchmark limit, new GNN limit; compare with 12i and the old reference. Before: check `limit.signal_weight` for the new skim (open since step 3c). The skim job (stage 0 + 1) may need more resources on the full raw inputs: today `slurm.jobs.skim` = 1 day, 128G, 4 CPUs in both defaults files, from a raw test (~5 s/file, ~6300 files); the memory for the full raw run is not measured. Check `sacct` MaxRSS / elapsed after the first full run and update both defaults files.
@@ -366,3 +367,4 @@ Tracked here. Answers move to section 8.
 | 2026-10-24 | Kaito: new step 13b (full W chain from raw NanoAOD with the new skim: training + analysis) and step 13c after it (E1, E3, E4 and the `pair_charge` edge feature, each with a new limit). Comet metrics now logged with `step` = optimizer steps so far (training batches) and `epoch` (the default Comet charts use the step; without it they showed "No data"; one value per metric and epoch, as before). |
 | 2026-10-24 | Kaito: order 13b → 13c → 13 (HF). The skim job resources (1 day, 128G) may be too small for the full raw run in 13b; check MaxRSS / elapsed after it. |
 | 2026-10-24 | Kaito: step 12j, all old BDT training plots (ISO) back in `bdt_train`, for future trainings; no rerun of the 12i training. |
+| 2026-10-24 | Kaito: step 12k, analysis phases `bdt` / `gnn` / `limit` (option 1 of `bdt`/`gnn`/`limit` vs `bdt_score`/`gnn_score`/`limit`); manifest key `pipeline` keeps the two pipelines apart. No alias for the old names. |

@@ -1,4 +1,4 @@
-"""Versions and manifests of the analysis phases: phase_a, phase_b, phase_c.
+"""Versions and manifests of the analysis phases: bdt, gnn, limit.
 
 Thin wrappers over common/runs.py and common/manifest.py with the analysis phase maps and settings.
 """
@@ -10,12 +10,13 @@ from tau3mu_gnn.pipelines.analysis.config import Config
 from tau3mu_gnn.pipelines.common import manifest as _manifest
 from tau3mu_gnn.pipelines.common import runs as _runs
 
-PHASES = ("phase_a", "phase_b", "phase_c")
-UPSTREAM = {"phase_a": None, "phase_b": "phase_a", "phase_c": "phase_b"}
+PIPELINE = "analysis"
+PHASES = ("bdt", "gnn", "limit")
+UPSTREAM = {"bdt": None, "gnn": "bdt", "limit": "gnn"}
 PHASE_SECTIONS = {
-    "phase_a": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt"),
-    "phase_b": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn"),
-    "phase_c": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn", "limit"),
+    "bdt": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt"),
+    "gnn": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn"),
+    "limit": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn", "limit"),
 }
 
 
@@ -73,11 +74,11 @@ def create_version(cfg: Config, prefix: str, parent=None) -> str:
 def write_manifest(cfg: Config, phase_dir, phase: str, upstream: str | None, outputs: dict[str, str],
                    missing=()) -> dict:
     return _manifest.write_manifest(cfg, phase_dir, phase, upstream, outputs, missing,
-                                    settings=phase_settings(cfg, phase))
+                                    settings=phase_settings(cfg, phase), pipeline=PIPELINE)
 
 
 def check_upstream(cfg: Config, upstream_dir, phase: str) -> dict:
-    return _manifest.check_upstream(cfg, upstream_dir, phase, UPSTREAM, phase_settings)
+    return _manifest.check_upstream(cfg, upstream_dir, phase, UPSTREAM, phase_settings, PIPELINE)
 
 
 def pick_upstream(cfg: Config, phase: str, from_: str | None = None) -> str:

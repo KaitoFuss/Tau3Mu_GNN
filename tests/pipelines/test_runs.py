@@ -11,10 +11,10 @@ def mk(parent, *names, complete=()):
 def test_next_version_numeric(tmp_path):
     from tau3mu_gnn.pipelines.common.runs import next_version, versions
 
-    assert next_version(tmp_path, "phase_a") == "phase_a_vs1"
-    mk(tmp_path, "phase_a_vs1", "phase_a_vs9", "phase_a_vs10", "phase_b_vs4", "phase_a_vs2_old", "debug")
-    assert versions(tmp_path, "phase_a") == ["phase_a_vs1", "phase_a_vs9", "phase_a_vs10"]
-    assert next_version(tmp_path, "phase_a") == "phase_a_vs11"
+    assert next_version(tmp_path, "bdt") == "bdt_vs1"
+    mk(tmp_path, "bdt_vs1", "bdt_vs9", "bdt_vs10", "gnn_vs4", "bdt_vs2_old", "debug")
+    assert versions(tmp_path, "bdt") == ["bdt_vs1", "bdt_vs9", "bdt_vs10"]
+    assert next_version(tmp_path, "bdt") == "bdt_vs11"
 
 
 def test_create_version_writes_config_used(load, user, tmp_path):
@@ -23,10 +23,10 @@ def test_create_version_writes_config_used(load, user, tmp_path):
 
     user["paths"]["output_base"] = str(tmp_path / "out")
     cfg = load(user)
-    first = create_version(cfg, "phase_a")
-    second = create_version(cfg, "phase_a")
-    assert first.endswith("/toy_run/phase_a_vs1") and second.endswith("/toy_run/phase_a_vs2")
-    used = yaml.safe_load((tmp_path / "out" / "toy_run" / "phase_a_vs1" / "config_used.yaml").read_text())
+    first = create_version(cfg, "bdt")
+    second = create_version(cfg, "bdt")
+    assert first.endswith("/toy_run/bdt_vs1") and second.endswith("/toy_run/bdt_vs2")
+    used = yaml.safe_load((tmp_path / "out" / "toy_run" / "bdt_vs1" / "config_used.yaml").read_text())
     assert used["analysis_name"] == "toy_run" and used["bdt"]["classifier"] == "models/W/bdt/toy.pck"
     debug = create_version(cfg, "eval", parent=f"{cfg.output_dir}/debug")
     assert debug.endswith("/toy_run/debug/eval_vs1")
@@ -37,9 +37,9 @@ def test_pick_upstream_highest_complete_and_note(load, user, tmp_path, caplog):
 
     user["paths"]["output_base"] = str(tmp_path)
     cfg = load(user)
-    mk(tmp_path / "toy_run", "phase_a_vs1", "phase_a_vs2", "phase_a_vs3", complete=("phase_a_vs1", "phase_a_vs2"))
-    assert pick_upstream(cfg, "phase_b") == f"{tmp_path}/toy_run/phase_a_vs2"
-    assert "phase_a_vs3" in caplog.text
+    mk(tmp_path / "toy_run", "bdt_vs1", "bdt_vs2", "bdt_vs3", complete=("bdt_vs1", "bdt_vs2"))
+    assert pick_upstream(cfg, "gnn") == f"{tmp_path}/toy_run/bdt_vs2"
+    assert "bdt_vs3" in caplog.text
 
 
 def test_pick_upstream_none_complete(load, user, tmp_path):
@@ -48,9 +48,9 @@ def test_pick_upstream_none_complete(load, user, tmp_path):
 
     user["paths"]["output_base"] = str(tmp_path)
     cfg = load(user)
-    mk(tmp_path / "toy_run", "phase_a_vs1")
-    with pytest.raises(UpstreamError, match="phase-a"):
-        pick_upstream(cfg, "phase_b")
+    mk(tmp_path / "toy_run", "bdt_vs1")
+    with pytest.raises(UpstreamError, match="bdt"):
+        pick_upstream(cfg, "gnn")
 
 
 def test_pick_upstream_from(load, user, tmp_path):
@@ -59,21 +59,21 @@ def test_pick_upstream_from(load, user, tmp_path):
 
     user["paths"]["output_base"] = str(tmp_path)
     cfg = load(user)
-    mk(tmp_path / "toy_run", "phase_a_vs1", "phase_a_vs2", "phase_b_vs1", complete=("phase_a_vs1", "phase_b_vs1"))
-    assert pick_upstream(cfg, "phase_b", from_="phase_a_vs1") == f"{tmp_path}/toy_run/phase_a_vs1"
+    mk(tmp_path / "toy_run", "bdt_vs1", "bdt_vs2", "gnn_vs1", complete=("bdt_vs1", "gnn_vs1"))
+    assert pick_upstream(cfg, "gnn", from_="bdt_vs1") == f"{tmp_path}/toy_run/bdt_vs1"
     with pytest.raises(UpstreamError, match="no manifest"):
-        pick_upstream(cfg, "phase_b", from_="phase_a_vs2")       # incomplete
-    with pytest.raises(UpstreamError, match="phase_a"):
-        pick_upstream(cfg, "phase_b", from_="phase_b_vs1")       # wrong phase
+        pick_upstream(cfg, "gnn", from_="bdt_vs2")       # incomplete
+    with pytest.raises(UpstreamError, match="bdt"):
+        pick_upstream(cfg, "gnn", from_="gnn_vs1")       # wrong phase
     with pytest.raises(UpstreamError, match="not found"):
-        pick_upstream(cfg, "phase_b", from_="phase_a_vs7")
+        pick_upstream(cfg, "gnn", from_="bdt_vs7")
 
 
-def test_pick_upstream_phase_a_has_none(load, user):
+def test_pick_upstream_bdt_phase_has_none(load, user):
     from tau3mu_gnn.pipelines.analysis.manifest import pick_upstream
 
-    with pytest.raises(ValueError, match="phase_a"):
-        pick_upstream(load(user), "phase_a")
+    with pytest.raises(ValueError, match="bdt"):
+        pick_upstream(load(user), "bdt")
 
 
 def test_pick_version_any_phase(load, user, tmp_path, caplog):
@@ -82,11 +82,11 @@ def test_pick_version_any_phase(load, user, tmp_path, caplog):
 
     user["paths"]["output_base"] = str(tmp_path)
     cfg = load(user)
-    mk(tmp_path / "toy_run", "phase_c_vs1", "phase_c_vs2", complete=("phase_c_vs1",))
-    assert pick_version(cfg, "phase_c") == f"{tmp_path}/toy_run/phase_c_vs1"
-    assert pick_version(cfg, "phase_c", complete=False) == f"{tmp_path}/toy_run/phase_c_vs2"
-    assert pick_version(cfg, "phase_c", from_="phase_c_vs2", complete=False) == f"{tmp_path}/toy_run/phase_c_vs2"
+    mk(tmp_path / "toy_run", "limit_vs1", "limit_vs2", complete=("limit_vs1",))
+    assert pick_version(cfg, "limit") == f"{tmp_path}/toy_run/limit_vs1"
+    assert pick_version(cfg, "limit", complete=False) == f"{tmp_path}/toy_run/limit_vs2"
+    assert pick_version(cfg, "limit", from_="limit_vs2", complete=False) == f"{tmp_path}/toy_run/limit_vs2"
     with pytest.raises(UpstreamError, match="no manifest"):
-        pick_version(cfg, "phase_c", from_="phase_c_vs2")
-    with pytest.raises(UpstreamError, match="phase-b"):
-        pick_version(cfg, "phase_b")
+        pick_version(cfg, "limit", from_="limit_vs2")
+    with pytest.raises(UpstreamError, match="gnn"):
+        pick_version(cfg, "gnn")

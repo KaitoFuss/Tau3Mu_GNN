@@ -39,7 +39,7 @@ def skim(cfg, phase_dir) -> None:
 
 
 def bdt(cfg, phase_dir, source_dir=None, manifest=True) -> None:
-    """Phase A, job 2: stage 2 on <source_dir>/1_skim/ (default: this phase). Writes the phase A manifest."""
+    """Phase bdt, job 2: stage 2 on <source_dir>/1_skim/ (default: this phase). Writes the bdt manifest."""
     src = source_dir if source_dir is not None else phase_dir
     log.info("job bdt: %s, source %s", phase_dir, src)
     inputs = {s: _read(src, f"{SKIM_DIR}/{s}.root") for s in SAMPLES}
@@ -51,13 +51,13 @@ def bdt(cfg, phase_dir, source_dir=None, manifest=True) -> None:
         outputs = {f"skim_{s}": f"{SKIM_DIR}/{s}.root" for s in SAMPLES}
         outputs.update({f"bdt_{s}": Path(out[s]).relative_to(scratch).as_posix() for s in SAMPLES})
         outputs["scores_pickle"] = Path(out["scores_pickle"]).relative_to(scratch).as_posix()
-        write_manifest(cfg, phase_dir, "phase_a", None, outputs)
+        write_manifest(cfg, phase_dir, "bdt", None, outputs)
 
 
 def gnn(cfg, phase_dir, upstream_dir, sample: str) -> None:
-    """Phase B: stage 3 for one sample. First job of the phase: checks the phase A version."""
+    """Phase gnn: stage 3 for one sample. First job of the phase: checks the bdt version."""
     log.info("job gnn: %s, sample %s, upstream %s", phase_dir, sample, upstream_dir)
-    m = check_upstream(cfg, upstream_dir, "phase_b")
+    m = check_upstream(cfg, upstream_dir, "gnn")
     scratch = _scratch(f"gnn_{sample}")
     gnn_stage.run(cfg, {sample: _read(upstream_dir, m["outputs"][f"bdt_{sample}"])}, scratch / GNN_DIR,
                   samples=(sample,))
@@ -66,11 +66,11 @@ def gnn(cfg, phase_dir, upstream_dir, sample: str) -> None:
 
 
 def evaluation(cfg, phase_dir, upstream_dir, source_dir=None, manifest=True) -> None:
-    """Phase B, last job: stage 4 on <source_dir>/3_gnn/ (default: this phase) + the phase A pickle.
-    Writes the phase B manifest."""
+    """Phase gnn, last job: stage 4 on <source_dir>/3_gnn/ (default: this phase) + the bdt pickle.
+    Writes the gnn manifest."""
     src = source_dir if source_dir is not None else phase_dir
     log.info("job eval: %s, source %s, upstream %s", phase_dir, src, upstream_dir)
-    up = check_upstream(cfg, upstream_dir, "phase_b")
+    up = check_upstream(cfg, upstream_dir, "gnn")
     # stage 3 file names, relative to the phase folder
     gnn_files = {k: f"{GNN_DIR}/{Path(v).name}" for s in SAMPLES for k, v in gnn_stage.output_files(".", s).items()}
     inputs = {f"{s}_scores": _read(src, gnn_files[f"{s}_scores"]) for s in SAMPLES}
@@ -83,13 +83,13 @@ def evaluation(cfg, phase_dir, upstream_dir, source_dir=None, manifest=True) -> 
         outputs = {f"gnn_{s}": gnn_files[s] for s in SAMPLES}
         outputs.update({f"{s}_scores": gnn_files[f"{s}_scores"] for s in SAMPLES})
         outputs.update({f"eval_{p}": f"{EVAL_DIR}/{p}.png" for p in evaluation_stage.PLOTS})
-        write_manifest(cfg, phase_dir, "phase_b", _name(upstream_dir), outputs)
+        write_manifest(cfg, phase_dir, "gnn", _name(upstream_dir), outputs)
 
 
 def limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
-    """Phase C: stage 5 for one cut. Checks the phase B version. cut_<cut>/ is copied also if the stage fails."""
+    """Phase limit: stage 5 for one cut. Checks the gnn version. cut_<cut>/ is copied also if the stage fails."""
     log.info("job limit: %s, cut %s, upstream %s", phase_dir, cut, upstream_dir)
-    m = check_upstream(cfg, upstream_dir, "phase_c")
+    m = check_upstream(cfg, upstream_dir, "limit")
     inputs = {s: _read(upstream_dir, m["outputs"][f"gnn_{s}"]) for s in SAMPLES}
     scratch = _scratch("limit")
     cut_dir = scratch / limit_stage.cut_dir_name(cut)
@@ -103,10 +103,10 @@ def limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
 
 
 def summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -> None:
-    """Phase C, last job (afterany): limits.* from <source_dir>/cut_*/ (default: this phase).
-    Writes the phase C manifest, with the cuts that have no limit in 'missing'."""
+    """Phase limit, last job (afterany): limits.* from <source_dir>/cut_*/ (default: this phase).
+    Writes the limit manifest, with the cuts that have no limit in 'missing'."""
     if manifest and upstream_dir is None:
-        raise ValueError("summary with a manifest needs the upstream phase B folder")
+        raise ValueError("summary with a manifest needs the upstream gnn folder")
     src = source_dir if source_dir is not None else phase_dir
     log.info("job summary: %s, source %s, upstream %s", phase_dir, src, upstream_dir)
     scratch = _scratch("summary")
@@ -117,7 +117,7 @@ def summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -
         outputs = {f"limits_{k}": name for k, name in limit_stage.SUMMARY_FILES.items()}
         outputs.update({f"limit_{r['cut']}": f"{limit_stage.cut_dir_name(r['cut'])}/limit.json"
                         for r in s["rows"] if r["limit"] is not None})
-        write_manifest(cfg, phase_dir, "phase_c", _name(upstream_dir), outputs, missing=s["missing"])
+        write_manifest(cfg, phase_dir, "limit", _name(upstream_dir), outputs, missing=s["missing"])
 
 
 def main(argv=None) -> None:

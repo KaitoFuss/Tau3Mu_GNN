@@ -277,8 +277,8 @@ def test_stage_end_to_end(load, user, toy_inputs, tmp_path):
     from tau3mu_gnn.pipelines.common.stages import limit
 
     cfg = stage_cfg(load, user, cuts=(2.0, 3.9))
-    res = limit.run(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "phase_c", 3.9)
-    d = tmp_path / "phase_c" / "cut_3.9"
+    res = limit.run(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "limit", 3.9)
+    d = tmp_path / "limit" / "cut_3.9"
     assert res["dir"] == d and res["datacard"] == d / "datacard.txt"
     for name in ("datacard.txt", "datacard.root", "mass.pdf", "temp_mc_selected.root", "temp_data_selected.root",
                  "higgsCombineTest.AsymptoticLimits.mH120.root", "combine_asymptotic.log", "limit.json"):

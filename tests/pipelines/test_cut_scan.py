@@ -92,7 +92,7 @@ def test_summary_ignores_cuts_not_in_config(load, user, tmp_path):
 
     cfg = scan_cfg(load, user, [3.9])
     write_limit(tmp_path, 3.9, 1.3)
-    write_limit(tmp_path, 5.0, 0.1)                      # old scan in the same phase_c/
+    write_limit(tmp_path, 5.0, 0.1)                      # old scan in the same limit/
     s = limit.summarize(cfg, tmp_path)
     assert [r["cut"] for r in s["rows"]] == [3.9] and s["best_cut"] == 3.9
 
@@ -221,13 +221,13 @@ def test_run_scan_end_to_end(load, user, toy_inputs, tmp_path):
 
     user["limit"]["signal_weight"] = 0.5
     cfg = scan_cfg(load, user, [2.0, 3.9])
-    s = limit.run_scan(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "phase_c")
+    s = limit.run_scan(cfg, {"signal": toy_inputs[0], "background": toy_inputs[1]}, tmp_path / "limit")
     for cut in (2.0, 3.9):
-        per_cut = json.loads((tmp_path / "phase_c" / f"cut_{cut}" / "limit.json").read_text())
+        per_cut = json.loads((tmp_path / "limit" / f"cut_{cut}" / "limit.json").read_text())
         row = next(r for r in s["rows"] if r["cut"] == cut)
         assert row["limit"] == per_cut["limit"]
     for name in limit.SUMMARY_FILES.values():
-        assert (tmp_path / "phase_c" / name).is_file(), name
+        assert (tmp_path / "limit" / name).is_file(), name
 
 
 def test_rerun_with_bad_inputs_removes_old_limit_json(load, user, tmp_path):

@@ -1,9 +1,9 @@
 """tau3mu-pipeline (analysis): submit the SLURM jobs of all phases, one phase or one stage.
 
-  tau3mu-pipeline all     --config my.yaml [--dry-run]
-  tau3mu-pipeline phase-a --config my.yaml [--dry-run]
-  tau3mu-pipeline phase-b --config my.yaml [--from phase_a_vsN] [--dry-run]
-  tau3mu-pipeline phase-c --config my.yaml [--from phase_b_vsN] [--dry-run]
+  tau3mu-pipeline all   --config my.yaml [--dry-run]
+  tau3mu-pipeline bdt   --config my.yaml [--dry-run]                       skim + BDT scores
+  tau3mu-pipeline gnn   --config my.yaml [--from bdt_vsN] [--dry-run]      GNN scores + evaluation plots
+  tau3mu-pipeline limit --config my.yaml [--from gnn_vsN] [--dry-run]      limit per cut + summary
   tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my.yaml
         [--from <phase>_vsN] [--cut X] [--sample signal|background] [--dry-run]
 
@@ -27,15 +27,17 @@ from tau3mu_gnn.pipelines.common.slurm import SubmitError
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tau3mu-pipeline", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
-    for name in ("all", "phase-a", "phase-b", "phase-c", "stage"):
-        s = sub.add_parser(name, help="phases A, B and C at once" if name == "all" else None)
+    helps = {"all": "phases bdt, gnn and limit at once", "bdt": "skim + BDT scores",
+             "gnn": "GNN scores + evaluation plots", "limit": "limit per cut + summary", "stage": "one stage (debug)"}
+    for name in ("all", "bdt", "gnn", "limit", "stage"):
+        s = sub.add_parser(name, help=helps[name])
         if name == "stage":
             s.add_argument("stage", choices=STAGES)
             s.add_argument("--cut", type=float, help="GNN score cut (stage limit)")
             s.add_argument("--sample", choices=("signal", "background"), help="sample (stage gnn)")
         s.add_argument("--config", required=True, help="your user config file")
-        if name not in ("all", "phase-a"):
-            s.add_argument("--from", dest="from_", metavar="VERSION", help="upstream version, e.g. phase_a_vs2")
+        if name not in ("all", "bdt"):
+            s.add_argument("--from", dest="from_", metavar="VERSION", help="upstream version, e.g. bdt_vs2")
         s.add_argument("--dry-run", action="store_true", help="write the job scripts and print the sbatch "
                                                               "commands; submit nothing")
     return p
@@ -51,7 +53,7 @@ def main(argv=None) -> int:
         elif a.command == "stage":
             subs = [submit_stage(cfg, a.stage, a.from_, a.cut, a.sample, dry_run=a.dry_run)]
         else:
-            subs = [submit_phase(cfg, a.command.replace("-", "_"), getattr(a, "from_", None), dry_run=a.dry_run)]
+            subs = [submit_phase(cfg, a.command, getattr(a, "from_", None), dry_run=a.dry_run)]
     except (ConfigError, UpstreamError, SubmitError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1

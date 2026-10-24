@@ -44,7 +44,7 @@ class Job:
     args: tuple[str, ...]          # arguments of `python -m <module>`
     after: tuple[str, ...] = ()    # names of jobs this one waits for
     dependency: str = "afterok"    # afterok | afterany
-    after_ids: tuple[str, ...] = ()  # IDs of jobs submitted before (afterok), e.g. the last job of phase A
+    after_ids: tuple[str, ...] = ()  # IDs of jobs submitted before (afterok), e.g. the last job of phase bdt
     module: str = "tau3mu_gnn.pipelines.analysis.jobs"   # `python -m` module of the job command
 
 
@@ -95,18 +95,18 @@ def chain_hours(cfg: Config, jobs: Sequence[Job]) -> float:
 SHORT_JOB = {"gnn_signal": "gnnS", "gnn_background": "gnnB", "summary": "sum",
              "bdt_train": "bdtT", "bdt_infer": "bdtI", "graphs_signal": "grS", "graphs_background": "grB",
              "gnn_train": "gnnT", "benchmark_summary": "bsum"}
-VERSION_CODES = {"bdt": "BDT", "gnn": "GNN", "benchmark": "BEN"}   # training pipeline version prefixes
+VERSION_CODES = {"bdt": "BDT", "gnn": "GNN", "limit": "LIM", "benchmark": "BEN"}   # phase version prefixes
 
 
 TRAINING_MODULE = "tau3mu_gnn.pipelines.training.jobs"
 
 
-def slurm_job_name(run_name: str, version: str, job: str, codes: Mapping[str, str] = {}) -> str:
+def slurm_job_name(run_name: str, version: str, job: str, debug: bool = False) -> str:
     """Short job first, so the 8-character NAME column of squeue shows it:
-    phase_b_vs3 + gnn_signal -> B3.gnnS.<run_name>; gnn_vs2 + gnn_train -> GNN2.gnnT.<run_name>
-    (codes=VERSION_CODES, training jobs only: bdt / gnn / benchmark -> BDT / GNN / BEN); debug runs (<stage>_vsN) get D."""
+    gnn_vs3 + gnn_signal -> GNN3.gnnS.<run_name>; gnn_vs2 + gnn_train -> GNN2.gnnT.<run_name>
+    (VERSION_CODES: bdt / gnn / limit / benchmark -> BDT / GNN / LIM / BEN); debug runs (debug/<stage>_vsN) get D."""
     stem, n = version.rsplit("_vs", 1)
-    code = stem[-1].upper() if stem.startswith("phase_") else codes.get(stem, "D")
+    code = "D" if debug else VERSION_CODES.get(stem, "D")
     short = SHORT_JOB.get(job) or job.replace("benchmark_limit_", "bl", 1).replace("limit_", "lim", 1)
     return f"{code}{n}.{short}.{run_name}"
 
@@ -114,7 +114,7 @@ def slurm_job_name(run_name: str, version: str, job: str, codes: Mapping[str, st
 def render_script(cfg: "Config | TrainingConfig", job: Job, version_dir: str, log_folder: Path, env: JobEnv,
                   scratch_root: str = "/scratch/$USER") -> str:
     res = cfg.slurm.jobs[job.resources]
-    version = storage.join(version_dir).rsplit("/", 1)[-1]
+    parent, version = storage.join(version_dir).rsplit("/", 2)[-2:]
     q = shlex.quote
     out = f"{log_folder}/{job.name}-%j.out"
     err = f"{log_folder}/{job.name}-%j.err"
@@ -124,7 +124,7 @@ def render_script(cfg: "Config | TrainingConfig", job: Job, version_dir: str, lo
     args = " ".join(q(a) for a in job.args)
     return "\n".join([
         "#!/bin/bash",
-        f"#SBATCH --job-name={slurm_job_name(cfg.run_name, version, job.name, VERSION_CODES if job.module == TRAINING_MODULE else {})}",
+        f"#SBATCH --job-name={slurm_job_name(cfg.run_name, version, job.name, debug=parent == 'debug')}",
         f"#SBATCH --account={res.account or cfg.slurm.account}",
         f"#SBATCH --partition={res.partition}",
         f"#SBATCH --mem={res.mem}",

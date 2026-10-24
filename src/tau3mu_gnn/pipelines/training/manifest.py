@@ -9,6 +9,7 @@ from tau3mu_gnn.pipelines.common import manifest as _manifest
 from tau3mu_gnn.pipelines.common import runs as _runs
 from tau3mu_gnn.pipelines.training.config import TrainingConfig
 
+PIPELINE = "training"
 PHASES = ("bdt", "gnn", "benchmark")
 UPSTREAM = {"bdt": None, "gnn": "bdt", "benchmark": "bdt"}
 _BDT = ("channel", "inputs", "branch_map", "resonance_skim", "skim", "sideband_half_width", "bdt_training")
@@ -78,11 +79,11 @@ def create_version(cfg: TrainingConfig, phase: str) -> str:
 def write_manifest(cfg: TrainingConfig, phase_dir, phase: str, upstream: str | None, outputs: dict[str, str],
                    missing=()) -> dict:
     return _manifest.write_manifest(cfg, phase_dir, phase, upstream, outputs, missing,
-                                    settings=phase_settings(cfg, phase))
+                                    settings=phase_settings(cfg, phase), pipeline=PIPELINE)
 
 
 def check_upstream(cfg: TrainingConfig, upstream_dir, phase: str) -> dict:
-    return _manifest.check_upstream(cfg, upstream_dir, phase, UPSTREAM, phase_settings)
+    return _manifest.check_upstream(cfg, upstream_dir, phase, UPSTREAM, phase_settings, PIPELINE)
 
 
 def pick_upstream(cfg: TrainingConfig, phase: str, from_: str | None = None) -> str:

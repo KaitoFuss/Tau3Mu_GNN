@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 
 SAMPLES = ("signal", "background")
 STAGES = ("skim", "bdt", "gnn", "eval", "limit", "summary")
-PHASES = ("phase_a", "phase_b", "phase_c")
-LAST_JOB = {"phase_a": "bdt", "phase_b": "eval"}   # writes the manifest; the next phase of `all` waits for it
+PHASES = ("bdt", "gnn", "limit")
+LAST_JOB = {"bdt": "bdt", "gnn": "eval"}   # writes the manifest; the next phase of `all` waits for it
 
 
 def _base(cfg: Config, version_dir: str) -> tuple[str, ...]:
@@ -28,10 +28,10 @@ def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None, after
         -> list[Job]:
     """after_ids: SLURM IDs the first jobs of the phase wait for (`all`: the last job of the phase before)."""
     b = _base(cfg, version_dir)
-    if phase == "phase_a":
+    if phase == "bdt":
         return [Job("skim", "skim", ("skim", *b), after_ids=after_ids),
                 Job("bdt", "bdt", ("bdt", *b), after=("skim",))]
-    if phase == "phase_b":
+    if phase == "gnn":
         gnn = [Job(f"gnn_{s}", f"gnn_{s}", ("gnn", *b, "--upstream", up, "--sample", s), after_ids=after_ids)
                for s in SAMPLES]
         return gnn + [Job("eval", "eval", ("eval", *b, "--upstream", up), after=tuple(j.name for j in gnn))]
@@ -44,9 +44,9 @@ def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None, after
 def submit_phase(cfg: Config, phase: str, from_: str | None = None, dry_run: bool = False,
                  env: JobEnv | None = None) -> Submission:
     env = env if env is not None else JobEnv.from_config(cfg)
-    up = pick_upstream(cfg, phase, from_) if phase != "phase_a" else None
-    if phase == "phase_a" and from_ is not None:
-        raise ValueError("phase-a has no upstream; --from is not allowed")
+    up = pick_upstream(cfg, phase, from_) if phase != "bdt" else None
+    if phase == "bdt" and from_ is not None:
+        raise ValueError("phase bdt has no upstream; --from is not allowed")
     return _submit(cfg, lambda v: _phase_jobs(cfg, phase, v, up), phase, cfg.output_dir, (), up, dry_run, env,
                    create=lambda: create_version(cfg, phase))
 
@@ -58,20 +58,20 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
         raise ValueError(f"unknown stage {stage!r}; one of {list(STAGES)}")
     up = src = None
     if stage == "bdt":
-        src = runs.pick_version(cfg, "phase_a", from_)
+        src = runs.pick_version(cfg, "bdt", from_)
     elif stage == "gnn":
         if sample not in SAMPLES:
             raise ValueError(f"stage gnn needs --sample signal or background, got {sample!r}")
-        up = runs.pick_version(cfg, "phase_a", from_)
+        up = runs.pick_version(cfg, "bdt", from_)
     elif stage == "eval":
-        src = runs.pick_version(cfg, "phase_b", from_)
+        src = runs.pick_version(cfg, "gnn", from_)
         up = storage.join(cfg.output_dir, read_manifest(src)["upstream"])
     elif stage == "limit":
         if cut not in cfg.limit.gnn_score_cut:
             raise ValueError(f"cut {cut} is not in limit.gnn_score_cut {list(cfg.limit.gnn_score_cut)}")
-        up = runs.pick_version(cfg, "phase_b", from_)
+        up = runs.pick_version(cfg, "gnn", from_)
     elif stage == "summary":
-        src = runs.pick_version(cfg, "phase_c", from_, complete=False)
+        src = runs.pick_version(cfg, "limit", from_, complete=False)
     elif from_ is not None:
         raise ValueError("stage skim reads the config inputs; --from is not allowed")
 
@@ -97,9 +97,9 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 
 
 def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
-    """Submit phase A, B and C at once. B uses the new A version, C the new B version (not the newest complete
-    one: they have no manifest yet). The first jobs of B and C wait (afterok) for the last job of the phase
-    before; their upstream check runs when they start. If a job fails, SLURM cancels the jobs after it."""
+    """Submit the phases bdt, gnn and limit at once. gnn uses the new bdt version, limit the new gnn version (not
+    the newest complete one: they have no manifest yet). The first jobs of gnn and limit wait (afterok) for the
+    last job of the phase before; their upstream check runs when they start. If a job fails, SLURM cancels the jobs after it."""
     env = env if env is not None else JobEnv.from_config(cfg)
     check_proxy(cfg, sum(chain_hours(cfg, _phase_jobs(cfg, p, "<version>", "<upstream>")) for p in PHASES))
     subs: list[Submission] = []

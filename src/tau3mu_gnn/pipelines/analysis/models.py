@@ -43,6 +43,10 @@ def _manifest(folder: Path, phase: str, source: str, problems: list[str]) -> dic
     except ValueError as e:
         problems.append(f"models: {path} is not valid JSON: {e}")
         return None
+    if m.get("pipeline", "training") != "training":   # no 'pipeline': written before it existed
+        problems.append(f"models: {path} is a manifest of the {m['pipeline']} pipeline, expected a training "
+                        f"folder (tau3mu-train)")
+        return None
     if m.get("phase") != phase:
         problems.append(f"models: {path} is a manifest of phase {m.get('phase')!r}, expected {phase!r}")
         return None

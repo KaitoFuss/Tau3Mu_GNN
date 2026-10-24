@@ -13,9 +13,10 @@ GRAPHS = {"bdt_preselection_cut": 0.75, "max_events": 600000, "connection": "knn
 GNN_TRAINING = {"conv_type": "GINE", "gnn_mode": "final_layer", "arch": "fl8_sd4"}
 
 
-def make_training(tmp_path, *, gnn_phase="gnn", complete=True, drop=None):
+def make_training(tmp_path, *, gnn_phase="gnn", complete=True, drop=None, pipeline=None):
     """<tmp>/out/toy_train/{bdt_vs1,gnn_vs1} with manifests and model files (copies of the frozen model,
-    so load_model works). drop: output key whose file is not written. Returns the gnn_vs1 path."""
+    so load_model works). drop: output key whose file is not written. pipeline: 'pipeline' of the gnn
+    manifest (None: no key, as manifests written before it existed). Returns the gnn_vs1 path."""
     base = tmp_path / "out" / "toy_train"
     bdt, gnn = base / "bdt_vs1", base / "gnn_vs1"
     (bdt / "bdt_train").mkdir(parents=True)
@@ -34,7 +35,8 @@ def make_training(tmp_path, *, gnn_phase="gnn", complete=True, drop=None):
         (gnn / "manifest.json").write_text(json.dumps({
             "phase": gnn_phase, "upstream": "bdt_vs1",
             "outputs": {k: f"gnn_train/{NAME}/{f}" for k, f in files.items()},
-            "settings": {"graphs": GRAPHS, "gnn_training": GNN_TRAINING}}))
+            "settings": {"graphs": GRAPHS, "gnn_training": GNN_TRAINING},
+            **({} if pipeline is None else {"pipeline": pipeline})}))
     return gnn
 
 
@@ -65,6 +67,19 @@ def test_models_wrong_phase(load, user, tmp_path):
 def test_models_wrong_manifest_phase(load, user, tmp_path):
     user["models"] = str(make_training(tmp_path, gnn_phase="benchmark"))
     with pytest.raises(ConfigError, match="phase"):
+        load(user)
+
+
+@pytest.mark.parametrize("pipeline", ["training", None])
+def test_models_pipeline_training_or_unset(load, user, tmp_path, pipeline):
+    user["models"] = str(make_training(tmp_path, pipeline=pipeline))
+    assert load(user).gnn.model_name == NAME
+
+
+def test_models_analysis_gnn_folder(load, user, tmp_path):
+    """An analysis gnn_vsN has the same name and phase as a training one; its pipeline tells them apart."""
+    user["models"] = str(make_training(tmp_path, pipeline="analysis"))
+    with pytest.raises(ConfigError, match="analysis pipeline"):
         load(user)
 
 
@@ -114,9 +129,9 @@ def test_config_used_records_models(load, user, tmp_path):
     from tau3mu_gnn.pipelines.analysis import manifest as am
     user["paths"]["output_base"] = str(tmp_path / "res")
     cfg = load(user)
-    version = am.create_version(cfg, "phase_a")
-    assert yaml.safe_load((tmp_path / "res" / "toy_run" / "phase_a_vs1" / "config_used.yaml").read_text())["models"] \
-        == "frozen" and version.endswith("phase_a_vs1")
+    version = am.create_version(cfg, "bdt")
+    assert yaml.safe_load((tmp_path / "res" / "toy_run" / "bdt_vs1" / "config_used.yaml").read_text())["models"] \
+        == "frozen" and version.endswith("bdt_vs1")
 
 
 def test_models_in_settings(load, user, tmp_path):
@@ -125,9 +140,9 @@ def test_models_in_settings(load, user, tmp_path):
     frozen = load(user)
     user["models"] = str(make_training(tmp_path))
     trained = load(user)
-    for phase in ("phase_a", "phase_b", "phase_c"):
+    for phase in ("bdt", "gnn", "limit"):
         assert phase_settings(frozen, phase)["models"] == "frozen"
-    diff = " ".join(settings_diff(phase_settings(frozen, "phase_b"), phase_settings(trained, "phase_b")))
+    diff = " ".join(settings_diff(phase_settings(frozen, "gnn"), phase_settings(trained, "gnn")))
     assert "models" in diff and "gnn.model_dir" in diff and "bdt.classifier" in diff
 
 

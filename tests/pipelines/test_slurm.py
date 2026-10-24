@@ -88,31 +88,32 @@ def render(load, user, tmp_path, args=("skim",), user_file=None):
     cfg = load(user)
     job = Job(name="gnn_signal", resources="gnn_signal", args=tuple(args))
     env = JobEnv(Path("/c/base"), Path("/c/base/envs/T"), Path("/c/base/envs/T/bin/python"), Path("/repo/src"))
-    return render_script(cfg, job, "/out/toy_run/phase_b_vs2", tmp_path / "logs", env)
+    return render_script(cfg, job, "/out/toy_run/gnn_vs2", tmp_path / "logs", env)
 
 
-@pytest.mark.parametrize("version, job, expected", [
-    ("phase_a_vs1", "skim", "A1.skim.run"),
-    ("phase_a_vs1", "bdt", "A1.bdt.run"),
-    ("phase_b_vs3", "gnn_signal", "B3.gnnS.run"),
-    ("phase_b_vs3", "gnn_background", "B3.gnnB.run"),
-    ("phase_b_vs3", "eval", "B3.eval.run"),
-    ("phase_c_vs12", "limit_3.9", "C12.lim3.9.run"),
-    ("phase_c_vs12", "summary", "C12.sum.run"),
-    ("gnn_vs2", "gnn_signal", "D2.gnnS.run"),
-    ("limit_vs1", "limit_2.0", "D1.lim2.0.run"),
+@pytest.mark.parametrize("version, job, debug, expected", [
+    ("bdt_vs1", "skim", False, "BDT1.skim.run"),
+    ("bdt_vs1", "bdt", False, "BDT1.bdt.run"),
+    ("gnn_vs3", "gnn_signal", False, "GNN3.gnnS.run"),
+    ("gnn_vs3", "gnn_background", False, "GNN3.gnnB.run"),
+    ("gnn_vs3", "eval", False, "GNN3.eval.run"),
+    ("limit_vs12", "limit_3.9", False, "LIM12.lim3.9.run"),
+    ("limit_vs12", "summary", False, "LIM12.sum.run"),
+    ("gnn_vs2", "gnn_signal", True, "D2.gnnS.run"),
+    ("limit_vs1", "limit_2.0", True, "D1.lim2.0.run"),
+    ("eval_vs1", "eval", True, "D1.eval.run"),
 ])
-def test_slurm_job_name(version, job, expected):
+def test_slurm_job_name(version, job, debug, expected):
     from tau3mu_gnn.pipelines.common.slurm import slurm_job_name
 
-    assert slurm_job_name("run", version, job) == expected
+    assert slurm_job_name("run", version, job, debug=debug) == expected
 
 
 def test_render_script_header_and_body(load, user, tmp_path):
     text = render(load, user, tmp_path, args=("gnn", "--sample", "signal"))
     lines = text.splitlines()
     assert lines[0] == "#!/bin/bash"
-    assert "#SBATCH --job-name=B2.gnnS.toy_run" in lines
+    assert "#SBATCH --job-name=GNN2.gnnS.toy_run" in lines
     assert "#SBATCH --account=t3" in lines and "#SBATCH --partition=standard" in lines
     assert "#SBATCH --mem=4G" in lines and "#SBATCH --time=0-01:00:00" in lines
     assert "#SBATCH --cpus-per-task=1" in lines
@@ -122,7 +123,7 @@ def test_render_script_header_and_body(load, user, tmp_path):
     assert "source /c/base/bin/activate /c/base/envs/T" in lines
     assert "trap cleanup EXIT" in lines
     assert lines[-1] == "/c/base/envs/T/bin/python -m tau3mu_gnn.pipelines.analysis.jobs gnn --sample signal"
-    assert "/out/toy_run/phase_b_vs2/logs" in text            # log copy target
+    assert "/out/toy_run/gnn_vs2/logs" in text            # log copy target
 
 
 def test_render_script_quotes_values(load, user, tmp_path):
@@ -166,9 +167,9 @@ def test_chain_hours_is_longest_dependency_path(load, user, fake_repo):
     d["slurm"]["jobs"]["gnn_background"]["time"] = "2-00:00:00"
     (fake_repo / "configs" / "analysis_defaults_W.yaml").write_text(yaml.safe_dump(d))
     cfg = load(user)
-    phase_b = [Job("gnn_signal", "gnn_signal", ()), Job("gnn_background", "gnn_background", ()),
+    gnn_jobs = [Job("gnn_signal", "gnn_signal", ()), Job("gnn_background", "gnn_background", ()),
                Job("eval", "eval", (), after=("gnn_signal", "gnn_background"))]
-    assert chain_hours(cfg, phase_b) == 49.0                       # gnn_background 48 h, then eval 1 h
+    assert chain_hours(cfg, gnn_jobs) == 49.0                       # gnn_background 48 h, then eval 1 h
     assert chain_hours(cfg, [Job("skim", "skim", ()), Job("bdt", "bdt", (), after=("skim",))]) == 2.0
     assert chain_hours(cfg, [Job("limit_2.0", "limit", ()), Job("limit_3.9", "limit", ())]) == 1.0
 
@@ -240,7 +241,7 @@ def three_jobs():
 def test_submit_jobs_dependencies(load, user, tmp_path, fake_sbatch):
     from tau3mu_gnn.pipelines.common.slurm import JobEnv, submit_jobs
 
-    ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
+    ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/limit_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
     assert ids == {"limit_2.0": "1001", "limit_3.9": "1002", "summary": "1003"}
     calls = fake_sbatch.read_text().splitlines()
     assert calls[0] == f"--parsable {tmp_path / 'logs' / 'limit_2.0.sh'}"
@@ -252,7 +253,7 @@ def test_submit_jobs_dependencies(load, user, tmp_path, fake_sbatch):
 def test_submit_jobs_dry_run(load, user, tmp_path, fake_sbatch, capsys):
     from tau3mu_gnn.pipelines.common.slurm import JobEnv, submit_jobs
 
-    ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs",
+    ids = submit_jobs(load(user), three_jobs(), "/out/toy_run/limit_vs1", tmp_path / "logs",
                       JobEnv.from_environment(ENV), dry_run=True)
     assert ids == {"limit_2.0": "DRYRUN-limit_2.0", "limit_3.9": "DRYRUN-limit_3.9", "summary": "DRYRUN-summary"}
     assert not fake_sbatch.exists()
@@ -267,7 +268,7 @@ def test_submit_jobs_failure_lists_submitted(load, user, tmp_path, fake_sbatch, 
 
     monkeypatch.setenv("FAKE_SBATCH_FAIL_AT", "2")
     with pytest.raises(SubmitError) as e:
-        submit_jobs(load(user), three_jobs(), "/out/toy_run/phase_c_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
+        submit_jobs(load(user), three_jobs(), "/out/toy_run/limit_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
     msg = str(e.value)
     assert "limit_3.9" in msg and "invalid partition" in msg and "scancel 1001" in msg
 
@@ -298,7 +299,7 @@ inputs: {{signal: [/data/s.root], background: [/data/b.root], already_resonance_
 limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
 """)
     cfg = load_config(cfg_file)
-    src = tmp_path / "out" / "script_test" / "phase_c_vs1"
+    src = tmp_path / "out" / "script_test" / "limit_vs1"
     (src / "cut_3.9").mkdir(parents=True)
     (src / "cut_3.9" / "limit.json").write_text(json.dumps({"cut": 3.9, "limit": 1.25, "limitErr": 0.0}))
     version_dir = str(tmp_path / "out" / "script_test" / "debug" / "summary_vs1")
@@ -323,7 +324,7 @@ def test_submit_jobs_waits_for_earlier_submission(load, user, tmp_path, fake_sba
 
     jobs = [Job("limit_2.0", "limit", ("limit",), after_ids=("77",)),
             Job("summary", "summary", ("summary",), after=("limit_2.0",), dependency="afterany", after_ids=("77",))]
-    submit_jobs(load(user), jobs, "/out/toy_run/phase_c_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
+    submit_jobs(load(user), jobs, "/out/toy_run/limit_vs1", tmp_path / "logs", JobEnv.from_environment(ENV))
     calls = fake_sbatch.read_text().splitlines()
     assert calls[0].startswith("--parsable --dependency=afterok:77 --kill-on-invalid-dep=yes ")
     assert calls[1].startswith("--parsable --dependency=afterany:1001,afterok:77 --kill-on-invalid-dep=yes ")
@@ -343,8 +344,8 @@ def test_analysis_script_unchanged(load, user, name, resources, args):
     """Expected text rendered by the code before step 12g (tests/pipelines/expected/, module path updated for the pipelines/ layout)."""
     from tau3mu_gnn.pipelines.common.slurm import Job, render_script
 
-    text = render_script(load(user), Job(name, resources, args), "/out/toy_run/phase_a_vs1",
-                         Path("/logs/toy_run/phase_a_vs1"), _env())
+    text = render_script(load(user), Job(name, resources, args), "/out/toy_run/bdt_vs1",
+                         Path("/logs/toy_run/bdt_vs1"), _env())
     assert text == (Path(__file__).parent / "expected" / f"script_{name}.txt").read_text()
 
 
@@ -374,17 +375,17 @@ def test_job_module_and_gpu_flags(load_training, training_user, tmp_path):
     ("benchmark_vs1", "benchmark_summary", "BEN1.bsum.toy_train"),
 ])
 def test_training_job_names(version, job, expected):
-    from tau3mu_gnn.pipelines.common.slurm import VERSION_CODES, slurm_job_name
+    from tau3mu_gnn.pipelines.common.slurm import slurm_job_name
 
-    assert slurm_job_name("toy_train", version, job, VERSION_CODES) == expected
+    assert slurm_job_name("toy_train", version, job) == expected
 
 
 def test_analysis_debug_job_keeps_code_d(load, user, tmp_path):
-    """bdt_vs2 is an analysis debug folder (D); only training jobs get BDT."""
+    """debug/bdt_vs2 is an analysis debug folder (D); the phase folder bdt_vs2 gets BDT in both pipelines."""
     from tau3mu_gnn.pipelines.common.slurm import Job, render_script
 
     cfg = load(user)
-    for module, code in (("tau3mu_gnn.pipelines.analysis.jobs", "D2"), ("tau3mu_gnn.pipelines.training.jobs", "BDT2")):
-        text = render_script(cfg, Job("bdt", "skim", ("bdt",), module=module), "/out/toy_run/bdt_vs2",
-                             tmp_path / "logs", _env())
-        assert f"#SBATCH --job-name={code}.bdt.toy_run" in text.splitlines()
+    for module in ("tau3mu_gnn.pipelines.analysis.jobs", "tau3mu_gnn.pipelines.training.jobs"):
+        for folder, code in (("/out/toy_run/debug/bdt_vs2", "D2"), ("/out/toy_run/bdt_vs2", "BDT2")):
+            text = render_script(cfg, Job("bdt", "skim", ("bdt",), module=module), folder, tmp_path / "logs", _env())
+            assert f"#SBATCH --job-name={code}.bdt.toy_run" in text.splitlines()

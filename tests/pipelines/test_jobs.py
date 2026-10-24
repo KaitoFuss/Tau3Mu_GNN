@@ -84,34 +84,34 @@ def fake_stages(monkeypatch):
     return seen
 
 
-def run_phase_a(cfg):
+def run_bdt_phase(cfg):
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.analysis import manifest as am
 
-    a = am.create_version(cfg, "phase_a")
+    a = am.create_version(cfg, "bdt")
     jobs.skim(cfg, a)
     jobs.bdt(cfg, a)
     return a
 
 
-def run_phase_b(cfg):
+def run_gnn_phase(cfg):
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.analysis import manifest as am
 
-    up = am.pick_upstream(cfg, "phase_b")
-    b = am.create_version(cfg, "phase_b")
+    up = am.pick_upstream(cfg, "gnn")
+    b = am.create_version(cfg, "gnn")
     for s in SAMPLES:
         jobs.gnn(cfg, b, up, s)
     jobs.evaluation(cfg, b, up)
     return b
 
 
-def test_phase_a(cfg, scratch, fake_stages):
+def test_bdt_phase(cfg, scratch, fake_stages):
     from tau3mu_gnn.pipelines.common.manifest import read_manifest
 
-    a = Path(run_phase_a(cfg))
+    a = Path(run_bdt_phase(cfg))
     m = read_manifest(a)
-    assert m["phase"] == "phase_a" and m["version"] == "phase_a_vs1" and m["upstream"] is None
+    assert m["phase"] == "bdt" and m["version"] == "bdt_vs1" and m["upstream"] is None
     assert m["outputs"] == {"skim_signal": "1_skim/signal.root", "skim_background": "1_skim/background.root",
                             "bdt_signal": "2_bdt/signal_with_bdt_scores.root",
                             "bdt_background": "2_bdt/background_with_bdt_scores.root",
@@ -121,39 +121,39 @@ def test_phase_a(cfg, scratch, fake_stages):
     assert fake_stages["bdt"] == {"signal": "x", "background": "x"}      # read from the phase folder
 
 
-def test_phase_b_and_c(cfg, scratch, fake_stages):
+def test_gnn_and_limit_phases(cfg, scratch, fake_stages):
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.analysis import manifest as am
     from tau3mu_gnn.pipelines.common.manifest import read_manifest
 
-    run_phase_a(cfg)
-    b = Path(run_phase_b(cfg))
+    run_bdt_phase(cfg)
+    b = Path(run_gnn_phase(cfg))
     mb = read_manifest(b)
-    assert mb["upstream"] == "phase_a_vs1"
+    assert mb["upstream"] == "bdt_vs1"
     assert {"gnn_signal", "gnn_background", "signal_scores", "background_scores", "eval_roc"} <= set(mb["outputs"])
     assert all((b / rel).is_file() for rel in mb["outputs"].values())
     assert [list(i) for i in fake_stages["gnn"]] == [["signal"], ["background"]]   # one sample per job
     assert all(fake_stages["eval"].values())
 
-    up = am.pick_upstream(cfg, "phase_c")
-    c = am.create_version(cfg, "phase_c")
+    up = am.pick_upstream(cfg, "limit")
+    c = am.create_version(cfg, "limit")
     for cut in cfg.limit.gnn_score_cut:
         jobs.limit(cfg, c, up, cut)
     jobs.summary(cfg, c, up)
     mc = read_manifest(c)
-    assert mc["upstream"] == "phase_b_vs1" and mc["missing"] == []
+    assert mc["upstream"] == "gnn_vs1" and mc["missing"] == []
     assert mc["outputs"]["limit_3.9"] == "cut_3.9/limit.json" and mc["outputs"]["limits_json"] == "limits.json"
     assert json.loads((Path(c) / "limits.json").read_text())["best_cut"] == 3.9
 
 
-def test_rerun_phase_b_gives_new_version(cfg, scratch, fake_stages):
+def test_rerun_gnn_phase_gives_new_version(cfg, scratch, fake_stages):
     from tau3mu_gnn.pipelines.analysis import manifest as am
 
-    run_phase_a(cfg)
-    run_phase_b(cfg)
-    b2 = run_phase_b(cfg)
-    assert b2.endswith("phase_b_vs2")
-    assert am.pick_upstream(cfg, "phase_c") == b2
+    run_bdt_phase(cfg)
+    run_gnn_phase(cfg)
+    b2 = run_gnn_phase(cfg)
+    assert b2.endswith("gnn_vs2")
+    assert am.pick_upstream(cfg, "limit") == b2
 
 
 def test_failed_limit_still_copies_cut_folder(cfg, scratch, fake_stages):
@@ -161,10 +161,10 @@ def test_failed_limit_still_copies_cut_folder(cfg, scratch, fake_stages):
     from tau3mu_gnn.pipelines.analysis import manifest as am
     from tau3mu_gnn.pipelines.common.manifest import read_manifest
 
-    run_phase_a(cfg)
-    run_phase_b(cfg)
-    up = am.pick_upstream(cfg, "phase_c")
-    c = am.create_version(cfg, "phase_c")
+    run_bdt_phase(cfg)
+    run_gnn_phase(cfg)
+    up = am.pick_upstream(cfg, "limit")
+    c = am.create_version(cfg, "limit")
     fake_stages["fail_cut"] = 2.0
     with pytest.raises(RuntimeError):
         jobs.limit(cfg, c, up, 2.0)
@@ -179,9 +179,9 @@ def test_gnn_job_stops_on_incomplete_upstream(cfg, scratch, fake_stages):
     from tau3mu_gnn.pipelines.analysis import manifest as am
     from tau3mu_gnn.pipelines.common.manifest import UpstreamError
 
-    a = am.create_version(cfg, "phase_a")
+    a = am.create_version(cfg, "bdt")
     jobs.skim(cfg, a)                                         # bdt job never ran: no manifest
-    b = am.create_version(cfg, "phase_b")
+    b = am.create_version(cfg, "gnn")
     with pytest.raises(UpstreamError, match="manifest"):
         jobs.gnn(cfg, b, a, "signal")
     assert "gnn" not in fake_stages
@@ -191,7 +191,7 @@ def test_debug_bdt_reads_source_no_manifest(cfg, scratch, fake_stages):
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.analysis import manifest as am
 
-    a = run_phase_a(cfg)
+    a = run_bdt_phase(cfg)
     d = am.create_version(cfg, "bdt", parent=f"{cfg.output_dir}/debug")
     jobs.bdt(cfg, d, source_dir=a, manifest=False)
     assert (Path(d) / "2_bdt" / "tau_score_corr.pkl").is_file()
@@ -203,7 +203,7 @@ def test_main_dispatch(cfg, scratch, fake_stages, monkeypatch):
     from tau3mu_gnn.pipelines.analysis import manifest as am
 
     monkeypatch.setattr(jobs, "load_config", lambda path: cfg)   # toy config needs the fake repo defaults
-    a = am.create_version(cfg, "phase_a")
+    a = am.create_version(cfg, "bdt")
     jobs.main(["skim", "--config", str(cfg.user_file), "--phase-dir", a])
     assert (Path(a) / "1_skim" / "signal.root").is_file()
     with pytest.raises(SystemExit):
@@ -212,19 +212,19 @@ def test_main_dispatch(cfg, scratch, fake_stages, monkeypatch):
 
 @needs_combine
 def test_limit_and_summary_jobs_real_stage(cfg, scratch, toy_inputs, tmp_path):
-    """Real stage 5 + Combine on the toy stage 3 files, as phase C jobs."""
+    """Real stage 5 + Combine on the toy stage 3 files, as phase limit jobs."""
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.analysis import manifest as am
     from tau3mu_gnn.pipelines.common.manifest import read_manifest
     from tau3mu_gnn.pipelines.analysis.manifest import write_manifest
 
-    b = Path(cfg.output_dir) / "phase_b_vs1"
+    b = Path(cfg.output_dir) / "gnn_vs1"
     (b / "3_gnn").mkdir(parents=True)
     for s, f in zip(SAMPLES, toy_inputs):
         shutil.copy(f, b / "3_gnn" / f"{s}_with_gnn_scores.root")
-    write_manifest(cfg, b, "phase_b", "phase_a_vs1",
+    write_manifest(cfg, b, "gnn", "bdt_vs1",
                    {f"gnn_{s}": f"3_gnn/{s}_with_gnn_scores.root" for s in SAMPLES})
-    c = am.create_version(cfg, "phase_c")
+    c = am.create_version(cfg, "limit")
     for cut in cfg.limit.gnn_score_cut:
         jobs.limit(cfg, c, str(b), cut)
     jobs.summary(cfg, c, str(b))
@@ -234,13 +234,13 @@ def test_limit_and_summary_jobs_real_stage(cfg, scratch, toy_inputs, tmp_path):
 
 
 def test_eval_job_checks_upstream_phase(cfg, scratch, fake_stages):
-    """Debug 'stage eval' with --upstream pointing at a phase B folder: clear error, not KeyError."""
+    """Debug 'stage eval' with --upstream pointing at a gnn folder: clear error, not KeyError."""
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.common.manifest import UpstreamError
 
-    run_phase_a(cfg)
-    b = run_phase_b(cfg)
-    with pytest.raises(UpstreamError, match="phase_a"):
+    run_bdt_phase(cfg)
+    b = run_gnn_phase(cfg)
+    with pytest.raises(UpstreamError, match="bdt"):
         jobs.evaluation(cfg, b, b, source_dir=b, manifest=False)
 
 
@@ -248,10 +248,10 @@ def test_summary_debug_without_upstream(cfg, scratch, fake_stages, monkeypatch):
     from tau3mu_gnn.pipelines.analysis import jobs
     from tau3mu_gnn.pipelines.analysis import manifest as am
 
-    run_phase_a(cfg)
-    run_phase_b(cfg)
-    up = am.pick_upstream(cfg, "phase_c")
-    c = am.create_version(cfg, "phase_c")
+    run_bdt_phase(cfg)
+    run_gnn_phase(cfg)
+    up = am.pick_upstream(cfg, "limit")
+    c = am.create_version(cfg, "limit")
     for cut in cfg.limit.gnn_score_cut:
         jobs.limit(cfg, c, up, cut)
     d = am.create_version(cfg, "summary", parent=f"{cfg.output_dir}/debug")
@@ -266,5 +266,5 @@ def test_job_logs_what_it_does(cfg, scratch, fake_stages, caplog):
     import logging
 
     caplog.set_level(logging.INFO)
-    a = run_phase_a(cfg)
+    a = run_bdt_phase(cfg)
     assert "job skim" in caplog.text and "job bdt" in caplog.text and a in caplog.text

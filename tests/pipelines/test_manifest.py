@@ -20,10 +20,10 @@ def test_phase_settings_sections(load, user):
     from tau3mu_gnn.pipelines.analysis.manifest import phase_settings
 
     cfg = load(user)
-    assert list(phase_settings(cfg, "phase_a")) == ["channel", "inputs", "branch_map", "resonance_skim", "skim",
+    assert list(phase_settings(cfg, "bdt")) == ["channel", "inputs", "branch_map", "resonance_skim", "skim",
                                                     "models", "bdt"]
-    assert list(phase_settings(cfg, "phase_b"))[-1] == "gnn"
-    assert list(phase_settings(cfg, "phase_c"))[-2:] == ["gnn", "limit"]
+    assert list(phase_settings(cfg, "gnn"))[-1] == "gnn"
+    assert list(phase_settings(cfg, "limit"))[-2:] == ["gnn", "limit"]
 
 
 def test_settings_diff_dotted():
@@ -40,12 +40,13 @@ def test_write_and_read_manifest(load, user, tmp_path):
     from tau3mu_gnn.pipelines.analysis.manifest import write_manifest
 
     cfg = load(user)
-    phase_dir = tmp_path / "toy_run" / "phase_b_vs2"
+    phase_dir = tmp_path / "toy_run" / "gnn_vs2"
     (phase_dir).mkdir(parents=True)
     (phase_dir / "jobs.json").write_text(json.dumps({"eval": "125"}))
-    data = write_manifest(cfg, phase_dir, "phase_b", "phase_a_vs1", {"gnn_signal": "3_gnn/s.root"})
+    data = write_manifest(cfg, phase_dir, "gnn", "bdt_vs1", {"gnn_signal": "3_gnn/s.root"})
     assert read_manifest(phase_dir) == data
-    assert data["phase"] == "phase_b" and data["version"] == "phase_b_vs2" and data["upstream"] == "phase_a_vs1"
+    assert data["pipeline"] == "analysis" and data["phase"] == "gnn" and data["version"] == "gnn_vs2"
+    assert data["upstream"] == "bdt_vs1"
     assert data["outputs"] == {"gnn_signal": "3_gnn/s.root"} and data["missing"] == []
     assert data["slurm_jobs"] == {"eval": "125"}
     assert set(data["settings"]) == {"channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn"}
@@ -55,18 +56,18 @@ def test_write_and_read_manifest(load, user, tmp_path):
 def test_read_manifest_missing(tmp_path):
     from tau3mu_gnn.pipelines.common.manifest import UpstreamError, read_manifest
 
-    with pytest.raises(UpstreamError, match="phase_a_vs3"):
-        read_manifest(tmp_path / "phase_a_vs3")
+    with pytest.raises(UpstreamError, match="bdt_vs3"):
+        read_manifest(tmp_path / "bdt_vs3")
 
 
-def upstream_a(cfg, tmp_path, files=("1_skim/signal.root",)):
+def upstream_bdt(cfg, tmp_path, files=("1_skim/signal.root",)):
     from tau3mu_gnn.pipelines.analysis.manifest import write_manifest
 
-    d = tmp_path / "toy_run" / "phase_a_vs1"
+    d = tmp_path / "toy_run" / "bdt_vs1"
     for rel in files:
         (d / rel).parent.mkdir(parents=True, exist_ok=True)
         (d / rel).write_text("x")
-    write_manifest(cfg, d, "phase_a", None, {"skim_signal": "1_skim/signal.root",
+    write_manifest(cfg, d, "bdt", None, {"skim_signal": "1_skim/signal.root",
                                               "bdt_signal": "2_bdt/signal_with_bdt_scores.root"})
     return d
 
@@ -76,9 +77,9 @@ def test_check_upstream_missing_files(load, user, tmp_path):
     from tau3mu_gnn.pipelines.analysis.manifest import check_upstream
 
     cfg = load(user)
-    d = upstream_a(cfg, tmp_path)                      # 2_bdt file not written
+    d = upstream_bdt(cfg, tmp_path)                      # 2_bdt file not written
     with pytest.raises(UpstreamError, match="2_bdt/signal_with_bdt_scores.root"):
-        check_upstream(cfg, d, "phase_b")
+        check_upstream(cfg, d, "gnn")
 
 
 def test_check_upstream_wrong_phase(load, user, tmp_path):
@@ -86,18 +87,37 @@ def test_check_upstream_wrong_phase(load, user, tmp_path):
     from tau3mu_gnn.pipelines.analysis.manifest import check_upstream
 
     cfg = load(user)
-    d = upstream_a(cfg, tmp_path, files=("1_skim/signal.root", "2_bdt/signal_with_bdt_scores.root"))
-    with pytest.raises(UpstreamError, match="phase_b"):
-        check_upstream(cfg, d, "phase_c")              # phase C needs a phase_b folder
+    d = upstream_bdt(cfg, tmp_path, files=("1_skim/signal.root", "2_bdt/signal_with_bdt_scores.root"))
+    with pytest.raises(UpstreamError, match="gnn"):
+        check_upstream(cfg, d, "limit")              # phase limit needs a gnn folder
+
+
+@pytest.mark.parametrize("pipeline, ok", [("training", False), ("analysis", True), (None, True)])
+def test_check_upstream_pipeline(load, user, tmp_path, pipeline, ok):
+    """Both pipelines have a bdt phase: a training bdt folder is no analysis upstream. No 'pipeline' key
+    (manifest written before it existed): accepted."""
+    from tau3mu_gnn.pipelines.common.manifest import UpstreamError
+    from tau3mu_gnn.pipelines.analysis.manifest import check_upstream
+
+    cfg = load(user)
+    d = upstream_bdt(cfg, tmp_path, files=("1_skim/signal.root", "2_bdt/signal_with_bdt_scores.root"))
+    m = json.loads((d / "manifest.json").read_text())
+    m.pop("pipeline") if pipeline is None else m.update(pipeline=pipeline)
+    (d / "manifest.json").write_text(json.dumps(m))
+    if ok:
+        check_upstream(cfg, d, "gnn")
+    else:
+        with pytest.raises(UpstreamError, match="training pipeline"):
+            check_upstream(cfg, d, "gnn")
 
 
 def test_check_upstream_unchanged_config_no_warning(load, user, tmp_path, caplog):
     from tau3mu_gnn.pipelines.analysis.manifest import check_upstream
 
     files = ("1_skim/signal.root", "2_bdt/signal_with_bdt_scores.root")
-    d = upstream_a(load(user), tmp_path, files=files)
-    m = check_upstream(load(user), d, "phase_b")       # re-loaded config: tuples, absolute paths
-    assert m["version"] == "phase_a_vs1"
+    d = upstream_bdt(load(user), tmp_path, files=files)
+    m = check_upstream(load(user), d, "gnn")       # re-loaded config: tuples, absolute paths
+    assert m["version"] == "bdt_vs1"
     assert "other settings" not in caplog.text
 
 
@@ -105,7 +125,7 @@ def test_check_upstream_changed_settings_warns(load, user, tmp_path, caplog):
     from tau3mu_gnn.pipelines.analysis.manifest import check_upstream
 
     files = ("1_skim/signal.root", "2_bdt/signal_with_bdt_scores.root")
-    d = upstream_a(load(user), tmp_path, files=files)
+    d = upstream_bdt(load(user), tmp_path, files=files)
     user["inputs"]["signal"] = ["/data/other_sig.root"]
-    check_upstream(load(user), d, "phase_b")
+    check_upstream(load(user), d, "gnn")
     assert "other settings" in caplog.text and "inputs.signal" in caplog.text

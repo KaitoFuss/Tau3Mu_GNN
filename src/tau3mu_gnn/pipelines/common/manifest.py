@@ -53,11 +53,13 @@ def _git_commit() -> str:
 
 
 def write_manifest(cfg, phase_dir, phase: str, upstream: str | None, outputs: dict[str, str], missing=(), *,
-                   settings: dict) -> dict:
+                   settings: dict, pipeline: str) -> dict:
     """Write <phase_dir>/manifest.json. outputs: key -> path relative to phase_dir. settings: the phase
-    settings of the pipeline (analysis/manifest.py, training/manifest.py)."""
+    settings of the pipeline (analysis/manifest.py, training/manifest.py). pipeline: analysis or training
+    (both have bdt and gnn phases)."""
     jobs_file = storage.join(phase_dir, JOBS_FILE)
     data = {
+        "pipeline": pipeline,
         "phase": phase,
         "version": storage.join(phase_dir).rsplit("/", 1)[-1],
         "upstream": upstream,
@@ -84,11 +86,15 @@ def read_manifest(phase_dir) -> dict:
 
 
 def check_upstream(cfg, upstream_dir, phase: str, upstream_map: Mapping[str, str | None],
-                   settings_of: Callable[[object, str], dict]) -> dict:
+                   settings_of: Callable[[object, str], dict], pipeline: str) -> dict:
     """Run by the first job(s) of `phase`. Raise UpstreamError if the upstream manifest or one of its
-    output files is missing, or the folder is of the wrong phase. Warn if its settings differ."""
+    output files is missing, or the folder is of the wrong pipeline or phase. Warn if its settings differ.
+    A manifest without 'pipeline' (written before it existed) passes the pipeline check."""
     expected = upstream_map[phase]
     m = read_manifest(upstream_dir)
+    if m.get("pipeline", pipeline) != pipeline:
+        raise UpstreamError(f"{upstream_dir} is a folder of the {m['pipeline']} pipeline; the {pipeline} "
+                            f"phase {phase} needs a {expected} folder of the {pipeline} pipeline")
     if m.get("phase") != expected:
         raise UpstreamError(f"{upstream_dir} is a {m.get('phase')} folder; {phase} needs a {expected} folder")
     missing = [rel for rel in m["outputs"].values() if not storage.exists(storage.join(upstream_dir, rel))]

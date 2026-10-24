@@ -16,27 +16,27 @@ def cli_env(load, user, tmp_path, monkeypatch):
     return cfg
 
 
-def test_phase_a_prints_summary(cli_env, fake_sbatch, capsys):
+def test_bdt_phase_prints_summary(cli_env, fake_sbatch, capsys):
     from tau3mu_gnn.pipelines.analysis import cli
 
-    assert cli.main(["phase-a", "--config", "my.yaml"]) == 0
+    assert cli.main(["bdt", "--config", "my.yaml"]) == 0
     out = capsys.readouterr().out
-    assert "phase_a_vs1" in out and "skim" in out and "1001" in out and "logs" in out
+    assert "bdt_vs1" in out and "skim" in out and "1001" in out and "logs" in out
 
 
 def test_dry_run(cli_env, fake_sbatch, capsys):
     from tau3mu_gnn.pipelines.analysis import cli
 
-    assert cli.main(["phase-a", "--config", "my.yaml", "--dry-run"]) == 0
+    assert cli.main(["bdt", "--config", "my.yaml", "--dry-run"]) == 0
     assert "DRYRUN-skim" in capsys.readouterr().out and not fake_sbatch.exists()
 
 
 def test_known_error_exit_1(cli_env, fake_sbatch, capsys):
     from tau3mu_gnn.pipelines.analysis import cli
 
-    assert cli.main(["phase-b", "--config", "my.yaml"]) == 1
+    assert cli.main(["gnn", "--config", "my.yaml"]) == 1
     err = capsys.readouterr().err
-    assert "phase-a" in err and "Traceback" not in err
+    assert "bdt" in err and "Traceback" not in err
 
 
 def test_stage_args(cli_env, fake_sbatch, capsys):
@@ -51,7 +51,7 @@ def test_stage_args(cli_env, fake_sbatch, capsys):
 def test_config_error_exit_1(tmp_path, capsys):
     from tau3mu_gnn.pipelines.analysis import cli
 
-    assert cli.main(["phase-a", "--config", str(tmp_path / "missing.yaml")]) == 1
+    assert cli.main(["bdt", "--config", str(tmp_path / "missing.yaml")]) == 1
     assert "cannot read config file" in capsys.readouterr().err
 
 
@@ -60,9 +60,9 @@ def test_all(cli_env, fake_sbatch, capsys):
 
     assert cli.main(["all", "--config", "my.yaml"]) == 0
     out = capsys.readouterr().out
-    assert all(f"phase_{p}_vs1" in out for p in "abc") and "summary          1007" in out
+    assert all(f"{p}_vs1" in out for p in ("bdt", "gnn", "limit")) and "summary          1007" in out
     with pytest.raises(SystemExit):
-        cli.main(["all", "--config", "my.yaml", "--from", "phase_a_vs1"])
+        cli.main(["all", "--config", "my.yaml", "--from", "bdt_vs1"])
 
 
 def test_console_script():
