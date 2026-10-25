@@ -65,7 +65,7 @@ def test_make_datacard_writes_files_and_counts(toy_inputs, tmp_path):
     keep_b, _ = expected_counts(bkg, 3.9, window=(1.78, 0.06))
     assert res.n_signal == keep_s.sum()
     assert res.n_data == keep_b.sum()
-    # RooDataSet keeps only mass in the RooRealVar range 1.6-2.0; each entry has weight SIG_WEIGHT
+    # RooDataSet keeps only mass in fit_range (default 1.6-2.0); each entry has weight SIG_WEIGHT
     in_range = keep_s & (m_s > 1.6) & (m_s < 2.0)
     assert res.signal_rate == pytest.approx(SIG_WEIGHT * in_range.sum(), rel=1e-6)
 
@@ -98,6 +98,24 @@ def test_workspace_slope_range_is_ten_sigma(toy_inputs, tmp_path):
     assert slope.getVal() == pytest.approx(res.slope, rel=1e-5)
     assert slope.getMin() == pytest.approx(res.slope - 10 * res.slope_err, rel=1e-5)
     assert slope.getMax() == pytest.approx(res.slope + 10 * res.slope_err, rel=1e-5)
+    f.Close()
+
+
+def test_fit_and_workspace_use_one_mass_range(toy_inputs, tmp_path):
+    """E4: the fit datasets (so nbkg and the signal rate) and the workspace mass use the same range."""
+    import ROOT
+    from tau3mu_gnn.analysis.datacard import make_datacard
+
+    sig, bkg = toy_inputs
+    res = make_datacard([sig], [bkg], 3.9, SIG_WEIGHT, tmp_path / "card", fit_range=(1.62, 1.98))
+    keep_s, m_s = expected_counts(sig, 3.9)
+    in_range = keep_s & (m_s > 1.62) & (m_s < 1.98)
+    assert res.signal_rate == pytest.approx(SIG_WEIGHT * in_range.sum(), rel=1e-6)
+    f = ROOT.TFile.Open(str(tmp_path / "card" / "datacard.root"))
+    w = f.Get("w")
+    assert (w.var("mass").getMin(), w.var("mass").getMax()) == pytest.approx((1.62, 1.98))
+    masses = [w.data("data_obs").get(i).getRealValue("mass") for i in range(w.data("data_obs").numEntries())]
+    assert len(masses) > 0 and 1.62 <= min(masses) and max(masses) <= 1.98
     f.Close()
 
 

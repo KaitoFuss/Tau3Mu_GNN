@@ -32,7 +32,6 @@ ROOT.TH1.SetDefaultSumw2()
 log = logging.getLogger(__name__)
 
 # Fixed fit values (value, min, max), as in the old script
-MASS_VAR_RANGE = (1.6, 2.0)            # GeV, range of the RooRealVar mass
 WEIGHT_RANGE = (0, 100)
 MEAN_START = (1.78, 1.7, 1.9)
 WIDTH_START = (0.02, 0, 0.1)
@@ -102,7 +101,7 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
 
 def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Path], cut: float,
                   signal_weight: float, out_dir: str | Path, tau_mass: float = 1.78,
-                  mass_window: float = 0.060, fit_range: tuple[float, float] = (1.62, 1.98),
+                  mass_window: float = 0.060, fit_range: tuple[float, float] = (1.6, 2.0),
                   tree_name: str = "Events", score_branch: str = "GNN_score") -> DatacardResult:
     """Select <score_branch> > cut (GNN_score; the BDT-only benchmark uses bdt_ISO), fit signal (Gaussian) and sideband data (exponential), write into out_dir:
     temp_mc_selected.root, temp_data_selected.root, mass.pdf, datacard.root, datacard.txt."""
@@ -173,7 +172,8 @@ def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Pat
     print("Step 3: Setting up RooFit variables and PDFs")
     print("="*80)
 
-    mass   = ROOT.RooRealVar('mass'  , '3-#mu mass'  , *MASS_VAR_RANGE, 'GeV' )
+    # one range for the fit datasets and the workspace, so nbkg is the yield in the workspace range
+    mass   = ROOT.RooRealVar('mass'  , '3-#mu mass'  , fit_range_lo, fit_range_hi, 'GeV' )
     weight = ROOT.RooRealVar('weight', 'weight'      , *WEIGHT_RANGE, ''    ) # this is bloody important, don't remove, else it will fail to apply weight SILENTLY!
 
     # define sidebands. The bkg only fit will be run ONLY on the sidebands

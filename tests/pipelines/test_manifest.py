@@ -10,7 +10,7 @@ def test_config_dict_is_plain_and_repo_relative(load, user):
     d = config_dict(load(user))
     assert d["bdt"]["classifier"] == "models/W/bdt/toy.pck"
     assert d["gnn"]["model_dir"] == "models/W/gnn"
-    assert d["limit"]["gnn_score_cut"] == [3.9] and d["limit"]["fit_range"] == [1.62, 1.98]
+    assert d["limit"]["gnn_score_cut"] == [3.9] and d["limit"]["fit_range"] == [1.6, 2.0]
     assert d["slurm"]["jobs"]["limit"] == {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
     assert d["paths"] == {"output_base": "/tmp/toy_out", "log_dir": "/tmp/toy_logs", "conda_env": None}
     assert yaml.safe_load(yaml.safe_dump(d)) == d and json.loads(json.dumps(d)) == d

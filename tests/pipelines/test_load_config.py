@@ -21,7 +21,7 @@ def test_valid_config_loads(load, user, fake_repo):
     assert cfg.inputs.background == ("/data/bkg_*.root",)
     assert cfg.inputs.already_resonance_skimmed is True
     assert cfg.limit.signal_weight == 1.9e-5
-    assert cfg.limit.fit_range == (1.62, 1.98)
+    assert cfg.limit.fit_range == (1.6, 2.0)
     assert cfg.gnn.model_name == TOY_MODEL
     assert cfg.gnn.model_dir == fake_repo / "models/W/gnn"
     assert cfg.bdt.classifier == fake_repo / "models/W/bdt/toy.pck"

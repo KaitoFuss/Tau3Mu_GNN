@@ -35,7 +35,7 @@ TOY_DEFAULTS = {
         "graph_type": "skimmed_dzd0_cone_size_0.5_knn_10",
         "bdt_preselection_cut": 0.8,
     },
-    "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.62, 1.98], "cl": 0.9},
+    "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.6, 2.0], "cl": 0.9},
     "slurm": {
         "account": "t3",
         "jobs": {name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
