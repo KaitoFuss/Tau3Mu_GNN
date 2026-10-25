@@ -12,6 +12,11 @@ W_FILES = [
     "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/old_data/signal_skimmed_no_resonances.root",
     "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/old_data/data_skimmed_no_resonances.root",
 ]
+_HF = "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data"
+HF_FILES = [
+    f"{_HF}/signal_HF/old_data/ds_large_signal_skimmed_no_resonances.root",
+    *(f"{_HF}/background_HF/old_data/data_skimmed_no_resonances_part{i}.root" for i in (1, 2, 3, 4)),
+]
 
 
 def test_required_branches_w_is_common_plus_w():
@@ -24,9 +29,36 @@ def test_required_branches_w_is_common_plus_w():
     assert "PFCands_pt" not in req
 
 
+def test_required_branches_hf_is_common_plus_hf():
+    req = b.required_branches("HF")
+    assert len(req) == 39 and len(set(req)) == 39
+    assert req[: len(b.COMMON)] == b.COMMON
+    assert {"Muon_pt", "Muon_isGlobal", "Muon_tkRelIso", "Slimmed_TauTo3Mu_mu3_idx"} <= set(req)
+    assert not any(n.startswith("TauPlusMET_") for n in req)
+
+
+def test_training_required_branches_hf():
+    t = b.training_required_branches("HF")
+    assert "PV_npvs" in t and "PV_npvs" not in b.required_branches("HF")
+
+
+def test_raw_required_branches_hf():
+    raw = b.raw_required_branches("HF")
+    assert {"Muon_pt", "Muon_isGlobal", "Muon_tkRelIso", "TauTo3Mu_mu1_idx", "TauTo3Mu_charge"} <= set(raw)
+    assert not any(n.startswith("Slimmed_") for n in raw)
+
+
+@pytest.mark.parametrize("path", HF_FILES)
+def test_real_hf_files_have_all_required_branches(path):
+    if not os.path.exists(path):
+        pytest.skip(f"not reachable on this machine: {path}")
+    keys = set(uproot.open(path)["Events"].keys())
+    assert [x for x in b.training_required_branches("HF") if x not in keys] == []
+
+
 def test_required_branches_unknown_channel():
-    with pytest.raises(b.BranchError, match="no required-branch list for channel 'HF'"):
-        b.required_branches("HF")
+    with pytest.raises(b.BranchError, match="no required-branch list for channel 'XX'"):
+        b.required_branches("XX")
 
 
 def test_branch_error_lists_all_problems():

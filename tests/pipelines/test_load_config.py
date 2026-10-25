@@ -84,12 +84,12 @@ def test_all_problems_reported_at_once(load, user):
 
 
 def test_unsupported_channel_stops_before_defaults(load, user):
-    user["channel"] = "HF"
+    user["channel"] = "XX"
     with pytest.raises(ConfigError) as e:
         load(user)
     text = problems_of(e)
-    assert "must be one of ['W']" in text
-    assert "analysis_defaults_HF" not in text
+    assert "must be one of ['W', 'HF']" in text
+    assert "analysis_defaults_XX" not in text
 
 
 def test_empty_branch_map_header_is_empty_map(load):

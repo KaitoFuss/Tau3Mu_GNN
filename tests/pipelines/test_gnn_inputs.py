@@ -44,10 +44,11 @@ def test_graph_level_count_matches_model(channel):
     assert len(graph_level_branches(channel)) + n_computed == n_graph
 
 
-def test_w_gnn_branches_are_required_inputs():
-    raw = {re.sub(r"^Selected_TauTo3Mu", "Slimmed_TauTo3Mu", n) for n in input_branch_names("W") - STAGE_MADE}
-    missing = raw - set(required_branches("W"))
-    assert not missing, f"GNN reads branches not in required_branches('W'): {sorted(missing)}"
+@pytest.mark.parametrize("channel", ["W", "HF"])
+def test_gnn_branches_are_required_inputs(channel):
+    raw = {re.sub(r"^Selected_TauTo3Mu", "Slimmed_TauTo3Mu", n) for n in input_branch_names(channel) - STAGE_MADE}
+    missing = raw - set(required_branches(channel))
+    assert not missing, f"GNN reads branches not in required_branches({channel!r}): {sorted(missing)}"
 
 
 def test_input_branch_names_splits_expressions():

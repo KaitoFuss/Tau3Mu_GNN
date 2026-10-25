@@ -18,7 +18,7 @@ import yaml
 
 from tau3mu_gnn.pipelines.common import storage
 
-SUPPORTED_CHANNELS = ("W",)
+SUPPORTED_CHANNELS = ("W", "HF")
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")

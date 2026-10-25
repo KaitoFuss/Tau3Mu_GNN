@@ -18,12 +18,13 @@ def test_input_branch_names_splits_expressions():
     assert {"Muon_pt", "Selected_TauTo3Mu_mu3_idx"} <= input_branch_names("HF")
 
 
-def test_w_bdt_branches_are_required_inputs():
-    features, branches = bdt_branches("W")
+@pytest.mark.parametrize("channel", ["W", "HF"])
+def test_bdt_branches_are_required_inputs(channel):
+    features, branches = bdt_branches(channel)
     assert set(features) <= set(branches)
     # The stage 1 skim writes Selected_TauTo3Mu* as a masked copy of Slimmed_TauTo3Mu*.
-    raw = {re.sub(r"^Selected_TauTo3Mu", "Slimmed_TauTo3Mu", n) for n in input_branch_names("W")}
-    assert raw - set(b.required_branches("W")) == set()
+    raw = {re.sub(r"^Selected_TauTo3Mu", "Slimmed_TauTo3Mu", n) for n in input_branch_names(channel)}
+    assert raw - set(b.required_branches(channel)) == set()
 
 
 def test_unknown_channel():
