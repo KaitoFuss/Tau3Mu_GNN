@@ -30,6 +30,7 @@ def _chain_events(n, rng, signal, first_event):
     pts = [[float(rng.normal(45 if signal else 30, 10))] for _ in range(n)]
     data = training_events(pts, bdt=[0.0] * n, masses=[[1.78 if signal else 1.65]] * n, first_event=first_event)
     data.pop("bdt_ISO")                       # made by bdt_infer
+    data["tau3mu_mask"] = ak.Array([[True] for _ in range(n)])  # stage 1 mask, one candidate per event
     for name in sorted(input_branch_names("W")):
         if name not in data:
             data[name] = ak.Array([[float(abs(rng.normal(1.0, 0.3))) + 0.5] for _ in range(n)])

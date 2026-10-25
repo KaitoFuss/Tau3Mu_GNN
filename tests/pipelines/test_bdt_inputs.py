@@ -18,7 +18,8 @@ def test_w_bdt_branches_are_required_inputs():
     assert set(features) <= set(branches)
     # The stage 1 skim writes Selected_TauTo3Mu* as a masked copy of Slimmed_TauTo3Mu*.
     raw = {re.sub(r"^Selected_TauTo3Mu", "Slimmed_TauTo3Mu", n) for n in input_branch_names("W")}
-    assert raw - set(b.required_branches("W")) == set()
+    # tau3mu_mask: made by the stage 1 skim, selects the TauPlusMET_* entries of the selected candidates
+    assert raw - set(b.required_branches("W")) == {"tau3mu_mask"}
 
 
 def test_unknown_channel():

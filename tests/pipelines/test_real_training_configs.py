@@ -6,7 +6,7 @@ from tau3mu_gnn.pipelines.training.config import load_training_config
 def _load(monkeypatch):
     monkeypatch.setenv("USER", "kfuss")
     return (load_training_config(REPO_ROOT / "configs" / "example_training_W.yaml"),
-            load_config(REPO_ROOT / "configs" / "example_W.yaml"))
+            load_config(REPO_ROOT / "configs" / "example_W_raw.yaml"))  # the runnable analysis example (E1)
 
 
 def test_example_training_w_loads_the_recipe(monkeypatch):

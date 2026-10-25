@@ -73,6 +73,11 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
         "event",
     ]
 
+    # W: TauPlusMET_* has one entry per Slimmed candidate; the stage 1 mask selects the entries of the
+    # Selected candidates, so the BDT takes TauPlusMET_* of the same candidate as Selected_TauTo3Mu_*[0].
+    if tau_channel == "W":
+        branches.append("tau3mu_mask")
+
     # Only HF uses these (ISO feature: max Muon_tkRelIso of the three muons). W does not load them:
     # BDT_ScoreProducer drops rows with NaN in any loaded column.
     if tau_channel == "HF":

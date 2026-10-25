@@ -1,3 +1,5 @@
+# NO LONGER RUNS (step 13c, E1): stage 0 refuses the old_data inputs below (their TauPlusMET_* is not
+# aligned with Slimmed_TauTo3Mu_*). Kept as the record of the step 12i check. For a new run: example_W_raw.yaml.
 # Example W analysis with the models of a training run (tau3mu-train), here kaito_W_train/gnn_vs1.
 # Same as example_W.yaml except analysis_name and models. Loads only after that training finished.
 # Frozen analysis settings live in analysis_defaults_W.yaml and must NOT be set here.
