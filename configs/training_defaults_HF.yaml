@@ -1,0 +1,65 @@
+# Frozen training settings for the HF channel. Same values as training_defaults_W.yaml (Kaito, 2026-10-25).
+# NOT meant to be edited. Put your own settings in your training user config (see example_training_HF.yaml).
+# The shared stages (resonance skim, skim, limit fit) read their settings from analysis_defaults_HF.yaml.
+# BDT features: bdt_training/bdt_inputs.py; graph-level features: gnn_training/gnn_inputs.py (one source with inference).
+
+sideband_half_width: 0.08      # GeV; background for BDT + GNN training: abs(m - tau_mass) > this
+
+bdt_training:                  # ISO BDT, from bdt_training/Train_XGB_W.py
+  max_depth: 8
+  learning_rate: 0.005
+  n_estimators: 1000
+  early_stopping_rounds: 100
+  subsample: 0.6
+  colsample_bytree: 0.7
+  gamma: 10
+  reg_alpha: 0.6
+  reg_lambda: 1.2
+  min_child_weight_fraction: 1.0e-6   # min_child_weight = this * sum(train weights)
+  kfold: 6
+  test_size: 0.4
+  split_seed: 1986             # train_test_split, StratifiedKFold, XGBoost seed
+  sample_seed: 42              # sampling of max_events_per_class
+
+npvs:                          # PV_npvs weights for the signal graphs, from utils/CorrectPileupDist.py
+  var_bins: [0, 10, 15, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 65, 100]
+  uniform_bins: [0, 100, 101]  # np.linspace args of the output bins
+
+graphs:                        # graph creation, from scripts/GraphCreation.py (name: skimmed_dzd0_cone_size_0.5_knn_10)
+  connection: knn
+  k: 10
+  cone_size: 0.5
+  use_displacement: true       # dz/d0 node features ("dzd0" in the name)
+  unsculpting_mode: delete_muons
+  shuffle_seed: 1986           # random subset of max_events; the old code had no seed
+
+gnn_training:                  # from scripts/Train_TauMuNet.py + jobs/condor/train_W_GINE_deleted.sh, no fine-tune
+  conv_type: GINE
+  gnn_mode: final_layer
+  arch: fl8_sd4
+  learning_rate: 0.0016
+  batch_size: 128
+  disco: 0.0
+  epochs: 1000                 # upper limit; early stopping ends the training
+  early_stopping_patience: 50  # default of the normal training (utrain.early_stop); 20 was the fine-tune value
+  lr_scheduler_patience: 10    # ReduceLROnPlateau
+  class_fraction: [0.5, 0.5]   # signal, background
+  windows: {train: [0.0, 0.6], validation: [0.6, 0.7], test: [0.7, 1.0]}
+  seed: 1986                   # torch, numpy, random; GPU training is still not bit-exact
+
+comet:                         # Comet ML logging of the GNN training (Kaito: plain key here is fine)
+  workspace: kaitofuss
+  api_key: "89gjTpDNiLT6Pnu5RjMpO4PID"
+
+slurm:                         # SLURM resources per job. First values (2026-10-23); raise them after the first real run.
+  account: t3                  # default account; a job may set its own
+  jobs:
+    skim:              {partition: long,     mem: 128G, time: "1-00:00:00", cpus: 4}
+    bdt_train:         {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 4}  # BDT inference on full W: MaxRSS 107 GiB
+    bdt_infer:         {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 1}
+    npvs:              {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
+    graphs_signal:     {partition: long,     mem: 256G, time: "2-00:00:00", cpus: 1}
+    graphs_background: {partition: long,     mem: 256G, time: "2-00:00:00", cpus: 1}
+    gnn_train:         {partition: gpu,      mem: 128G, time: "3-00:00:00", cpus: 5, account: gpu_gres, gres: "gpu:1"}
+    benchmark_limit:   {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
+    benchmark_summary: {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}

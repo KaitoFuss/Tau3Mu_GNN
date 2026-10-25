@@ -1,0 +1,45 @@
+# Example user config (HF channel). Copy this file and edit it.
+# Frozen analysis settings live in analysis_defaults_HF.yaml and must NOT be set here.
+
+analysis_name: kaito_HF_analysis           # letters, digits, _ - . only; used as folder name
+
+channel: HF                                # selects configs/analysis_defaults_HF.yaml
+
+paths:
+  # All outputs go to <output_base>/<analysis_name>.
+  # Jobs write to /scratch first and then xrdcp to this location.
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
+  # Logs are also copied next to the results (<phase>_vsN/logs/).
+  log_dir: /work/$USER/SVJ_GNN/tau3mu_logs
+  # Optional. Conda env that the jobs activate. Not set: the env that is active when you submit.
+  conda_env: /work/$USER/miniforge3/envs/Tau3Mu
+
+inputs:
+  # Globs are allowed. A single path is also fine.
+  # Kaito's old HF inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*).
+  # The background is in 4 parts; the glob takes all of them.
+  signal:
+    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/ds_large_signal_skimmed_no_resonances.root
+  background:
+    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/data_skimmed_no_resonances_part*.root
+  tree_name: Events                        # optional, default: Events
+  already_resonance_skimmed: true          # true: skip stage 0 (resonance skim); false: inputs are raw NanoAOD
+
+# Map from the analysis branch names (left) to the names in YOUR ntuples (right).
+# Only list branches whose name differs. Leave empty if your names are the same.
+# Raw NanoAOD (already_resonance_skimmed: false): use the raw names on the left (TauTo3Mu_*, PFCands_*).
+branch_map: {}
+#   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
+
+# REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet (step 13), so set the path
+# of a finished HF training GNN phase (tau3mu-train): its BDT, GNN and the model settings are used.
+models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/kaito_HF_train/gnn_vs1
+
+limit:
+  # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
+  # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known
+  # (spec docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
+  signal_weight: 0.000152
+  # One cut or a list of cuts on the GNN score. A list runs a cut scan. No HF reference yet: wide scan.
+  gnn_score_cut: [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]

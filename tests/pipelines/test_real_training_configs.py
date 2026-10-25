@@ -37,3 +37,30 @@ def test_training_graph_type_matches_analysis_defaults(monkeypatch):
 def test_training_inputs_match_example_w(monkeypatch):
     t, a = _load(monkeypatch)
     assert t.inputs == a.inputs and t.paths == a.paths
+
+
+HF_BENCHMARK_CUTS = [0.88, 0.89, 0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97]
+
+
+def test_hf_training_defaults_equal_w():
+    import yaml
+    w, hf = (yaml.safe_load((REPO_ROOT / "configs" / f"training_defaults_{c}.yaml").read_text()) for c in ("W", "HF"))
+    assert hf == w
+
+
+def test_example_training_hf(monkeypatch):
+    monkeypatch.setenv("USER", "kfuss")
+    hf = load_training_config(REPO_ROOT / "configs" / "example_training_HF.yaml")
+    w = load_training_config(REPO_ROOT / "configs" / "example_training_W.yaml")
+    assert hf.channel == "HF" and hf.training_name == "kaito_HF_train"
+    assert [str(p) for p in hf.inputs.signal] == [
+        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/"
+        "ds_large_signal_skimmed_no_resonances.root"]
+    assert [str(p) for p in hf.inputs.background] == [
+        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/"
+        "data_skimmed_no_resonances_part*.root"]
+    assert hf.inputs.already_resonance_skimmed is True
+    assert hf.limit.signal_weight == 0.000152
+    assert list(hf.benchmark.bdt_score_cut) == HF_BENCHMARK_CUTS
+    for section in ("gnn_training", "graphs", "bdt_training", "npvs", "resonance_skim", "skim"):
+        assert getattr(hf, section) == getattr(w, section), section

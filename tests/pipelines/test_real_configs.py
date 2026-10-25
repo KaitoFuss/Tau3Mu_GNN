@@ -1,3 +1,5 @@
+import pytest
+
 from tau3mu_gnn.pipelines.common.config import REPO_ROOT
 from tau3mu_gnn.pipelines.analysis.config import load_config
 
@@ -46,3 +48,43 @@ def test_example_w_raw_differs_only_in_inputs(monkeypatch):
     assert raw["analysis_name"] != skimmed["analysis_name"]
     differ = sorted(k for k in raw if raw[k] != skimmed[k])
     assert differ == ["analysis_name", "inputs"]
+
+
+HF_GNN_CUTS = [2.0 + 0.5 * i for i in range(13)]   # 2.0 to 8.0, step 0.5
+
+
+def _yaml(name):
+    import yaml
+    return yaml.safe_load((REPO_ROOT / "configs" / name).read_text())
+
+
+def test_hf_analysis_defaults_differ_from_w_only_in_models():
+    w, hf = _yaml("analysis_defaults_W.yaml"), _yaml("analysis_defaults_HF.yaml")
+    assert hf["gnn"].pop("model_dir") == "models/HF/gnn" and w["gnn"].pop("model_dir") == "models/W/gnn"
+    assert hf["bdt"].pop("classifier").startswith("models/HF/") and w["bdt"].pop("classifier")
+    assert hf["gnn"].pop("model_name") != w["gnn"].pop("model_name")
+    assert hf == w
+
+
+def test_example_hf_needs_models(tmp_path, monkeypatch):
+    import yaml
+    from tau3mu_gnn.pipelines.common.config import ConfigError
+
+    monkeypatch.setenv("USER", "tester")
+    user = _yaml("example_HF.yaml")
+    user.pop("models")
+    path = tmp_path / "hf.yaml"
+    path.write_text(yaml.safe_dump(user))
+    with pytest.raises(ConfigError) as e:
+        load_config(path, defaults_dir=REPO_ROOT / "configs")
+    text = "\n".join(e.value.problems)
+    assert "frozen model file not found" in text and "models/HF/" in text
+
+
+def test_example_hf_cut_scan_and_inputs():
+    hf = _yaml("example_HF.yaml")
+    assert hf["channel"] == "HF"
+    assert hf["limit"]["gnn_score_cut"] == HF_GNN_CUTS
+    assert hf["limit"]["signal_weight"] == 0.000152
+    assert hf["inputs"] == _yaml("example_training_HF.yaml")["inputs"]
+    assert hf["models"].endswith("/tau3mu_pipeline/kaito_HF_train/gnn_vs1")
