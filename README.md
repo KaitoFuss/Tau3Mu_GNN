@@ -15,6 +15,7 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 - [Installation](#installation)
 - [Analysis Pipeline (tau3mu-pipeline)](#analysis-pipeline-tau3mu-pipeline)
 - [Training Pipeline (tau3mu-train)](#training-pipeline-tau3mu-train)
+- [HF Channel](#hf-channel)
 - [Quick Start](#quick-start)
 - [Pipeline Overview](#pipeline-overview)
   - [Step 0 — Skimming](#step-0--skimming-optional)
@@ -386,6 +387,27 @@ models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/<you
 ```
 
 The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `limit_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
+
+---
+
+## HF Channel
+
+Both pipelines also run the HF channel (Ds → τ → 3μ). Set `channel: HF` in the config: it selects `configs/analysis_defaults_HF.yaml` and `configs/training_defaults_HF.yaml`. Design: `docs/superpowers/specs/2026-10-25-step13-hf-design.md`.
+
+What differs from W:
+
+- BDT and GNN graph-level features: the HF lists in `bdt_training/bdt_inputs.py` and `gnn_training/gnn_inputs.py` (μ3 pT, isGlobal of the 3 muons, max `Muon_tkRelIso` for the BDT, no MET features). The inputs need the `Muon_*` collection and `TauTo3Mu_mu{1,2,3}_idx`.
+- Signal weight and cut scans: set in your config (examples: `0.000152` for Kaito's old HF dataset, BDT benchmark scan 0.88–0.97, GNN scan 2.0–8.0).
+- **No frozen HF models yet.** An HF analysis needs `models:` set to an HF training `gnn_vsN`. Without it, the config check stops with `frozen model file not found: .../models/HF/...`. A W training is refused for an HF analysis (and the other way round).
+- All other settings (skim cuts, BDT hyper-parameters, graphs, GNN training, limit fit, SLURM resources) are the W values.
+
+Run (example files with Kaito's old HF skimmed inputs):
+
+```bash
+tau3mu-train all --config configs/example_training_HF.yaml
+# when the training is done: set models: in your copy of example_HF.yaml to the new gnn_vsN
+tau3mu-pipeline all --config configs/example_HF.yaml
+```
 
 ---
 
