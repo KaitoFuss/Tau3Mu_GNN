@@ -86,6 +86,21 @@ def test_datacard_text_matches_result(toy_inputs, tmp_path):
         assert line in text.splitlines()
 
 
+def test_workspace_slope_range_is_ten_sigma(toy_inputs, tmp_path):
+    """E3: the workspace slope starts at the fitted value, range +-10 sigma (was [err, err])."""
+    import ROOT
+    from tau3mu_gnn.analysis.datacard import make_datacard
+
+    res = make_datacard([toy_inputs[0]], [toy_inputs[1]], 3.9, SIG_WEIGHT, tmp_path / "card")
+    f = ROOT.TFile.Open(str(tmp_path / "card" / "datacard.root"))
+    slope = f.Get("w").var("slope")
+    assert res.slope < 0 < res.slope_err
+    assert slope.getVal() == pytest.approx(res.slope, rel=1e-5)
+    assert slope.getMin() == pytest.approx(res.slope - 10 * res.slope_err, rel=1e-5)
+    assert slope.getMax() == pytest.approx(res.slope + 10 * res.slope_err, rel=1e-5)
+    f.Close()
+
+
 def test_data_tree_is_blinded(toy_inputs, tmp_path):
     import uproot
     from tau3mu_gnn.analysis.datacard import make_datacard

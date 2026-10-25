@@ -38,6 +38,7 @@ MEAN_START = (1.78, 1.7, 1.9)
 WIDTH_START = (0.02, 0, 0.1)
 SLOPE_START = (-0.001, -1e6, 1e6)
 NBKG_START = (1000, 0, 550000)
+SLOPE_RANGE_SIGMA = 10                 # workspace slope range: fitted value +- 10 sigma
 NBINS = 60                             # needed just for plotting, fits are all unbinned
 BLINDED = True                         # don't show (nor fit!) data in the signal mass window
 
@@ -293,7 +294,9 @@ def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Pat
 
     # background
     w.factory('mass[%f, %f]' % (fit_range_lo, fit_range_hi))
-    w.factory("Exponential::bkg(mass, slope[%f,%f,%f])" % (slope.getVal(), slope.getError(), slope.getError()))
+    slope_lo = slope.getVal() - SLOPE_RANGE_SIGMA * slope.getError()
+    slope_hi = slope.getVal() + SLOPE_RANGE_SIGMA * slope.getError()
+    w.factory("Exponential::bkg(mass, slope[%f,%f,%f])" % (slope.getVal(), slope_lo, slope_hi))
 
     # dump signal with fixed shape (the final fit will only vary the normalisation)
     w.factory('mean[%f]' % mean.getVal())
