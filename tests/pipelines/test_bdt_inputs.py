@@ -2,6 +2,7 @@ import pickle
 import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -75,3 +76,19 @@ def test_old_hf_classifier_feature_names():
         classifiers = pickle.load(f)
     for clf in classifiers.values():
         assert clf.get_booster().feature_names == OLD_HF_FEATURES
+
+
+def test_hf_isglobal_is_int_in_both_frames():
+    # signal column bool (no multi-candidate chunk), background column object (ak.firsts): XGBoost
+    # rejects object columns, and the casts after _add_features look only at the signal dtype.
+    features, branches = bdt_branches("HF")
+    sig = pd.DataFrame({name: [1.0, 1.0] for name in branches})
+    bkg = pd.DataFrame({name: [1.0, 1.0] for name in branches})
+    for i in (1, 2, 3):
+        sig[f"Muon_isGlobal[Selected_TauTo3Mu_mu{i}_idx]"] = np.array([True, False])
+        bkg[f"Muon_isGlobal[Selected_TauTo3Mu_mu{i}_idx]"] = pd.Series([True, False], dtype=object)
+    feats = _add_features(sig, bkg, features, "HF", "Selected_")
+    for df in (sig, bkg):
+        cols = [f for f in feats if f.startswith("Muon_isGlobal")]
+        assert len(cols) == 3 and all(pd.api.types.is_integer_dtype(df[c]) for c in cols)
+        assert df[cols[0]].tolist() == [1, 0]
