@@ -163,7 +163,8 @@ def training_user():
 
 
 class _TrainingLoader:
-    """load_training(user_dict) writes .defaults as training_defaults_W.yaml, then loads."""
+    """load_training(user_dict) writes .defaults as training_defaults_<channel>.yaml (and, for a channel
+    other than W, the toy analysis defaults as analysis_defaults_<channel>.yaml), then loads."""
 
     def __init__(self, repo):
         self.repo = repo
@@ -172,7 +173,10 @@ class _TrainingLoader:
     def __call__(self, user_dict=None, raw_text=None):
         from tau3mu_gnn.pipelines.training.config import load_training_config
 
-        write_yaml(self.repo / "configs" / "training_defaults_W.yaml", self.defaults)
+        channel = (user_dict or {}).get("channel", "W")
+        write_yaml(self.repo / "configs" / f"training_defaults_{channel}.yaml", self.defaults)
+        if channel != "W":
+            write_yaml(self.repo / "configs" / f"analysis_defaults_{channel}.yaml", TOY_DEFAULTS)
         path = self.repo / "training_user.yaml"
         if raw_text is not None:
             path.write_text(raw_text)
