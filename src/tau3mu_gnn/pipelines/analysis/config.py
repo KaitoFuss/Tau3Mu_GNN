@@ -117,7 +117,7 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
     trained = None
     if user.get("models", "frozen") != "frozen":
         from tau3mu_gnn.pipelines.analysis.models import read_trained_models
-        trained = read_trained_models(user["models"], problems)
+        trained = read_trained_models(user["models"], user["channel"], problems)
     elif {"bdt.classifier", "gnn.model_dir", "gnn.model_name"} <= defaults.keys():
         name = defaults["gnn.model_name"]
         model_dir = repo_root / defaults["gnn.model_dir"]

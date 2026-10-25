@@ -53,8 +53,9 @@ def _manifest(folder: Path, phase: str, source: str, problems: list[str]) -> dic
     return m
 
 
-def read_trained_models(gnn_version: str, problems: list[str]) -> TrainedModels | None:
-    """Resolve a training gnn_vsN folder. Appends every problem to problems; None if there is any."""
+def read_trained_models(gnn_version: str, channel: str, problems: list[str]) -> TrainedModels | None:
+    """Resolve a training gnn_vsN folder of the given channel. Appends every problem to problems; None if
+    there is any."""
     n_before = len(problems)
     name = str(gnn_version).rstrip("/").rsplit("/", 1)[-1]
     if not _GNN_VERSION_RE.match(name):
@@ -68,6 +69,11 @@ def read_trained_models(gnn_version: str, problems: list[str]) -> TrainedModels 
     bdt_dir = gnn_dir.parent / str(gnn.get("upstream"))
     bdt = _manifest(bdt_dir, "bdt", gnn_version, problems)
     if bdt is None:
+        return None
+    trained = (bdt.get("settings") or {}).get("channel")   # no settings / channel: written before, passes
+    if trained is not None and trained != channel:
+        problems.append(f"models: {gnn_version} was trained for channel {trained!r}, this analysis has "
+                        f"channel {channel!r}")
         return None
     try:
         files = {key: gnn_dir / gnn["outputs"][key] for key in _MODEL_FILES}
