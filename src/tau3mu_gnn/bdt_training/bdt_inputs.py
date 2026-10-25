@@ -25,8 +25,7 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
 
             f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
             f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
-
-            f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+            # chi2/ndof: added by BDT_ScoreProducer._add_features (feature order of the old HF classifier)
         ]
 
     elif tau_channel == "W":
@@ -60,7 +59,7 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
 
         f'{prefix}TauTo3Mu_fitted_eta',
         f'{prefix}TauTo3Mu_fitted_mass',
-        'TauPlusMET_Puppi_phi',
+        *(['TauPlusMET_Puppi_phi'] if tau_channel == "W" else []),  # deltaPhi feature, W only
         f'{prefix}TauTo3Mu_fitted_phi',
         f'{prefix}TauTo3Mu_iso_ptChargedFromPV',
         f'{prefix}TauTo3Mu_iso_ptPhotons',
