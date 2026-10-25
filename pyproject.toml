@@ -4,8 +4,8 @@ version = "0.1.0"
 dependencies = []
 
 [project.scripts]
-tau3mu-pipeline = "tau3mu_gnn.pipeline.cli:main"
-tau3mu-train = "tau3mu_gnn.pipeline.training.cli:main"
+tau3mu-pipeline = "tau3mu_gnn.pipelines.analysis.cli:main"
+tau3mu-train = "tau3mu_gnn.pipelines.training.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

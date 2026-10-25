@@ -102,6 +102,10 @@ tau3mu_gnn/
     │   └── BDT_ScoreProducer.py  # Score production for BDT
     ├── model_eval/
     │   └── ModelEval.py          # Plotting: ROC, sculpting, score distributions
+    ├── pipelines/                # tau3mu-pipeline and tau3mu-train
+    │   ├── common/               # shared: config parts, storage, SLURM, manifests, shared stages
+    │   ├── analysis/             # analysis pipeline (phases bdt, gnn, limit)
+    │   └── training/             # training pipeline (phases bdt, gnn, benchmark)
     ├── analysis/
     │   ├── datacard.py                            # CMS Combine datacards (GNN score or BDT ISO)
     │   ├── datacard_creation_ISO.py      # Generate CMS Combine datacards (ISO/BDT baseline)
@@ -213,7 +217,7 @@ Edit `my_W.yaml`. The comments in the file explain each key.
 
 > **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
 
-> **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The config stops with an error if the folder is not a `gnn_vsN`, its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
+> **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The analysis also has `gnn_vsN` folders (GNN scores): use the one of `tau3mu-train`, under `<training_name>/`. The config stops with an error if the folder is not a training `gnn_vsN` (an analysis `gnn_vsN` is refused), its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
 > **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
 
@@ -249,19 +253,19 @@ Do a dry run first. Then submit.
 
 ```bash
 tau3mu-pipeline all --config my_W.yaml --dry-run    # write the job scripts, print the sbatch commands, submit nothing
-tau3mu-pipeline all --config my_W.yaml              # submit phases A, B and C at once
+tau3mu-pipeline all --config my_W.yaml              # submit the phases bdt, gnn and limit at once
 ```
 
 | Phase | Jobs | Stages |
 |---|---|---|
-| A | `skim`, `bdt` | resonance skim (skipped if `already_resonance_skimmed: true`), skim, BDT |
-| B | `gnn_signal`, `gnn_background`, `eval` | GNN scores, evaluation plots |
-| C | `limit_<cut>` (one per cut), `summary` | datacard + Combine per cut, table of limits |
+| `bdt` | `skim`, `bdt` | resonance skim (skipped if `already_resonance_skimmed: true`), skim, BDT |
+| `gnn` | `gnn_signal`, `gnn_background`, `eval` | GNN scores, evaluation plots |
+| `limit` | `limit_<cut>` (one per cut), `summary` | datacard + Combine per cut, table of limits |
 
 How `all` connects the phases (SLURM dependencies):
 
-- B starts when the `bdt` job of A succeeds.
-- C starts when the `eval` job of B succeeds.
+- `gnn` starts when the `bdt` job of phase `bdt` succeeds.
+- `limit` starts when the `eval` job of phase `gnn` succeeds.
 - If a job fails, SLURM cancels the jobs after it.
 
 **One phase at a time.** You can also run each phase alone.
@@ -270,9 +274,9 @@ How `all` connects the phases (SLURM dependencies):
 - To use a different version, give it with `--from`.
 
 ```bash
-tau3mu-pipeline phase-a --config my_W.yaml
-tau3mu-pipeline phase-b --config my_W.yaml [--from phase_a_vs2]
-tau3mu-pipeline phase-c --config my_W.yaml [--from phase_b_vs1]
+tau3mu-pipeline bdt   --config my_W.yaml
+tau3mu-pipeline gnn   --config my_W.yaml [--from bdt_vs2]
+tau3mu-pipeline limit --config my_W.yaml [--from gnn_vs1]
 ```
 
 **One stage, for debugging.** The output goes to `debug/`. It has no manifest.
@@ -281,7 +285,7 @@ tau3mu-pipeline phase-c --config my_W.yaml [--from phase_b_vs1]
 tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
 ```
 
-**Help.** `tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipeline.cli` is the same command.
+**Help.** `tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipelines.analysis.cli` is the same command (training: `python -m tau3mu_gnn.pipelines.training.cli`).
 
 ### 4. Results
 
@@ -289,9 +293,9 @@ Each phase run makes a **new version folder**. The pipeline does not overwrite a
 
 ```
 <output_base>/<analysis_name>/
-├── phase_a_vs1/           0_resonance_skim/, 1_skim/, 2_bdt/
-├── phase_b_vs1/           3_gnn/, 4_eval/ (tau mass, ROC and SIC plots)
-├── phase_c_vs1/           cut_<cut>/ (datacard, Combine logs, limit.json), limits.json, limits.txt, limits.png
+├── bdt_vs1/               0_resonance_skim/, 1_skim/, 2_bdt/
+├── gnn_vs1/               3_gnn/, 4_eval/ (tau mass, ROC and SIC plots)
+├── limit_vs1/             cut_<cut>/ (datacard, Combine logs, limit.json), limits.json, limits.txt, limits.png
 └── debug/<stage>_vsN/     single-stage runs
 ```
 
@@ -304,7 +308,7 @@ Each version folder also has these files:
 
 > **A version is complete only if `manifest.json` exists.**
 
-- **The limit:** `phase_c_vsN/limits.txt` has the expected limit and the best cut.
+- **The limit:** `limit_vsN/limits.txt` has the expected limit and the best cut.
 - **Local copy:** `<log_dir>/<analysis_name>/<phase>_vsN/` also has the job scripts and the SLURM logs.
 
 ### 5. When a job fails
@@ -312,12 +316,12 @@ Each version folder also has these files:
 1. **Find the job.**
    - `squeue -u $USER` shows the jobs that wait or run.
    - `sacct -j <ID>` shows the state of one job.
-   - Job names have the format `<phase><version>.<job>.<analysis_name>`, for example `B1.gnnS.my_W`.
-     - Phase: `A`, `B`, `C`, or `D` for a debug stage. Version: the `N` of `_vsN`.
+   - Job names have the format `<phase><version>.<job>.<analysis_name>`, for example `GNN1.gnnS.my_W`.
+     - Phase: `BDT`, `GNN`, `LIM`, or `D` for a debug stage. Version: the `N` of `_vsN`.
      - Job: `skim`, `bdt`, `gnnS` (gnn_signal), `gnnB` (gnn_background), `eval`, `lim<cut>`, `sum` (summary).
 2. **Read the log** of the failed job: `<log_dir>/<analysis_name>/<phase>_vsN/<job>-<ID>.err`.
 3. **Fix the problem. Then submit the phase again.**
-   - This makes the next version, for example `phase_b_vs2`.
+   - This makes the next version, for example `gnn_vs2`.
    - The failed version stays. It has no manifest.
 4. **Out of memory or time?** Increase the value for that job in `configs/analysis_defaults_W.yaml` (`slurm.jobs`).
 
@@ -381,7 +385,7 @@ Set `models` in your analysis config to the `gnn_vsN` folder, then run the analy
 models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/<you>/tau3mu_pipeline/<training_name>/gnn_vs1
 ```
 
-The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `phase_c_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
+The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `limit_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
 
 ---
 
