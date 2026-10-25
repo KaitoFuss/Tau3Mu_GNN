@@ -629,16 +629,17 @@ class ScoreProducer:
                 R = 0.8
                 d_ca = ((matrix_delta_R**2) / (R**2))
                 d_kt = (np.minimum(matrix_pt**2, matrix_pt.T**2) * (matrix_delta_R**2) / (R**2))
+                matrix_pair_charge = matrix_charge * matrix_charge.T  # q_i * q_j (row i of matrix_charge is q_i)
                 if num_nodes < 200:
                     # Please also doulbe check whether this indexing is okay, I also did but just to make sure...
                     np_edge_index = np.array(edge_index.t())
                     pair_masses = np.array(pair_masses[np_edge_index[0], np_edge_index[1]])
-                    pair_charges = np.array(matrix_charge[np_edge_index[0], np_edge_index[1]])
+                    pair_charges = np.array(matrix_pair_charge[np_edge_index[0], np_edge_index[1]])
                     d_ca = np.array(d_ca[np_edge_index[0], np_edge_index[1]])
                     d_kt = np.array(d_kt[np_edge_index[0], np_edge_index[1]])
                 else:
                     pair_masses = np.array([pair_masses[i,j] for i,j in edge_index])
-                    pair_charges = np.array([matrix_charge[i,j] for i,j in edge_index])
+                    pair_charges = np.array([matrix_pair_charge[i,j] for i,j in edge_index])
                     d_ca = np.array([d_ca[i,j] for i,j in edge_index])
                     d_kt = np.array([d_kt[i,j] for i,j in edge_index])
                 
