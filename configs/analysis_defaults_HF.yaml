@@ -37,7 +37,7 @@ limit:                         # stage 5, mass fit + Combine
 slurm:                         # SLURM resources per job (step 9). Times: first values (Kaito, 2026-10-12);
   account: t3                  # raise them here if jobs hit the limit.
   jobs:
-    skim:           {partition: long,     mem: 128G, time: "1-00:00:00", cpus: 4}  # raw W test: stage 0 ~5 s/file, full raw ~6300 files (2026-10-23)
+    skim:           {partition: long,     mem: 256G, time: "1-00:00:00", cpus: 4}  # full raw W: 5 h, MaxRSS 127.99G of 128G (job 854069, 2026-10-26)
     bdt:            {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 1}  # full W: MaxRSS 107 GiB (job 202616)
     gnn_signal:     {partition: long,     mem: 64G,  time: "1-00:00:00", cpus: 1}
     gnn_background: {partition: long,     mem: 128G, time: "2-00:00:00", cpus: 1}  # full W: MaxRSS 64 GB = old limit (job 205117)

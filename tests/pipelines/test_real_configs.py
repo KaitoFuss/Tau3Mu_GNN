@@ -32,7 +32,7 @@ def test_example_w_matches_production_settings(monkeypatch):
     jobs = cfg.slurm.jobs
     assert cfg.slurm.account == "t3"
     assert (jobs["skim"].partition, jobs["skim"].mem, jobs["skim"].time, jobs["skim"].cpus) == \
-        ("long", "128G", "1-00:00:00", 4)
+        ("long", "256G", "1-00:00:00", 4)
     assert (jobs["gnn_background"].partition, jobs["gnn_background"].time) == ("long", "2-00:00:00")
     assert jobs["limit"].time == "0-01:30:00" and jobs["summary"].partition == "short"
 

@@ -64,3 +64,9 @@ def test_example_training_hf(monkeypatch):
     assert list(hf.benchmark.bdt_score_cut) == HF_BENCHMARK_CUTS
     for section in ("gnn_training", "graphs", "bdt_training", "npvs", "resonance_skim", "skim"):
         assert getattr(hf, section) == getattr(w, section), section
+
+
+def test_skim_job_memory_256g(monkeypatch):
+    # raw W training (job 854069): MaxRSS 127.99G with 128G requested
+    cfg, _ = _load(monkeypatch)
+    assert cfg.slurm.jobs["skim"].mem == "256G"
