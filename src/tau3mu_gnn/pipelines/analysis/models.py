@@ -1,9 +1,15 @@
-"""Analysis key `models:` (step 12h): the BDT and GNN of a training run instead of the frozen models.
+"""The BDT and GNN of the analysis and their model-defining settings, from one place per model.
 
-The value is the path of a training gnn_vsN folder. Its manifest (phase gnn) lists the model files; its
-upstream bdt_vsN (a sibling folder) lists the BDT classifier. The model-defining settings (conv type,
-GNN mode, unsculpting mode, graph type, BDT preselection cut) come from the gnn manifest settings, so they
-travel with the model. Files are read through storage.local_path (the /pnfs path of a root:// URL).
+- Frozen (default): analysis_defaults gives only the paths (bdt.classifier, gnn.model_dir, gnn.model_name).
+  The settings are in <model_dir>/<model_name>/model_settings.json.
+- Key `models:` (step 12h): the path of a training gnn_vsN folder. Its manifest (phase gnn) lists the model
+  files; its upstream bdt_vsN (a sibling folder) lists the BDT classifier. The settings are the gnn manifest
+  settings. Files are read through storage.local_path (the /pnfs path of a root:// URL).
+
+model_settings.json has the layout of those manifest settings: {"channel", "graphs": {bdt_preselection_cut,
+connection, k, cone_size, use_displacement, unsculpting_mode}, "gnn_training": {conv_type, gnn_mode}}. The
+model-defining settings (conv type, GNN mode, unsculpting mode, graph type, BDT preselection cut) so travel
+with the model and are written only once.
 """
 from __future__ import annotations
 
@@ -16,6 +22,7 @@ from tau3mu_gnn.graph.naming import graph_suffix
 from tau3mu_gnn.pipelines.common import storage
 
 FROZEN = "frozen"
+SETTINGS_FILE = "model_settings.json"
 _GNN_VERSION_RE = re.compile(r"^gnn_vs[1-9]\d*$")
 _MODEL_FILES = ("model", "normalization", "arch_config")
 
@@ -70,33 +77,91 @@ def read_trained_models(gnn_version: str, channel: str, problems: list[str]) -> 
     bdt = _manifest(bdt_dir, "bdt", gnn_version, problems)
     if bdt is None:
         return None
-    trained = (bdt.get("settings") or {}).get("channel")   # no settings / channel: written before, passes
-    if trained is not None and trained != channel:
-        problems.append(f"models: {gnn_version} was trained for channel {trained!r}, this analysis has "
-                        f"channel {channel!r}")
+    # no settings / channel: written before, passes
+    if not _channel_ok((bdt.get("settings") or {}).get("channel"), channel, f"models: {gnn_version}", problems):
         return None
     try:
         files = {key: gnn_dir / gnn["outputs"][key] for key in _MODEL_FILES}
         files["classifier"] = bdt_dir / bdt["outputs"]["classifier"]
-        graphs, training = gnn["settings"]["graphs"], gnn["settings"]["gnn_training"]
-        graph_type = "skimmed" + graph_suffix(graphs["use_displacement"], graphs["cone_size"],
-                                              graphs["connection"], k=graphs["k"], with_unsculpting=False)
-        values = dict(conv_type=training["conv_type"], gnn_mode=training["gnn_mode"],
-                      unsculpting_mode=graphs["unsculpting_mode"],
-                      bdt_preselection_cut=float(graphs["bdt_preselection_cut"]))
+        settings = gnn["settings"]
     except (KeyError, TypeError) as e:
         problems.append(f"models: the manifests of {gnn_version} lack an entry: {e!r}")
         return None
-    from tau3mu_gnn.gnn_training.gnn_inputs import INFERENCE_GRAPH
-    for key, value in INFERENCE_GRAPH.items():
-        if graphs.get(key) != value:
-            problems.append(f"models: {gnn_version} was trained on graphs.{key} = {graphs.get(key)!r}, but GNN "
-                            f"inference builds graphs with {key} = {value!r}; this model cannot be scored")
-    for path in files.values():
-        if not path.is_file():
-            problems.append(f"models: file not found: {path}")
-    if len(problems) > n_before:
+    values = _model_values(settings, f"models: {gnn_version}", f"the manifests of {gnn_version}", problems)
+    _check_files(files.values(), "models: file not found", problems)
+    if values is None or len(problems) > n_before:
         return None
     model = files["model"]
     return TrainedModels(source=str(gnn_version), classifier=files["classifier"], model_dir=model.parent.parent,
-                         model_name=model.stem, graph_type=graph_type, **values)
+                         model_name=model.stem, **values)
+
+
+def read_frozen_models(classifier: Path, model_dir: Path, model_name: str, channel: str,
+                       problems: list[str]) -> TrainedModels | None:
+    """The frozen models of analysis_defaults (paths) with the settings in <model_dir>/<model_name>/
+    model_settings.json. Appends every problem to problems; None if there is any."""
+    n_before = len(problems)
+    folder = model_dir / model_name
+    _check_files([classifier, folder / f"{model_name}.pt", folder / "Normalization.pkl",
+                  folder / "arch_config.json"], "frozen model file not found", problems)
+    path = folder / SETTINGS_FILE
+    try:
+        settings = json.loads(path.read_text())
+    except FileNotFoundError:
+        problems.append(f"frozen model settings not found: {path} (the settings of the frozen model live "
+                        f"next to its files)")
+        return None
+    except ValueError as e:
+        problems.append(f"frozen model settings: {path} is not valid JSON: {e}")
+        return None
+    if not isinstance(settings, dict) or not _channel_ok(settings.get("channel"), channel,
+                                                         f"frozen model {folder}", problems):
+        if not isinstance(settings, dict):
+            problems.append(f"frozen model settings: {path} must be a JSON object")
+        return None
+    values = _model_values(settings, f"frozen model {folder}", str(path), problems)
+    if values is None or len(problems) > n_before:
+        return None
+    return TrainedModels(source=FROZEN, classifier=classifier, model_dir=model_dir, model_name=model_name,
+                         **values)
+
+
+def _channel_ok(trained: str | None, channel: str, what: str, problems: list[str]) -> bool:
+    if trained is not None and trained != channel:
+        problems.append(f"{what} was trained for channel {trained!r}, this analysis has channel {channel!r}")
+        return False
+    return True
+
+
+def _check_files(paths, message: str, problems: list[str]) -> None:
+    for path in paths:
+        if not Path(path).is_file():
+            problems.append(f"{message}: {path}")
+
+
+def _model_values(settings: dict, what: str, where: str, problems: list[str]) -> dict | None:
+    """conv_type, gnn_mode, unsculpting_mode, graph_type, bdt_preselection_cut from manifest-style settings.
+    Checks that GNN inference can reproduce the graphs. None (and a problem) if anything is wrong."""
+    from tau3mu_gnn.gnn_training.gnn_inputs import INFERENCE_GRAPH
+    from tau3mu_gnn.pipelines.common.config import _unsculpting_mode
+    try:
+        graphs, training = settings["graphs"], settings["gnn_training"]
+        graph_type = "skimmed" + graph_suffix(graphs["use_displacement"], graphs["cone_size"],
+                                              graphs["connection"], k=graphs["k"], with_unsculpting=False)
+        mode = graphs["unsculpting_mode"]
+        values = dict(conv_type=training["conv_type"], gnn_mode=training["gnn_mode"],
+                      unsculpting_mode=None if mode is None else _unsculpting_mode(mode),
+                      graph_type=graph_type, bdt_preselection_cut=float(graphs["bdt_preselection_cut"]))
+    except (KeyError, TypeError) as e:
+        problems.append(f"{where} lack an entry: {e!r}")
+        return None
+    except ValueError as e:
+        problems.append(f"{what}: graphs.unsculpting_mode {e}")
+        return None
+    ok = True
+    for key, value in INFERENCE_GRAPH.items():
+        if graphs.get(key) != value:
+            problems.append(f"{what} was trained on graphs.{key} = {graphs.get(key)!r}, but GNN inference "
+                            f"builds graphs with {key} = {value!r}; this model cannot be scored")
+            ok = False
+    return values if ok else None

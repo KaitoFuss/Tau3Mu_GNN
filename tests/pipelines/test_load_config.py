@@ -320,18 +320,3 @@ def test_conda_env_must_be_absolute_local(load, user, bad):
     user["paths"]["conda_env"] = bad
     with pytest.raises(ConfigError, match="paths.conda_env"):
         load(user)
-
-
-def test_analysis_unsculpting_mode_only_what_inference_reproduces(load, user, fake_repo):
-    from tau3mu_gnn.pipelines.common.config import ConfigError
-    _defaults_with_gnn(fake_repo, unsculpting_mode="permutation")
-    with pytest.raises(ConfigError, match="gnn.unsculpting_mode"):
-        load(user)
-
-
-def _defaults_with_gnn(fake_repo, **gnn):
-    import yaml
-    path = fake_repo / "configs" / "analysis_defaults_W.yaml"
-    d = yaml.safe_load(path.read_text())
-    d["gnn"].update(gnn)
-    path.write_text(yaml.safe_dump(d))

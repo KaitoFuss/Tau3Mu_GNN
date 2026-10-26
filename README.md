@@ -220,7 +220,9 @@ Edit `my_W.yaml`. The comments in the file explain each key.
 
 > **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The analysis also has `gnn_vsN` folders (GNN scores): use the one of `tau3mu-training`, under `<training_name>/`. The config stops with an error if the folder is not a training `gnn_vsN` (an analysis `gnn_vsN` is refused), its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
-> **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
+> **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, model paths, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
+>
+> **Model settings** (BDT preselection cut, graph type, conv type, GNN mode, unsculpting mode) are defined once, with the model: for the frozen model in `models/W/gnn/<model_name>/model_settings.json`, for a trained model in the manifest of its training `gnn_vsN` (`models:`).
 
 #### Skimming cuts
 

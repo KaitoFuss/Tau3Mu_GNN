@@ -1,4 +1,5 @@
 import copy
+import json
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,13 @@ if _imported_from != REPO_ROOT:
 
 TOY_MODEL = "toy_model"
 
+TOY_MODEL_SETTINGS = {   # <model_dir>/<model_name>/model_settings.json of the toy frozen model
+    "channel": "W",
+    "graphs": {"bdt_preselection_cut": 0.8, "connection": "knn", "k": 10, "cone_size": 0.5,
+               "use_displacement": True, "unsculpting_mode": "delete_muons"},
+    "gnn_training": {"conv_type": "GINE", "gnn_mode": "final_layer"},
+}
+
 TOY_DEFAULTS = {
     "resonance_skim": {"vtx_chi2_max": 20, "mass_range": [1.0, 3.0], "veto_masses": [0.78266, 1.019461],
                        "veto_half_width": 0.04, "pf_dr_max": 1.0},
@@ -29,11 +37,6 @@ TOY_DEFAULTS = {
     "gnn": {
         "model_dir": "models/W/gnn",
         "model_name": TOY_MODEL,
-        "conv_type": "GINE",
-        "gnn_mode": "final_layer",
-        "unsculpting_mode": "delete_muons",
-        "graph_type": "skimmed_dzd0_cone_size_0.5_knn_10",
-        "bdt_preselection_cut": 0.8,
     },
     "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.62, 1.98], "cl": 0.9},
     "slurm": {
@@ -73,6 +76,7 @@ def fake_repo(tmp_path):
         p = tmp_path / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b"x")
+    (tmp_path / "models/W/gnn" / TOY_MODEL / "model_settings.json").write_text(json.dumps(TOY_MODEL_SETTINGS))
     return tmp_path
 
 

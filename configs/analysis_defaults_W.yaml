@@ -17,14 +17,10 @@ skim:                          # stage 1, values from tau3mu_gnn/utils/skimmer.p
 bdt:                           # stage 2, ISO BDT only
   classifier: models/W/bdt/ISO_classifiers_24feb2026_v0.pck
 
-gnn:                           # stage 3, fixed model
+gnn:                           # stage 3, fixed model; its settings (conv type, graph type, BDT preselection
+                               # cut, ...) are in <model_dir>/<model_name>/model_settings.json
   model_dir: models/W/gnn      # files in <model_dir>/<model_name>/
   model_name: new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2
-  conv_type: GINE
-  gnn_mode: final_layer
-  unsculpting_mode: delete_muons
-  graph_type: skimmed_dzd0_cone_size_0.5_knn_10
-  bdt_preselection_cut: 0.8    # run the GNN only on events with BDT ISO score > this
 
 limit:                         # stage 5, mass fit + Combine
   tau_mass: 1.78               # GeV
