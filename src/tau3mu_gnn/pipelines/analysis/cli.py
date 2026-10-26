@@ -1,13 +1,13 @@
-"""tau3mu-pipeline (analysis): submit the SLURM jobs of all phases, one phase or one stage.
+"""tau3mu-analysis (analysis): submit the SLURM jobs of all phases, one phase or one stage.
 
-  tau3mu-pipeline all   --config my.yaml [--dry-run]
-  tau3mu-pipeline bdt   --config my.yaml [--dry-run]                       skim + BDT scores
-  tau3mu-pipeline gnn   --config my.yaml [--from bdt_vsN] [--dry-run]      GNN scores + evaluation plots
-  tau3mu-pipeline limit --config my.yaml [--from gnn_vsN] [--dry-run]      limit per cut + summary
-  tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my.yaml
+  tau3mu-analysis all   --config my.yaml [--dry-run]
+  tau3mu-analysis bdt   --config my.yaml [--dry-run]                       skim + BDT scores
+  tau3mu-analysis gnn   --config my.yaml [--from bdt_vsN] [--dry-run]      GNN scores + evaluation plots
+  tau3mu-analysis limit --config my.yaml [--from gnn_vsN] [--dry-run]      limit per cut + summary
+  tau3mu-analysis stage <skim|bdt|gnn|eval|limit|summary> --config my.yaml
         [--from <phase>_vsN] [--cut X] [--sample signal|background] [--dry-run]
 
-tau3mu-pipeline is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.analysis.cli` is the same.
+tau3mu-analysis is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.analysis.cli` is the same.
 The jobs use paths.conda_env from the config, else the conda env that is active when you submit.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ from tau3mu_gnn.pipelines.common.slurm import SubmitError
 
 
 def _parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tau3mu-pipeline", description=__doc__.split("\n\n")[0])
+    p = argparse.ArgumentParser(prog="tau3mu-analysis", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
     helps = {"all": "phases bdt, gnn and limit at once", "bdt": "skim + BDT scores",
              "gnn": "GNN scores + evaluation plots", "limit": "limit per cut + summary", "stage": "one stage (debug)"}

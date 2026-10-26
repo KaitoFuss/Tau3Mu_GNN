@@ -81,20 +81,21 @@ def _add_features(sig, bkg, features, tau_channel, prefix):
         # features += ['Muon_mediumId_Slimmed_TauTo3Mu_mu3_idx']
         # features.remove('Muon_mediumId[Slimmed_TauTo3Mu_mu3_idx]')
 
-        sig[f'Muon_isGlobal_{prefix}TauTo3Mu_mu1_idx'] = sig[f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]']
-        bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu1_idx'] = bkg[f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]']
+        # bool, or object after ak.firsts: int in both frames (XGBoost rejects object columns)
+        sig[f'Muon_isGlobal_{prefix}TauTo3Mu_mu1_idx'] = sig[f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]'].astype(int)
+        bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu1_idx'] = bkg[f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]'].astype(int)
 
         features += [f'Muon_isGlobal_{prefix}TauTo3Mu_mu1_idx']
         features.remove(f'Muon_isGlobal[{prefix}TauTo3Mu_mu1_idx]')
 
-        sig[f'Muon_isGlobal_{prefix}TauTo3Mu_mu2_idx'] = sig[f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]']
-        bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu2_idx'] = bkg[f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]']
+        sig[f'Muon_isGlobal_{prefix}TauTo3Mu_mu2_idx'] = sig[f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]'].astype(int)
+        bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu2_idx'] = bkg[f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]'].astype(int)
 
         features += [f'Muon_isGlobal_{prefix}TauTo3Mu_mu2_idx']
         features.remove(f'Muon_isGlobal[{prefix}TauTo3Mu_mu2_idx]')
 
-        sig[f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx'] = sig[f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]']
-        bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx'] = bkg[f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]']
+        sig[f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx'] = sig[f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]'].astype(int)
+        bkg[f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx'] = bkg[f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]'].astype(int)
 
         features += [f'Muon_isGlobal_{prefix}TauTo3Mu_mu3_idx']
         features.remove(f'Muon_isGlobal[{prefix}TauTo3Mu_mu3_idx]')

@@ -1,11 +1,11 @@
 """tau3mu training driver: submit the SLURM jobs of all training phases or one phase.
 
-  tau3mu-train all       --config my_training.yaml [--dry-run]
-  tau3mu-train bdt       --config my_training.yaml [--dry-run]
-  tau3mu-train gnn       --config my_training.yaml [--from bdt_vsN] [--dry-run]
-  tau3mu-train benchmark --config my_training.yaml [--from bdt_vsN] [--dry-run]
+  tau3mu-training all       --config my_training.yaml [--dry-run]
+  tau3mu-training bdt       --config my_training.yaml [--dry-run]
+  tau3mu-training gnn       --config my_training.yaml [--from bdt_vsN] [--dry-run]
+  tau3mu-training benchmark --config my_training.yaml [--from bdt_vsN] [--dry-run]
 
-tau3mu-train is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.training.cli` is the same.
+tau3mu-training is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.training.cli` is the same.
 The jobs use paths.conda_env from the config, else the conda env that is active when you submit.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from tau3mu_gnn.pipelines.training.driver import submit_all, submit_phase
 
 
 def _parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tau3mu-train", description=__doc__.split("\n\n")[0])
+    p = argparse.ArgumentParser(prog="tau3mu-training", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
     for name in ("all", "bdt", "gnn", "benchmark"):
         s = sub.add_parser(name, help="bdt, then gnn and benchmark" if name == "all" else None)
