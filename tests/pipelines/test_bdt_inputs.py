@@ -43,15 +43,16 @@ OLD_HF_FEATURES = [  # feature_names of OLD_HF_CLASSIFIER, in order
     "max(Muon_tkRelIso_Selected_TauTo3Mu_mu1_idx Muon_tkRelIso_Selected_TauTo3Mu_mu2_idx "
     "Muon_tkRelIso_Selected_TauTo3Mu_mu3_idx)",
 ]
-W_BRANCHES = [  # bdt_branches("W")[1] on main, 2026-10-25
+W_BRANCHES = [  # bdt_branches("W")[1]: the list of main (2026-10-25), TauPlusMET_Puppi_phi moved to the end
     "Selected_TauTo3Mu_fitted_pt", "TauPlusMET_Tau_Puppi_mT", "TauPlusMET_PuppiMET_pt", "TauPlusMET_Puppi_pt",
     "TauPlusMET_PuppiMETminPz", "TauPlusMET_PuppiMETmaxPz", "Selected_TauTo3Mu_dZmu12",
     "Selected_TauTo3Mu_dZmu13", "Selected_TauTo3Mu_dZmu23", "Selected_TauTo3Mu_sigLxy_3muVtxBS",
     "Selected_TauTo3Mu_vtx_chi2*(Selected_TauTo3Mu_vtx_Ndof**-1)", "Selected_TauTo3Mu_CosAlpha2D_LxyP3mu",
     "Selected_TauTo3Mu_vtx_chi2", "Selected_TauTo3Mu_vtx_Ndof", "Selected_TauTo3Mu_fitted_eta",
-    "Selected_TauTo3Mu_fitted_mass", "TauPlusMET_Puppi_phi", "Selected_TauTo3Mu_fitted_phi",
+    "Selected_TauTo3Mu_fitted_mass", "Selected_TauTo3Mu_fitted_phi",
     "Selected_TauTo3Mu_iso_ptChargedFromPV", "Selected_TauTo3Mu_iso_ptPhotons",
     "Selected_TauTo3Mu_iso_ptChargedFromPU", "run", "luminosityBlock", "event",
+    "TauPlusMET_Puppi_phi",   # W block at the end (PR #46 review); order of loaded columns does not matter
 ]
 
 

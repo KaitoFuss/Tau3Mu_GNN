@@ -1,14 +1,14 @@
 # Example user config (HF channel). Copy this file and edit it.
 # Frozen analysis settings live in analysis_defaults_HF.yaml and must NOT be set here.
 
-analysis_name: kaito_HF_analysis           # letters, digits, _ - . only; used as folder name
+analysis_name: HF_analysis                 # letters, digits, _ - . only; used as folder name
 
 channel: HF                                # selects configs/analysis_defaults_HF.yaml
 
 paths:
   # All outputs go to <output_base>/<analysis_name>.
   # Jobs write to /scratch first and then xrdcp to this location.
-  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/analysis
   # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
   # Logs are also copied next to the results (<phase>_vsN/logs/).
   log_dir: /work/$USER/SVJ_GNN/tau3mu_logs
@@ -34,7 +34,7 @@ branch_map: {}
 
 # REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet (step 13), so set the path
 # of a finished HF training GNN phase (tau3mu-train): its BDT, GNN and the model settings are used.
-models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/kaito_HF_train/gnn_vs1
+models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/training/HF_training/gnn_vs1
 
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
