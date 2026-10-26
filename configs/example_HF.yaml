@@ -33,7 +33,7 @@ branch_map: {}
 #   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
 
 # REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet (step 13), so set the path
-# of a finished HF training GNN phase (tau3mu-train): its BDT, GNN and the model settings are used.
+# of a finished HF training GNN phase (tau3mu-training): its BDT, GNN and the model settings are used.
 models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/kaito_HF_train/gnn_vs1
 
 limit:

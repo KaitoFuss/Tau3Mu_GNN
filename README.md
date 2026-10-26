@@ -13,8 +13,8 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 - [Infrastructure](#infrastructure)
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
-- [Analysis Pipeline (tau3mu-pipeline)](#analysis-pipeline-tau3mu-pipeline)
-- [Training Pipeline (tau3mu-train)](#training-pipeline-tau3mu-train)
+- [Analysis Pipeline (tau3mu-analysis)](#analysis-pipeline-tau3mu-analysis)
+- [Training Pipeline (tau3mu-training)](#training-pipeline-tau3mu-training)
 - [HF Channel](#hf-channel)
 - [Quick Start](#quick-start)
 - [Pipeline Overview](#pipeline-overview)
@@ -58,7 +58,7 @@ The work uses two clusters:
 > **This will change: move to lxplus.** A later step moves all work to lxplus (HTCondor and EOS). Then the split between T3 and lxplus stops. These README parts describe the T3 setup now and will change:
 > - [Infrastructure](#infrastructure): the clusters, the schedulers and the hardcoded paths.
 > - [CMS Combine](#cms-combine): the build on lxplus.
-> - [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
+> - [Analysis Pipeline](#analysis-pipeline-tau3mu-analysis): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
 > - [Quick Start](#quick-start) and [Pipeline Overview](#pipeline-overview): the copy steps between T3 and lxplus (Steps 1b, 2, 4).
 > - [Data Storage and Transfer](#data-storage-and-transfer): `/pnfs/`, `/work/`, the data flow.
 > - [Job Submission](#job-submission): SLURM on T3.
@@ -103,7 +103,7 @@ tau3mu_gnn/
     │   └── BDT_ScoreProducer.py  # Score production for BDT
     ├── model_eval/
     │   └── ModelEval.py          # Plotting: ROC, sculpting, score distributions
-    ├── pipelines/                # tau3mu-pipeline and tau3mu-train
+    ├── pipelines/                # tau3mu-analysis and tau3mu-training
     │   ├── common/               # shared: config parts, storage, SLURM, manifests, shared stages
     │   ├── analysis/             # analysis pipeline (phases bdt, gnn, limit)
     │   └── training/             # training pipeline (phases bdt, gnn, benchmark)
@@ -169,7 +169,7 @@ which combine              # must be $CONDA_PREFIX/bin/combine
 
 ---
 
-## Analysis Pipeline (tau3mu-pipeline)
+## Analysis Pipeline (tau3mu-analysis)
 
 This pipeline runs the frozen W analysis on **your** input files. You need only one config file.
 
@@ -180,8 +180,8 @@ This pipeline runs the frozen W analysis on **your** input files. You need only 
 ### 1. Set up (once)
 
 1. **Install the env and the package.** Follow [Installation](#installation).
-   - `pip install -e .` also installs the command `tau3mu-pipeline`.
-   - Did you install the package before this command existed? Then run `pip install -e .` again.
+   - `pip install -e .` also installs the command `tau3mu-analysis`.
+   - Did you install the package before this command existed, or before the rename (2026-10-26: `tau3mu-pipeline` → `tau3mu-analysis`, `tau3mu-train` → `tau3mu-training`)? Then run `pip install -e .` again. The old names are gone.
 2. **Build CMS Combine into the env.** Follow [CMS Combine](#cms-combine). Combine is **not** in `environment_frozen.yaml`.
 3. **Make a VOMS proxy.** You need it only if your outputs go to dCache.
    - The proxy must be in your **home folder**. The nodes cannot see `/tmp`.
@@ -214,11 +214,11 @@ Edit `my_W.yaml`. The comments in the file explain each key.
 | `branch_map` | Set it only if your branch names are different. For raw NanoAOD, use the raw names as keys (`TauTo3Mu_*`, `PFCands_*`). |
 | `limit.signal_weight` | **Required.** It has no default. See below. |
 | `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
-| `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/`. Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-train`). See below. |
+| `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/`. Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-training`). See below. |
 
 > **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
 
-> **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The analysis also has `gnn_vsN` folders (GNN scores): use the one of `tau3mu-train`, under `<training_name>/`. The config stops with an error if the folder is not a training `gnn_vsN` (an analysis `gnn_vsN` is refused), its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
+> **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The analysis also has `gnn_vsN` folders (GNN scores): use the one of `tau3mu-training`, under `<training_name>/`. The config stops with an error if the folder is not a training `gnn_vsN` (an analysis `gnn_vsN` is refused), its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
 > **Frozen settings:** `configs/analysis_defaults_W.yaml` has the frozen analysis settings: skimming cuts, models, BDT preselection, mass window, SLURM resources. Do not set them in your file. If you do, the command stops with an error.
 
@@ -253,8 +253,8 @@ Stage 0 output:
 Do a dry run first. Then submit.
 
 ```bash
-tau3mu-pipeline all --config my_W.yaml --dry-run    # write the job scripts, print the sbatch commands, submit nothing
-tau3mu-pipeline all --config my_W.yaml              # submit the phases bdt, gnn and limit at once
+tau3mu-analysis all --config my_W.yaml --dry-run    # write the job scripts, print the sbatch commands, submit nothing
+tau3mu-analysis all --config my_W.yaml              # submit the phases bdt, gnn and limit at once
 ```
 
 | Phase | Jobs | Stages |
@@ -275,18 +275,18 @@ How `all` connects the phases (SLURM dependencies):
 - To use a different version, give it with `--from`.
 
 ```bash
-tau3mu-pipeline bdt   --config my_W.yaml
-tau3mu-pipeline gnn   --config my_W.yaml [--from bdt_vs2]
-tau3mu-pipeline limit --config my_W.yaml [--from gnn_vs1]
+tau3mu-analysis bdt   --config my_W.yaml
+tau3mu-analysis gnn   --config my_W.yaml [--from bdt_vs2]
+tau3mu-analysis limit --config my_W.yaml [--from gnn_vs1]
 ```
 
 **One stage, for debugging.** The output goes to `debug/`. It has no manifest.
 
 ```bash
-tau3mu-pipeline stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
+tau3mu-analysis stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
 ```
 
-**Help.** `tau3mu-pipeline <command> --help` shows all options. `python -m tau3mu_gnn.pipelines.analysis.cli` is the same command (training: `python -m tau3mu_gnn.pipelines.training.cli`).
+**Help.** `tau3mu-analysis <command> --help` shows all options. `python -m tau3mu_gnn.pipelines.analysis.cli` is the same command (training: `python -m tau3mu_gnn.pipelines.training.cli`).
 
 ### 4. Results
 
@@ -328,7 +328,7 @@ Each version folder also has these files:
 
 ---
 
-## Training Pipeline (tau3mu-train)
+## Training Pipeline (tau3mu-training)
 
 Trains a new BDT and GNN on your inputs, and computes a BDT-only benchmark limit. You need it only if you want new models. Without it, the analysis uses the frozen models.
 
@@ -353,11 +353,11 @@ The comments in the file explain each key. The frozen training settings (BDT and
 
 ```bash
 voms-proxy-init --voms cms --valid 192:00     # the longest job chain is about 157 h
-tau3mu-train all --config my_training_W.yaml --dry-run
-tau3mu-train all --config my_training_W.yaml
+tau3mu-training all --config my_training_W.yaml --dry-run
+tau3mu-training all --config my_training_W.yaml
 ```
 
-`all` submits three phases. You can also submit one phase: `tau3mu-train bdt|gnn|benchmark --config ...` (`gnn` and `benchmark` take `--from bdt_vsN`).
+`all` submits three phases. You can also submit one phase: `tau3mu-training bdt|gnn|benchmark --config ...` (`gnn` and `benchmark` take `--from bdt_vsN`).
 
 | Phase | Jobs | Needs |
 |---|---|---|
@@ -380,7 +380,7 @@ Job names: `BDT<N>`, `GNN<N>`, `BEN<N>` plus the job, for example `GNN1.gnnT.my_
 
 ### 4. Use the new models in the analysis
 
-Set `models` in your analysis config to the `gnn_vsN` folder, then run the analysis as usual (`tau3mu-pipeline all`):
+Set `models` in your analysis config to the `gnn_vsN` folder, then run the analysis as usual (`tau3mu-analysis all`):
 
 ```yaml
 models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/<you>/tau3mu_pipeline/<training_name>/gnn_vs1
@@ -404,16 +404,16 @@ What differs from W:
 Run (example files with Kaito's old HF skimmed inputs):
 
 ```bash
-tau3mu-train all --config configs/example_training_HF.yaml
+tau3mu-training all --config configs/example_training_HF.yaml
 # when the training is done: set models: in your copy of example_HF.yaml to the new gnn_vsN
-tau3mu-pipeline all --config configs/example_HF.yaml
+tau3mu-analysis all --config configs/example_HF.yaml
 ```
 
 ---
 
 ## Quick Start
 
-> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline) and the [Training Pipeline](#training-pipeline-tau3mu-train) replace these steps. They are kept for reference.
+> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-tau3mu-analysis) and the [Training Pipeline](#training-pipeline-tau3mu-training) replace these steps. They are kept for reference.
 
 A short end-to-end run for the W channel.
 
@@ -457,7 +457,7 @@ sbatch jobs/analysis/create_datacard.sh
 
 ## Pipeline Overview
 
-> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-train) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-tau3mu-pipeline) Steps 5–7. They are kept for reference.
+> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-training) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-tau3mu-analysis) Steps 5–7. They are kept for reference.
 
 Do the steps in this order. Each step has a job script in `jobs/`.
 
