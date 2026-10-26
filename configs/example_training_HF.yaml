@@ -2,14 +2,14 @@
 # Frozen training settings live in training_defaults_HF.yaml, frozen analysis settings in
 # analysis_defaults_HF.yaml; neither may be set here.
 
-training_name: kaito_HF_train              # letters, digits, _ - . only; used as folder name
+training_name: HF_training                 # letters, digits, _ - . only; used as folder name
 
 channel: HF                                # selects configs/training_defaults_HF.yaml + analysis_defaults_HF.yaml
 
 paths:
   # All outputs go to <output_base>/<training_name>.
   # Jobs write to /scratch first and then xrdcp to this location.
-  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
+  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/training
   # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
   # Logs are also copied next to the results (<phase>_vsN/logs/).
   log_dir: /work/$USER/SVJ_GNN/tau3mu_logs

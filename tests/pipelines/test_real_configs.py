@@ -63,6 +63,9 @@ def test_hf_analysis_defaults_differ_from_w_only_in_models():
     assert hf["gnn"].pop("model_dir") == "models/HF/gnn" and w["gnn"].pop("model_dir") == "models/W/gnn"
     assert hf["bdt"].pop("classifier").startswith("models/HF/") and w["bdt"].pop("classifier")
     assert hf["gnn"].pop("model_name") != w["gnn"].pop("model_name")
+    # HF already has the mass range of PR #42 (E4); W gets it when #42 is merged
+    assert hf["limit"].pop("fit_range") == [1.6, 2.0]
+    w["limit"].pop("fit_range")
     assert hf == w
 
 
@@ -87,4 +90,6 @@ def test_example_hf_cut_scan_and_inputs():
     assert hf["limit"]["gnn_score_cut"] == HF_GNN_CUTS
     assert hf["limit"]["signal_weight"] == 0.000152
     assert hf["inputs"] == _yaml("example_training_HF.yaml")["inputs"]
-    assert hf["models"].endswith("/tau3mu_pipeline/kaito_HF_train/gnn_vs1")
+    assert hf["analysis_name"] == "HF_analysis"
+    assert hf["paths"]["output_base"].endswith("/tau3mu_pipeline/analysis")
+    assert hf["models"].endswith("/tau3mu_pipeline/training/HF_training/gnn_vs1")

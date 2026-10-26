@@ -52,7 +52,8 @@ def test_example_training_hf(monkeypatch):
     monkeypatch.setenv("USER", "kfuss")
     hf = load_training_config(REPO_ROOT / "configs" / "example_training_HF.yaml")
     w = load_training_config(REPO_ROOT / "configs" / "example_training_W.yaml")
-    assert hf.channel == "HF" and hf.training_name == "kaito_HF_train"
+    assert hf.channel == "HF" and hf.training_name == "HF_training"
+    assert hf.paths.output_base.endswith("/tau3mu_pipeline/training")
     assert [str(p) for p in hf.inputs.signal] == [
         "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/"
         "ds_large_signal_skimmed_no_resonances.root"]
