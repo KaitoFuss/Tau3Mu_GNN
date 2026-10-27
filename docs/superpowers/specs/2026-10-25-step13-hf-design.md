@@ -9,6 +9,8 @@ Both pipelines (`tau3mu-train`, `tau3mu-pipeline`) support only the W channel to
 
 There is **no trusted HF GNN result**. Kaito never ran the HF GNN with the BDT preselection approach. The old HF GNN numbers in `output/HF_limits.json` are not reliable. The only HF reference is the BDT-only benchmark: `benchmark_HF_BDT_vs1`, expected limit **1.0703 at cut 0.91** (`output/HF_limits.json`).
 
+Update 2026-10-27: the old benchmark 1.07 is biased. The old HF background score job (`jobs/gnn_score_creation/create_score_HF_bkg.sh`) had `MAX_EVENTS_TO_PROCESS=170000` per file, and the old `bdt_ISO` exists only for GNN-scored events: the old benchmark used a random ~46% of the background (129k of 362k events per part) but all signal (96%) and the full signal weight. At cut 0.91: old signal rate 25.20 / background 1071, new 25.20 / 2240; 1.07 / sqrt(0.46) ≈ 1.58. The new pipeline (all events) gives **1.53 at cut 0.90–0.91** (`training/HF_training/benchmark_vs1`); the fit range (1.6–2.0 vs 1.62–1.98) changes it by < 1% (job 114656). 1.53 is the HF BDT reference. The old HF GNN limits in `output/HF_limits.json` use the same capped files.
+
 So step 13 does **not** reproduce an old HF GNN limit. It trains new HF models with the pipeline and makes the first HF GNN limit.
 
 Step 13 runs after 13b/13c in the roadmap order, but it does not depend on them. Kaito starts it now, in parallel with the 13b W run.
@@ -41,7 +43,7 @@ Finding (2026-10-25, scratchpad scripts `hf_subset.py`, `hf_stream.py`): the old
 Goals
 - `channel: HF` works in both pipelines with the same commands, folders, manifests and checks as W.
 - HF uses the W frozen recipe everywhere, except where HF physics needs something else (sec. 5).
-- 13-HF-a gives: an HF BDT benchmark limit roughly equal to 1.07 (Kaito judges "roughly"; same input files and recipe as the old benchmark, but a new training), and the first HF GNN limit.
+- 13-HF-a gives: an HF BDT benchmark limit (expected roughly 1.07; measured 1.53, see the update in sec. 1: the old 1.07 is biased) (Kaito judges "roughly"; same input files and recipe as the old benchmark, but a new training), and the first HF GNN limit.
 
 Non-goals
 - No frozen HF models now. `analysis_defaults_HF.yaml` has placeholder frozen paths under `models/HF/` (sec. 6). After 13-HF-b, Kaito chooses a training and copies it into `models/HF/`. That is a later step.
@@ -104,7 +106,7 @@ There are no frozen HF models. The analysis loader checks the frozen files only 
 - W regression: the W unit tests pass; W configs load as before; a W dry run (`--dry-run`) gives the same job scripts as before.
 - HF unit tests (sec. 4 item 6).
 - HF dry runs of `tau3mu-train all` and `tau3mu-pipeline all` with the example configs.
-- Real run 13-HF-a (Kaito queues the SLURM jobs): HF benchmark ≈ 1.07; first HF GNN limit; Kaito judges.
+- Real run 13-HF-a (Kaito queues the SLURM jobs): HF benchmark 1.53 (done, 2026-10-27; the old 1.07 is biased, sec. 1); first HF GNN limit; Kaito judges.
 
 ## 8. Open items / later
 
