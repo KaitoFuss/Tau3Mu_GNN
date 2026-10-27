@@ -50,7 +50,7 @@ def test_example_w_raw_differs_only_in_inputs(monkeypatch):
     assert differ == ["analysis_name", "inputs"]
 
 
-HF_GNN_CUTS = [2.0 + 0.5 * i for i in range(13)]   # 2.0 to 8.0, step 0.5
+HF_GNN_CUTS = [0.25 * i for i in range(13)]   # 0.0 to 3.0, step 0.25 (HF GNN: above logit 3 almost no signal)
 
 
 def _yaml(name):

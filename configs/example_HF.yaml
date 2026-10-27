@@ -41,5 +41,6 @@ limit:
   # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known
   # (spec docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
   signal_weight: 0.000152
-  # One cut or a list of cuts on the GNN score. A list runs a cut scan. No HF reference yet: wide scan.
-  gnn_score_cut: [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
+  # One cut or a list of cuts on the GNN score (the raw logit of the GNN). A list runs a cut scan.
+  # HF GNN (HF_training/gnn_vs1, AUC 0.77): logit 2 keeps 6% of the preselected signal, logit 3 only 0.7%.
+  gnn_score_cut: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0]
