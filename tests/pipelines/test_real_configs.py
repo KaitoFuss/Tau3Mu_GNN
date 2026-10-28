@@ -63,9 +63,7 @@ def test_hf_analysis_defaults_differ_from_w_only_in_models():
     assert hf["gnn"].pop("model_dir") == "models/HF/gnn" and w["gnn"].pop("model_dir") == "models/W/gnn"
     assert hf["bdt"].pop("classifier").startswith("models/HF/") and w["bdt"].pop("classifier")
     assert hf["gnn"].pop("model_name") != w["gnn"].pop("model_name")
-    # HF already has the mass range of PR #42 (E4); W gets it when #42 is merged
-    assert hf["limit"].pop("fit_range") == [1.6, 2.0]
-    w["limit"].pop("fit_range")
+    assert hf["limit"]["fit_range"] == [1.6, 2.0]   # E4: one mass range for fit and workspace
     assert hf == w
 
 
