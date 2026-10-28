@@ -1,17 +1,26 @@
 """Run-folder storage: dCache (root://host[:port]//pnfs/...) or a local disk path.
 
 dCache is read through its /pnfs NFS mount and written with xrdfs / xrdcp (needs a valid VOMS proxy).
+Every xrdfs / xrdcp call is tried ATTEMPTS times (pause RETRY_WAIT_S, then twice that, ...): one storage
+timeout must not lose a long job (raw W analysis skim, job 960697: xrdcp socket timeout after 7.5 h).
 A local path uses plain file operations. Stages never call this; the job bodies (jobs.py) do.
 """
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 _URL_RE = re.compile(r"^root://([^/]+)/(/[^/].*)$")
+ATTEMPTS = 3
+RETRY_WAIT_S = 60   # pause after the first failure; doubles after each further failure
+
+log = logging.getLogger(__name__)
+_sleep = time.sleep   # tests replace this, not time.sleep of the whole process
 
 
 def is_remote(path: str | Path) -> bool:
@@ -92,4 +101,16 @@ def listdir(path: str | Path) -> list[str]:
 
 
 def _run(cmd: list[str]) -> None:
-    subprocess.run(cmd, check=True)
+    """Run an xrdfs / xrdcp command; on failure try again (ATTEMPTS in total). xrdcp --force overwrites
+    a partly written target, so a repeat is safe."""
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            subprocess.run(cmd, check=True)
+            return
+        except subprocess.CalledProcessError as e:
+            if attempt == ATTEMPTS:
+                raise
+            wait = RETRY_WAIT_S * 2 ** (attempt - 1)
+            log.warning("%s failed (exit %s), attempt %d of %d; next try in %d s",
+                        " ".join(cmd), e.returncode, attempt, ATTEMPTS, wait)
+            _sleep(wait)
