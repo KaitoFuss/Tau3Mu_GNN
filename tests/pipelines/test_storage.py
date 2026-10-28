@@ -105,15 +105,48 @@ def test_remote_makedirs_and_write_text(fake_xrootd):
         f" {URL}/gnn_vs2/manifest.json")
 
 
-def test_remote_command_failure_raises(tmp_path, monkeypatch):
+def _flaky(tmp_path, monkeypatch, name, n_fail):
+    """name on PATH: the first n_fail calls exit 51 (xrdcp socket timeout), later calls succeed.
+    Every call is logged. time.sleep is recorded instead of waiting. Returns (log, sleeps)."""
+    from tau3mu_gnn.pipelines.common import storage
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    log, count = tmp_path / f"{name}.log", tmp_path / f"{name}.count"
+    count.write_text("0")
+    (bin_dir / name).write_text(
+        f'#!/bin/sh\necho "{name} $*" >> {log}\nn=$(cat {count}); echo $((n + 1)) > {count}\n'
+        f'[ "$n" -lt {n_fail} ] && exit 51\nexit 0\n')
+    (bin_dir / name).chmod(0o755)
+    for other in ("xrdfs", "xrdcp"):
+        if other != name and not (bin_dir / other).exists():
+            (bin_dir / other).write_text("#!/bin/sh\nexit 0\n")
+            (bin_dir / other).chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    sleeps = []
+    monkeypatch.setattr(storage, "_sleep", sleeps.append)
+    return log, sleeps
+
+
+def test_remote_copy_retries_after_a_timeout(tmp_path, monkeypatch):
+    # raw W analysis skim (job 960697): one xrdcp socket timeout lost a 7.5 h job
+    from tau3mu_gnn.pipelines.common import storage
+
+    log, sleeps = _flaky(tmp_path, monkeypatch, "xrdcp", n_fail=2)
+    src = tmp_path / "a.root"
+    src.write_text("a")
+    storage.put(src, URL + "/bdt_vs1/a.root")
+    assert len(log.read_text().splitlines()) == 3
+    assert sleeps == [60, 120]
+
+
+def test_remote_command_failure_raises_after_all_attempts(tmp_path, monkeypatch):
     import subprocess
 
     from tau3mu_gnn.pipelines.common import storage
 
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    (bin_dir / "xrdfs").write_text("#!/bin/sh\nexit 52\n")
-    (bin_dir / "xrdfs").chmod(0o755)
-    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    log, sleeps = _flaky(tmp_path, monkeypatch, "xrdfs", n_fail=99)
     with pytest.raises(subprocess.CalledProcessError):
         storage.makedirs(URL + "/x")
+    assert len(log.read_text().splitlines()) == storage.ATTEMPTS == 3
+    assert sleeps == [60, 120]
