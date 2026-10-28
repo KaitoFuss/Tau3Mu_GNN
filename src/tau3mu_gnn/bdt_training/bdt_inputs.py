@@ -25,8 +25,7 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
 
             f'{prefix}TauTo3Mu_sigLxy_3muVtxBS',
             f'{prefix}TauTo3Mu_CosAlpha2D_LxyP3mu',
-
-            f'{prefix}TauTo3Mu_vtx_chi2*({prefix}TauTo3Mu_vtx_Ndof**-1)',
+            # chi2/ndof: added by BDT_ScoreProducer._add_features (feature order of the old HF classifier)
         ]
 
     elif tau_channel == "W":
@@ -60,7 +59,6 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
 
         f'{prefix}TauTo3Mu_fitted_eta',
         f'{prefix}TauTo3Mu_fitted_mass',
-        'TauPlusMET_Puppi_phi',
         f'{prefix}TauTo3Mu_fitted_phi',
         f'{prefix}TauTo3Mu_iso_ptChargedFromPV',
         f'{prefix}TauTo3Mu_iso_ptPhotons',
@@ -73,10 +71,15 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
         "event",
     ]
 
-    # W: TauPlusMET_* has one entry per Slimmed candidate; the stage 1 mask selects the entries of the
-    # Selected candidates, so the BDT takes TauPlusMET_* of the same candidate as Selected_TauTo3Mu_*[0].
+    # Only W uses these. TauPlusMET_Puppi_phi: deltaPhi(TauPlusMET, tau) feature; HF does not load it
+    # (BDT_ScoreProducer drops rows with NaN in any loaded column). tau3mu_mask: TauPlusMET_* has one entry
+    # per Slimmed candidate; the stage 1 mask selects the entries of the Selected candidates, so the BDT
+    # takes TauPlusMET_* of the same candidate as Selected_TauTo3Mu_*[0] (E1).
     if tau_channel == "W":
-        branches.append("tau3mu_mask")
+        branches += [
+            'TauPlusMET_Puppi_phi',
+            'tau3mu_mask',
+        ]
 
     # Only HF uses these (ISO feature: max Muon_tkRelIso of the three muons). W does not load them:
     # BDT_ScoreProducer drops rows with NaN in any loaded column.

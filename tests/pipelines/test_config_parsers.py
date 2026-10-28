@@ -25,10 +25,11 @@ def test_name_rejects_slash_and_space():
             c._name(bad)
 
 
-def test_channel_only_w():
+def test_channel_w_or_hf():
     assert c._channel("W") == "W"
-    with pytest.raises(ValueError, match=r"\['W'\]"):
-        c._channel("HF")
+    assert c._channel("HF") == "HF"
+    with pytest.raises(ValueError, match=r"\['W', 'HF'\]"):
+        c._channel("XX")
 
 
 @pytest.mark.parametrize("bad", [True, False, "1e-5", None, [1]])

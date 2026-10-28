@@ -37,12 +37,20 @@ PER_CHANNEL: dict[str, tuple[str, ...]] = {
         *(f"TauPlusMET_{s}" for s in ("Tau_Puppi_mT", "PuppiMET_pt", "Puppi_pt", "Puppi_phi",
                                       "PuppiMETminPz", "PuppiMETmaxPz")),
     ),
+    "HF": (
+        *(f"{_TAU}{s}" for s in ("sigLxy_3muVtxBS", "vtx_chi2", "vtx_Ndof",
+                                 "iso_ptChargedFromPV", "iso_ptPhotons", "iso_ptChargedFromPU",
+                                 "charge", "mu1_idx", "mu2_idx", "mu3_idx")),
+        # muon collection, indexed by the tau candidate's mu*_idx (stage 0 keeps it as it is)
+        "Muon_pt", "Muon_isGlobal", "Muon_tkRelIso",
+    ),
 }
 
 
 # Read by the training pipeline only (on top of required_branches).
 TRAINING_EXTRA: dict[str, tuple[str, ...]] = {
     "W": ("PV_npvs",),   # npvs weights of the signal graphs
+    "HF": ("PV_npvs",),
 }
 
 

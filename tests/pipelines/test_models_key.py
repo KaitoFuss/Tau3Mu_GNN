@@ -13,16 +13,18 @@ GRAPHS = {"bdt_preselection_cut": 0.75, "max_events": 600000, "connection": "knn
 GNN_TRAINING = {"conv_type": "GINE", "gnn_mode": "final_layer", "arch": "fl8_sd4"}
 
 
-def make_training(tmp_path, *, gnn_phase="gnn", complete=True, drop=None, pipeline=None):
+def make_training(tmp_path, *, gnn_phase="gnn", complete=True, drop=None, pipeline=None, channel=None):
     """<tmp>/out/toy_train/{bdt_vs1,gnn_vs1} with manifests and model files (copies of the frozen model,
     so load_model works). drop: output key whose file is not written. pipeline: 'pipeline' of the gnn
-    manifest (None: no key, as manifests written before it existed). Returns the gnn_vs1 path."""
+    manifest (None: no key, as manifests written before it existed). channel: settings.channel of the bdt
+    manifest (None: no settings). Returns the gnn_vs1 path."""
     base = tmp_path / "out" / "toy_train"
     bdt, gnn = base / "bdt_vs1", base / "gnn_vs1"
     (bdt / "bdt_train").mkdir(parents=True)
     (bdt / "bdt_train" / "ISO_classifiers.pck").write_bytes(b"x")
     (bdt / "manifest.json").write_text(json.dumps(
-        {"phase": "bdt", "upstream": None, "outputs": {"classifier": "bdt_train/ISO_classifiers.pck"}}))
+        {"phase": "bdt", "upstream": None, "outputs": {"classifier": "bdt_train/ISO_classifiers.pck"},
+         **({} if channel is None else {"settings": {"channel": channel}})}))
     folder = gnn / "gnn_train" / NAME
     folder.mkdir(parents=True)
     files = {"model": f"{NAME}.pt", "normalization": "Normalization.pkl", "arch_config": "arch_config.json"}
@@ -167,3 +169,18 @@ def test_inference_graph_constants_used_by_scorer():
     assert INFERENCE_GRAPH == {"connection": "knn", "k": 10, "cone_size": 0.5, "use_displacement": True}
     src = inspect.getsource(ScoreProducer.score_events)
     assert "INFERENCE_GRAPH" in src and "k_knn=10" not in src
+
+
+def test_models_channel_mismatch(load, user, tmp_path, fake_repo):
+    from conftest import TOY_DEFAULTS, write_yaml
+    write_yaml(fake_repo / "configs" / "analysis_defaults_HF.yaml", TOY_DEFAULTS)
+    user["channel"] = "HF"
+    user["models"] = str(make_training(tmp_path, channel="W"))
+    with pytest.raises(ConfigError) as e:
+        load(user)
+    assert "was trained for channel 'W', this analysis has channel 'HF'" in "\n".join(e.value.problems)
+
+
+def test_models_channel_match(load, user, tmp_path):
+    user["models"] = str(make_training(tmp_path, channel="W"))
+    assert load(user).models == user["models"]

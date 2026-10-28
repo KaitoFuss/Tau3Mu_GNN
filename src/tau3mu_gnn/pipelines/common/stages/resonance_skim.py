@@ -17,7 +17,7 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 
-from tau3mu_gnn.pipelines.common.branches import BranchError, check_input_branches, rename_columns
+from tau3mu_gnn.pipelines.common.branches import BranchError, check_input_branches, rename_columns, required_branches
 from tau3mu_gnn.pipelines.common.config import ResonanceSkimConfig
 from typing import TYPE_CHECKING
 
@@ -151,7 +151,7 @@ def check_tauplusmet_aligned(frames) -> None:
 
 def run(cfg: Config, out_dir: str | Path, extra_branches: Sequence[str] = ()) -> dict[str, list[str]]:
     """Return the input files of stage 1 per sample. Checks all inputs before any work (resonance-skimmed
-    inputs: also check_tauplusmet_aligned).
+    inputs of a channel that reads TauPlusMET_*: also check_tauplusmet_aligned).
     extra_branches: further required input branches (training: branches.TRAINING_EXTRA)."""
     inputs = cfg.inputs
     raw = not inputs.already_resonance_skimmed
@@ -166,7 +166,10 @@ def run(cfg: Config, out_dir: str | Path, extra_branches: Sequence[str] = ()) ->
     for sample in SAMPLES:
         frames[sample] = rename_columns(ROOT.RDataFrame(inputs.tree_name, files[sample]), cfg.branch_map)
     if not raw:
-        check_tauplusmet_aligned(frames)
+        # only a channel that reads TauPlusMET_* (W) needs it aligned; HF does not use it (old HF skims: 2.5-3%
+        # of the events misaligned)
+        if any(n.startswith("TauPlusMET_") for n in required_branches(cfg.channel)):
+            check_tauplusmet_aligned(frames)
         if all(user == analysis for analysis, user in cfg.branch_map.items()):
             log.info("stage 0: inputs already resonance-skimmed, empty branch map: inputs passed on, no copy")
             return files
