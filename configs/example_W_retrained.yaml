@@ -1,6 +1,6 @@
 # NO LONGER RUNS (step 13c, E1): stage 0 refuses the old_data inputs below (their TauPlusMET_* is not
 # aligned with Slimmed_TauTo3Mu_*). Kept as the record of the step 12i check. For a new run: example_W_raw.yaml.
-# Example W analysis with the models of a training run (tau3mu-train), here kaito_W_train/gnn_vs1.
+# Example W analysis with the models of a training run (tau3mu-training), here kaito_W_train/gnn_vs1.
 # Same as example_W.yaml except analysis_name and models. Loads only after that training finished.
 # Frozen analysis settings live in analysis_defaults_W.yaml and must NOT be set here.
 
@@ -35,7 +35,7 @@ branch_map: {}
 #   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
 
 # Optional. Which BDT and GNN to use. Default: frozen (the models in models/W/).
-# Or the path of a finished training GNN phase (tau3mu-train): its BDT, GNN and the model settings
+# Or the path of a finished training GNN phase (tau3mu-training): its BDT, GNN and the model settings
 # (BDT preselection cut, graph type, conv type, ...) are then used instead of the frozen ones.
 models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/kaito_W_train/gnn_vs1
 

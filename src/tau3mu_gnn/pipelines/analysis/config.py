@@ -114,19 +114,13 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
         raise ConfigError(problems)
     defaults, defaults_path = read
 
-    trained = None
+    from tau3mu_gnn.pipelines.analysis.models import read_frozen_models, read_trained_models
+    models = None
     if user.get("models", "frozen") != "frozen":
-        from tau3mu_gnn.pipelines.analysis.models import read_trained_models
-        trained = read_trained_models(user["models"], problems)
-    elif {"bdt.classifier", "gnn.model_dir", "gnn.model_name"} <= defaults.keys():
-        name = defaults["gnn.model_name"]
-        model_dir = repo_root / defaults["gnn.model_dir"]
-        for path in [repo_root / defaults["bdt.classifier"],
-                     model_dir / name / f"{name}.pt",
-                     model_dir / name / "Normalization.pkl",
-                     model_dir / name / "arch_config.json"]:
-            if not path.is_file():
-                problems.append(f"frozen model file not found: {path}")
+        models = read_trained_models(user["models"], user["channel"], problems)
+    elif not problems:
+        models = read_frozen_models(repo_root / defaults["bdt.classifier"], repo_root / defaults["gnn.model_dir"],
+                                    defaults["gnn.model_name"], user["channel"], problems)
 
     if problems:
         raise ConfigError(problems)
@@ -139,23 +133,15 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
         branch_map=user["branch_map"],
         resonance_skim=_resonance_skim(defaults),
         skim=_skim(defaults),
-        bdt=BDTConfig(classifier=trained.classifier if trained else repo_root / defaults["bdt.classifier"]),
+        bdt=BDTConfig(classifier=models.classifier),
         gnn=GNNConfig(
-            model_dir=trained.model_dir,
-            model_name=trained.model_name,
-            conv_type=trained.conv_type,
-            gnn_mode=trained.gnn_mode,
-            unsculpting_mode=trained.unsculpting_mode,
-            graph_type=trained.graph_type,
-            bdt_preselection_cut=trained.bdt_preselection_cut,
-        ) if trained else GNNConfig(
-            model_dir=repo_root / defaults["gnn.model_dir"],
-            model_name=defaults["gnn.model_name"],
-            conv_type=defaults["gnn.conv_type"],
-            gnn_mode=defaults["gnn.gnn_mode"],
-            unsculpting_mode=defaults["gnn.unsculpting_mode"],
-            graph_type=defaults["gnn.graph_type"],
-            bdt_preselection_cut=defaults["gnn.bdt_preselection_cut"],
+            model_dir=models.model_dir,
+            model_name=models.model_name,
+            conv_type=models.conv_type,
+            gnn_mode=models.gnn_mode,
+            unsculpting_mode=models.unsculpting_mode,
+            graph_type=models.graph_type,
+            bdt_preselection_cut=models.bdt_preselection_cut,
         ),
         limit=LimitConfig(
             signal_weight=user["limit.signal_weight"],
