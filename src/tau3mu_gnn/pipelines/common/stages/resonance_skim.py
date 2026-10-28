@@ -17,7 +17,7 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 
-from tau3mu_gnn.pipelines.common.branches import check_input_branches, rename_columns
+from tau3mu_gnn.pipelines.common.branches import BranchError, check_input_branches, rename_columns, required_branches
 from tau3mu_gnn.pipelines.common.config import ResonanceSkimConfig
 from typing import TYPE_CHECKING
 
@@ -128,28 +128,53 @@ def _resonance_skim(df, columns: list[str], rs: ResonanceSkimConfig):
     return df, out
 
 
+def check_tauplusmet_aligned(frames) -> None:
+    """Raise BranchError if, in any event of resonance-skimmed inputs, TauPlusMET_* has not one entry per
+    Slimmed_TauTo3Mu candidate. Old resonance skims slimmed TauTo3Mu_* but not TauPlusMET_*, so the entry of a
+    candidate cannot be found (E1). frames: sample -> (RDataFrame, columns), branch map applied."""
+    problems = []
+    for sample, (df, columns) in frames.items():
+        met = sorted(c for c in columns if c.startswith("TauPlusMET_"))
+        if not met or "Slimmed_TauTo3Mu_fitted_pt" not in columns:
+            continue
+        if "RVec" not in df.GetColumnType(met[0]):  # flat branch (toy test inputs): no candidates to align
+            continue
+        bad = df.Filter(f"{met[0]}.size() != Slimmed_TauTo3Mu_fitted_pt.size()").Count()
+        total = df.Count()
+        if bad.GetValue():
+            problems.append(f"{sample}: {bad.GetValue()} of {total.GetValue()} events have len({met[0]}) != "
+                            "len(Slimmed_TauTo3Mu_fitted_pt): TauPlusMET_* was not slimmed with TauTo3Mu_* (old "
+                            "resonance skim). Skim from raw NanoAOD instead (already_resonance_skimmed: false)")
+    if problems:
+        raise BranchError(problems)
+
+
 def run(cfg: Config, out_dir: str | Path, extra_branches: Sequence[str] = ()) -> dict[str, list[str]]:
-    """Return the input files of stage 1 per sample. Checks all inputs before any work.
+    """Return the input files of stage 1 per sample. Checks all inputs before any work (resonance-skimmed
+    inputs of a channel that reads TauPlusMET_*: also check_tauplusmet_aligned).
     extra_branches: further required input branches (training: branches.TRAINING_EXTRA)."""
     inputs = cfg.inputs
     raw = not inputs.already_resonance_skimmed
     files = {sample: check_input_branches(getattr(inputs, sample), inputs.tree_name, cfg.branch_map, cfg.channel,
                                           raw=raw, extra=extra_branches)
              for sample in SAMPLES}
-    identity_map = all(user == analysis for analysis, user in cfg.branch_map.items())
-    if not raw and identity_map:
-        log.info("stage 0: inputs already resonance-skimmed, empty branch map: inputs passed on, no copy")
-        return files
 
     import ROOT
 
     ROOT.EnableImplicitMT()
     frames = {}
     for sample in SAMPLES:
-        df, columns = rename_columns(ROOT.RDataFrame(inputs.tree_name, files[sample]), cfg.branch_map)
-        if raw:
-            df, columns = _resonance_skim(df, columns, cfg.resonance_skim)
-        frames[sample] = df, columns
+        frames[sample] = rename_columns(ROOT.RDataFrame(inputs.tree_name, files[sample]), cfg.branch_map)
+    if not raw:
+        # only a channel that reads TauPlusMET_* (W) needs it aligned; HF does not use it (old HF skims: 2.5-3%
+        # of the events misaligned)
+        if any(n.startswith("TauPlusMET_") for n in required_branches(cfg.channel)):
+            check_tauplusmet_aligned(frames)
+        if all(user == analysis for analysis, user in cfg.branch_map.items()):
+            log.info("stage 0: inputs already resonance-skimmed, empty branch map: inputs passed on, no copy")
+            return files
+    else:
+        frames = {sample: _resonance_skim(df, columns, cfg.resonance_skim) for sample, (df, columns) in frames.items()}
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

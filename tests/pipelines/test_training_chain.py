@@ -30,6 +30,8 @@ def _chain_events(n, rng, signal, first_event, channel="W"):
     pts = [[float(rng.normal(45 if signal else 30, 10))] for _ in range(n)]
     data = training_events(pts, bdt=[0.0] * n, masses=[[1.78 if signal else 1.65]] * n, first_event=first_event)
     data.pop("bdt_ISO")                       # made by bdt_infer
+    if channel == "W":
+        data["tau3mu_mask"] = ak.Array([[True] for _ in range(n)])  # stage 1 mask, one candidate per event
     if channel == "HF":                       # muon collection (3 muons), indexed by the candidate's mu*_idx
         for name in [k for k in data if k.startswith("TauPlusMET_")]:
             data.pop(name)

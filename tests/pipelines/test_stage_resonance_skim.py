@@ -1,13 +1,16 @@
+import copy
 import glob
+import json
 import logging
 import os
+import shutil
 
 import awkward as ak
 import numpy as np
 import pytest
 import uproot
 
-from conftest import TOY_DEFAULTS, make_root_file, write_tree, write_yaml
+from conftest import TOY_DEFAULTS, TOY_MODEL, TOY_MODEL_SETTINGS, make_root_file, write_tree, write_yaml
 from tau3mu_gnn.pipelines.common import branches as b
 from tau3mu_gnn.pipelines.common.stages import resonance_skim
 
@@ -52,6 +55,63 @@ def test_inputs_checked_before_any_work(load, user, tmp_path):
     with pytest.raises(b.BranchError, match="run"):
         resonance_skim.run(load(user), tmp_path / "0_resonance_skim")
     assert not (tmp_path / "0_resonance_skim").exists()
+
+
+def _jagged_inputs(user, tmp_path, n_tau, n_met):
+    """Resonance-skimmed W inputs with per-candidate branches: n_tau Slimmed_TauTo3Mu_* and n_met TauPlusMET_*
+    entries per event (old resonance skims slimmed TauTo3Mu_* but not TauPlusMET_*)."""
+    data = {}
+    for name in REQ_W:
+        if name.startswith("Slimmed_TauTo3Mu_"):
+            data[name] = ak.Array([[1.0] * n for n in n_tau])
+        elif name.startswith("TauPlusMET_"):
+            data[name] = ak.Array([[0.5] * n for n in n_met])
+        elif name.startswith("Slimmed_PFCands_"):
+            data[name] = ak.Array([[2.0] for _ in n_tau])
+        else:
+            data[name] = np.ones(len(n_tau))
+    for sample in ("signal", "background"):
+        user["inputs"][sample] = [str(write_tree(tmp_path / "in" / f"{sample}.root", data))]
+
+
+def test_aligned_tauplusmet_passes(load, user, tmp_path):
+    _jagged_inputs(user, tmp_path, n_tau=[1, 2, 3], n_met=[1, 2, 3])
+    files = resonance_skim.run(load(user), tmp_path / "0_resonance_skim")
+    assert files["signal"] == [str(tmp_path / "in" / "signal.root")]
+
+
+def test_misaligned_tauplusmet_is_refused(load, user, tmp_path):
+    """E1: TauPlusMET_* not slimmed with TauTo3Mu_* -> no way to find the entry of a candidate: refuse."""
+    _jagged_inputs(user, tmp_path, n_tau=[1, 2, 1], n_met=[1, 3, 2])
+    with pytest.raises(b.BranchError, match=r"signal: 2 of 3 events .*already_resonance_skimmed: false") as e:
+        resonance_skim.run(load(user), tmp_path / "0_resonance_skim")
+    assert any(p.startswith("background: 2 of 3") for p in e.value.problems)
+    assert not (tmp_path / "0_resonance_skim").exists()
+
+
+def test_misaligned_tauplusmet_passes_for_hf(load, user, tmp_path, fake_repo):
+    """HF reads no TauPlusMET_*: old HF skims (2.5-3% of events misaligned) must still run."""
+    hf = copy.deepcopy(TOY_DEFAULTS)
+    hf["gnn"]["model_dir"] = "models/HF/gnn"
+    write_yaml(fake_repo / "configs" / "analysis_defaults_HF.yaml", hf)
+    shutil.copytree(fake_repo / "models/W/gnn" / TOY_MODEL, fake_repo / "models/HF/gnn" / TOY_MODEL)
+    (fake_repo / "models/HF/gnn" / TOY_MODEL / "model_settings.json").write_text(
+        json.dumps({**TOY_MODEL_SETTINGS, "channel": "HF"}))
+    user["channel"], n_tau, n_met = "HF", [1, 2, 1], [1, 3, 2]
+    data = {}
+    for name in [*b.required_branches("HF"), "TauPlusMET_Puppi_phi"]:
+        if name.startswith(("Slimmed_TauTo3Mu_", "Muon_")):
+            data[name] = ak.Array([[1.0] * n for n in n_tau])
+        elif name.startswith("TauPlusMET_"):
+            data[name] = ak.Array([[0.5] * n for n in n_met])
+        elif name.startswith("Slimmed_PFCands_"):
+            data[name] = ak.Array([[2.0] for _ in n_tau])
+        else:
+            data[name] = np.ones(len(n_tau))
+    for sample in ("signal", "background"):
+        user["inputs"][sample] = [str(write_tree(tmp_path / "in" / f"{sample}.root", data))]
+    files = resonance_skim.run(load(user), tmp_path / "0_resonance_skim")
+    assert files["signal"] == [str(tmp_path / "in" / "signal.root")]
 
 
 def test_raw_inputs_are_checked_first(load, user, tmp_path):

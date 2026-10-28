@@ -1,3 +1,5 @@
+# NO LONGER RUNS (step 13c, E1): stage 0 refuses the old_data inputs below (their TauPlusMET_* is not
+# aligned with Slimmed_TauTo3Mu_*). Kept as the record of the 1.29 reference inputs. For a new run: example_W_raw.yaml.
 # Example user config (W channel). Copy this file and edit it.
 # Frozen analysis settings live in analysis_defaults_W.yaml and must NOT be set here.
 

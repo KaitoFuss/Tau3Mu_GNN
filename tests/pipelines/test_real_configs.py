@@ -26,7 +26,7 @@ def test_example_w_matches_production_settings(monkeypatch):
     assert cfg.limit.signal_weight == 0.000019
     assert cfg.limit.tau_mass == 1.78
     assert cfg.limit.mass_window == 0.060
-    assert cfg.limit.fit_range == (1.62, 1.98)
+    assert cfg.limit.fit_range == (1.6, 2.0)
     assert cfg.limit.cl == 0.90
     assert cfg.paths.log_dir == "/work/tester/SVJ_GNN/tau3mu_logs"
     jobs = cfg.slurm.jobs
@@ -63,9 +63,7 @@ def test_hf_analysis_defaults_differ_from_w_only_in_models():
     assert hf["gnn"].pop("model_dir") == "models/HF/gnn" and w["gnn"].pop("model_dir") == "models/W/gnn"
     assert hf["bdt"].pop("classifier").startswith("models/HF/") and w["bdt"].pop("classifier")
     assert hf["gnn"].pop("model_name") != w["gnn"].pop("model_name")
-    # HF already has the mass range of PR #42 (E4); W gets it when #42 is merged
-    assert hf["limit"].pop("fit_range") == [1.6, 2.0]
-    w["limit"].pop("fit_range")
+    assert hf["limit"]["fit_range"] == [1.6, 2.0]   # E4: one mass range for fit and workspace
     assert hf == w
 
 

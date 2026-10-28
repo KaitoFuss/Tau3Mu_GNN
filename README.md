@@ -198,10 +198,10 @@ This pipeline runs the frozen W analysis on **your** input files. You need only 
 ### 2. Write your config
 
 ```bash
-cp configs/example_W.yaml my_W.yaml
+cp configs/example_W_raw.yaml my_W.yaml
 ```
 
-Edit `my_W.yaml`. The comments in the file explain each key.
+Edit `my_W.yaml`. It starts from raw NanoAOD (stage 0 runs). The comments in the file explain each key.
 
 | Key | What it is |
 |---|---|
@@ -248,7 +248,7 @@ Stage 0 output:
 - `TauPlusMET_*` and `nTauPlusMET`: same names, masked like the candidates. So they stay aligned with `Slimmed_TauTo3Mu_*`.
 - `PFCands_*` → `Slimmed_PFCands_*`.
 
-> **The old skims are different.** The files in `.../tau3mu_gnn_round2/data/*/old_data/` used: χ² < 100, m < 3 GeV (no lower cut), veto centres 0.782 and 1.020 GeV. Their `TauPlusMET_*` are not masked. With `already_resonance_skimmed: true` on these files, you get the old cuts.
+> **The old skims are different.** The files in `.../tau3mu_gnn_round2/data/*/old_data/` used: χ² < 100, m < 3 GeV (no lower cut), veto centres 0.782 and 1.020 GeV. Their `TauPlusMET_*` are not masked, so in some events (signal 0.6%, data 2.4%) `TauPlusMET_*` has more entries than `Slimmed_TauTo3Mu_*` and the entry of a candidate cannot be found. Stage 0 therefore refuses resonance-skimmed inputs where any event has `len(TauPlusMET_*) != len(Slimmed_TauTo3Mu_*)`: start from raw NanoAOD. Resonance-skimmed files written by stage 0 pass.
 
 ### 3. Submit
 

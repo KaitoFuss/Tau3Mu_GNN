@@ -31,7 +31,9 @@ def deltaphi(phi1, phi2):
 
 def _load(files, tree_name, branches, label, event_filter=None):
     """One row per event (first candidate), so the (run, luminosityBlock, event) keys in _write_with_scores are unique.
-    event_filter(events) -> one bool per event, applied before the first candidate is taken."""
+    event_filter(events) -> one bool per event, applied before the first candidate is taken.
+    With tau3mu_mask loaded, TauPlusMET_* (one entry per Slimmed candidate) is masked first, so its first entry
+    belongs to the same candidate as Selected_TauTo3Mu_*[0]; tau3mu_mask itself is not returned."""
     all_chunks = []
     print(f"Going to load {label} events")
     for file in files:
@@ -39,7 +41,12 @@ def _load(files, tree_name, branches, label, event_filter=None):
             if event_filter is not None:
                 events = events[event_filter(events)]
             new_fields = {}
-            for branch in events.fields:
+            if "tau3mu_mask" in events.fields:  # TauPlusMET_* of the Selected candidates only
+                mask = ak.values_astype(events["tau3mu_mask"], bool)  # stage 1 writes it as int32
+                for branch in events.fields:
+                    if branch.startswith("TauPlusMET_"):
+                        events[branch] = events[branch][mask]
+            for branch in (b for b in events.fields if b != "tau3mu_mask"):
                 if events[branch].ndim > 1 and ak.any(ak.num(events[branch], axis=1) > 1):
                     new_fields[branch] = ak.firsts(events[branch])
                 else:

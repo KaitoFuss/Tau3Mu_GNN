@@ -25,7 +25,7 @@ gnn:                           # stage 3, fixed model; its settings (conv type, 
 limit:                         # stage 5, mass fit + Combine
   tau_mass: 1.78               # GeV
   mass_window: 0.060           # GeV, half-width of the blinded signal window
-  fit_range: [1.62, 1.98]      # GeV
+  fit_range: [1.6, 2.0]        # GeV, mass range of the sideband fit and of the Combine workspace
   cl: 0.90                     # confidence level of the expected limit
 
 slurm:                         # SLURM resources per job (step 9). Times: first values (Kaito, 2026-10-12);

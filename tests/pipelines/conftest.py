@@ -38,7 +38,7 @@ TOY_DEFAULTS = {
         "model_dir": "models/W/gnn",
         "model_name": TOY_MODEL,
     },
-    "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.62, 1.98], "cl": 0.9},
+    "limit": {"tau_mass": 1.78, "mass_window": 0.06, "fit_range": [1.6, 2.0], "cl": 0.9},
     "slurm": {
         "account": "t3",
         "jobs": {name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}

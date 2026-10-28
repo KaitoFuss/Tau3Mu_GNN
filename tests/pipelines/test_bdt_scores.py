@@ -41,6 +41,8 @@ def _events(pts, first_event=10, gnn_score=False, drop=()):
             data[name] = ak.Array([[1.0 + j for j in range(len(ev))] for ev in pts])
         elif name.startswith("TauPlusMET_"):
             data[name] = ak.Array([[0.5 + j for j in range(len(ev))] for ev in pts])
+        elif name == "tau3mu_mask":
+            data[name] = ak.Array([[True] * len(ev) for ev in pts])
         else:
             data[name] = np.ones(n, dtype=np.uint32)
     data["event"] = np.arange(first_event, first_event + n, dtype=np.uint64)
@@ -164,3 +166,21 @@ def test_duplicate_event_keys_fail_before_output(tmp_path, load, user):
     with pytest.raises(DuplicateEventError, match="signal.root"):
         _run(tmp_path, load, user, sig_data=sig)
     assert not (tmp_path / "2_bdt").exists()
+
+
+def test_tauplusmet_of_the_first_selected_candidate(tmp_path):
+    """E1: TauPlusMET_* has one entry per Slimmed candidate; the BDT takes the entry of the first selected one."""
+    from tau3mu_gnn.bdt_training.BDT_ScoreProducer import _load
+    from tau3mu_gnn.bdt_training.bdt_inputs import bdt_branches
+
+    data = _events([[100.0], [200.0], [300.0, 400.0]])
+    mask = [[False, True], [True], [False, True, True]]   # Slimmed candidates; Selected = the True ones
+    data["tau3mu_mask"] = ak.values_astype(ak.Array(mask), np.int32)  # as the stage 1 skim writes it
+    for name in data:
+        if name.startswith("TauPlusMET_"):
+            data[name] = ak.Array([[10.0 * (i + 1) + j for j in range(len(m))] for i, m in enumerate(mask)])
+    path = write_tree(tmp_path / "in.root", data)
+    df = _load([str(path)], "Events", bdt_branches("W")[1], "toy")
+    assert df["TauPlusMET_Puppi_pt"].tolist() == [11.0, 20.0, 31.0]
+    assert df[PT].tolist() == [100.0, 200.0, 300.0]
+    assert "tau3mu_mask" not in df.columns

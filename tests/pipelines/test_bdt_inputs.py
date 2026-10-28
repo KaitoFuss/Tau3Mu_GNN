@@ -25,7 +25,8 @@ def test_bdt_branches_are_required_inputs(channel):
     assert set(features) <= set(branches)
     # The stage 1 skim writes Selected_TauTo3Mu* as a masked copy of Slimmed_TauTo3Mu*.
     raw = {re.sub(r"^Selected_TauTo3Mu", "Slimmed_TauTo3Mu", n) for n in input_branch_names(channel)}
-    assert raw - set(b.required_branches(channel)) == set()
+    # tau3mu_mask (W): made by the stage 1 skim, selects the TauPlusMET_* entries of the selected candidates
+    assert raw - set(b.required_branches(channel)) == ({"tau3mu_mask"} if channel == "W" else set())
 
 
 def test_unknown_channel():
@@ -53,6 +54,7 @@ W_BRANCHES = [  # bdt_branches("W")[1]: the list of main (2026-10-25), TauPlusME
     "Selected_TauTo3Mu_iso_ptChargedFromPV", "Selected_TauTo3Mu_iso_ptPhotons",
     "Selected_TauTo3Mu_iso_ptChargedFromPU", "run", "luminosityBlock", "event",
     "TauPlusMET_Puppi_phi",   # W block at the end (PR #46 review); order of loaded columns does not matter
+    "tau3mu_mask",            # E1: TauPlusMET_* entries of the selected candidates
 ]
 
 

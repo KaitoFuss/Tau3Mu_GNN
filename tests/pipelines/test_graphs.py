@@ -151,6 +151,28 @@ def test_training_graph_equals_inference_graph(tmp_path):
         assert t.x.shape[0] > 11   # knn with k = 10 really selects
 
 
+def test_pair_charge_is_the_product_of_the_two_charges(tmp_path):
+    """Edge feature 1 (pair_charge) = q_i * q_j (was q_i), in the training and the inference graphs."""
+    from tau3mu_gnn.gnn_training.ScoreProducer import score_events
+    from test_gnn_scores import PF
+    data = _rich_events(5, np.random.default_rng(11))
+    charge = {np.float32(pt): q for pts, qs in zip(ak.to_list(data[f"{PF}pt"]), ak.to_list(data[f"{PF}charge"]))
+              for pt, q in zip(pts, qs)}   # pt (node feature 0, unique) -> charge
+    infile = write_tree(tmp_path / "inference.root", data)
+    rec = RecordingGNN()
+    score_events([str(infile)], {"rec": (rec, None)}, {"rec": {str(infile): str(tmp_path / "out.root")}},
+                 {"rec": tmp_path / "s.npz"}, "W", "delete_muons", 0.8, device=torch.device("cpu"))
+    graphs = _build(tmp_path, data, weights=None) + rec.graphs
+    assert len(graphs) == 10
+    n_opposite = 0
+    for g in graphs:
+        q = [charge[np.float32(pt)] for pt in g.x[:, 0].tolist()]
+        for (i, j), attr in zip(g.edge_index.T.tolist(), g.edge_attr.float().tolist()):
+            assert attr[1] == q[i] * q[j], (i, j, q[i], q[j], attr[1])
+            n_opposite += q[i] * q[j] == -1
+    assert n_opposite > 0   # the toy has opposite-charge pairs (q_i alone would differ there)
+
+
 NAME = "skimmed_dzd0_cone_size_0.5_knn_10_delete_muons"
 
 

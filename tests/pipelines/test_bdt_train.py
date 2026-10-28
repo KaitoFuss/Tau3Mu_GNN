@@ -23,6 +23,8 @@ def _toy(path, n, rng, signal, masses=None, first_event=0):
         elif name.startswith(("Selected_TauTo3Mu_", "TauPlusMET_")):
             centre = (50.0 if signal else 10.0) if name == PT else 1.0
             data[name] = ak.Array([list(np.abs(rng.normal(centre, 2.0, len(m))) + 0.5) for m in masses])  # > 0: no inf in chi2/ndof
+        elif name == "tau3mu_mask":
+            data[name] = ak.Array([[True] * len(m) for m in masses])
         else:
             data[name] = np.ones(len(masses), dtype=np.uint32)
     data["event"] = np.arange(first_event, first_event + len(masses), dtype=np.uint64)
