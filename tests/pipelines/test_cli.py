@@ -71,4 +71,4 @@ def test_console_script():
     from conftest import REPO_ROOT
 
     scripts = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["scripts"]
-    assert scripts["tau3mu-pipeline"] == "tau3mu_gnn.pipelines.analysis.cli:main"
+    assert "tau3mu-pipeline" not in scripts and scripts["tau3mu-analysis"] == "tau3mu_gnn.pipelines.analysis.cli:main"

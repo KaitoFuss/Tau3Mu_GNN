@@ -10,7 +10,7 @@ from typing import Any
 
 from tau3mu_gnn.pipelines.common.config import (
     _Field, _flatten, _name, _non_empty_str, _number, _number_list, _open_unit_interval, _parse,
-    _positive_number, _range, _read_yaml, _slurm_jobs_parser, _unsculpting_mode,
+    _positive_number, _range, _read_yaml, _slurm_jobs_parser,
 )
 
 SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")
@@ -27,12 +27,7 @@ DEFAULTS_FIELDS: dict[str, _Field] = {
     "skim.cos_alpha_2d_min": _Field(_number),
     "bdt.classifier": _Field(_non_empty_str),
     "gnn.model_dir": _Field(_non_empty_str),
-    "gnn.model_name": _Field(_name),
-    "gnn.conv_type": _Field(_non_empty_str),
-    "gnn.gnn_mode": _Field(_non_empty_str),
-    "gnn.unsculpting_mode": _Field(_unsculpting_mode),
-    "gnn.graph_type": _Field(_non_empty_str),
-    "gnn.bdt_preselection_cut": _Field(_open_unit_interval),
+    "gnn.model_name": _Field(_name),   # model settings: <gnn.model_dir>/<gnn.model_name>/model_settings.json
     "limit.tau_mass": _Field(_positive_number),
     "limit.mass_window": _Field(_positive_number),
     "limit.fit_range": _Field(_range),
