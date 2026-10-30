@@ -7,8 +7,11 @@
 filelist.tsv: one line per file, <group> <bytes> <T3 path> <EOS path>, tab separated.
 Copy it to lxplus and give it to copy_to_eos.sh.
 
-Path rule: /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_pipeline/X -> /eos/user/k/kfuss/tau3mu_pipeline/X,
-any other /pnfs/psi.ch/cms/trivcat/store/user/Y -> /eos/user/k/kfuss/tau3mu_inputs/Y.
+Path rule (Kaito, 2026-10-30), with Y = the path after /pnfs/psi.ch/cms/trivcat/store/user/:
+- raw NanoAOD (manzoni/...)  -> /eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/Y  (B-physics group space:
+  copied once, never deleted; the e-group may write but not delete)
+- kfuss/tau3mu_pipeline/X    -> /eos/user/k/kfuss/tau3mu_pipeline/X
+- anything else              -> /eos/user/k/kfuss/tau3mu_inputs/Y
 So a config glob changes only in its prefix.
 """
 import argparse
@@ -19,6 +22,7 @@ import sys
 T3_USER = "/pnfs/psi.ch/cms/trivcat/store/user/"
 PIPELINE = T3_USER + "kfuss/tau3mu_pipeline/"
 EOS_HOME = "/eos/user/k/kfuss/"
+EOS_GROUP = "/eos/cms/store/group/phys_bphys/kfuss/"
 RAW = T3_USER + "manzoni/tau3mu_gnn/"
 OLD = T3_USER + "kfuss/tau3mu_gnn_round2/data/"
 
@@ -38,6 +42,8 @@ GROUPS = {
 def eos_path(t3: str) -> str:
     if t3.startswith(PIPELINE):
         return EOS_HOME + "tau3mu_pipeline/" + t3[len(PIPELINE):]
+    if t3.startswith(RAW):
+        return EOS_GROUP + "tau3mu_inputs/" + t3[len(T3_USER):]
     return EOS_HOME + "tau3mu_inputs/" + t3[len(T3_USER):]
 
 
