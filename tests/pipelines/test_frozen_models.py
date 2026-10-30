@@ -76,7 +76,7 @@ def test_defaults_no_longer_take_model_settings(load, user, fake_repo, key):
 
 def test_real_frozen_w_model_settings():
     from tau3mu_gnn.pipelines.common.config import REPO_ROOT
-    s = json.loads((REPO_ROOT / "models/W/gnn/new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2/model_settings.json").read_text())
+    s = json.loads((REPO_ROOT / "models/W/gnn/W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons/model_settings.json").read_text())
     assert s == {"channel": "W",
                  "graphs": {"bdt_preselection_cut": 0.8, "connection": "knn", "k": 10, "cone_size": 0.5,
                             "use_displacement": True, "unsculpting_mode": "delete_muons"},

@@ -1,5 +1,5 @@
 # Example user config (W channel), starting from RAW NanoAOD: stage 0 (resonance skim) runs.
-# For resonance-skimmed inputs (stage 0 skipped), see example_W.yaml. Copy this file and edit it.
+# For resonance-skimmed inputs set already_resonance_skimmed: true. Copy this file and edit it.
 # Frozen analysis settings live in analysis_defaults_W.yaml and must NOT be set here.
 
 analysis_name: kaito_W_raw                 # letters, digits, _ - . only; used as folder name
@@ -42,7 +42,8 @@ branch_map: {}
 
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
-  # Compute it for YOUR dataset. 0.000019 is valid only for Kaito's W dataset.
+  # 0.000019 is not yet the physical value: it only scales the signal so that the limits have a
+  # comparable size (Kaito, 2026-10-30). Compute the real value for YOUR dataset.
   signal_weight: 0.000019
-  # One cut or a list of cuts on the GNN score. A list runs a cut scan. Default: 3.9
-  gnn_score_cut: 3.9
+  # One cut or a list of cuts on the GNN score. A list runs a cut scan. Default: 3.5 (best cut of the frozen W model)
+  gnn_score_cut: 3.5

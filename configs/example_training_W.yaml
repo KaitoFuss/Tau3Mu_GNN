@@ -48,5 +48,6 @@ benchmark:
 
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
-  # Compute it for YOUR dataset. 0.000019 is valid only for Kaito's W dataset.
+  # 0.000019 is not yet the physical value: it only scales the signal so that the limits have a
+  # comparable size (Kaito, 2026-10-30). Compute the real value for YOUR dataset.
   signal_weight: 0.000019

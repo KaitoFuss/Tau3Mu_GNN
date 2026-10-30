@@ -7,7 +7,7 @@ import pytest
 from tau3mu_gnn.pipelines.common.config import REPO_ROOT, ConfigError
 
 NAME = "toy_train_W_fl_8_sd_4_GINE_delete_muons"
-FROZEN = REPO_ROOT / "models" / "W" / "gnn" / "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
+FROZEN = REPO_ROOT / "models" / "W" / "gnn" / "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
 GRAPHS = {"bdt_preselection_cut": 0.75, "max_events": 600000, "connection": "knn", "k": 10, "cone_size": 0.5,
           "use_displacement": True, "unsculpting_mode": "delete_muons", "shuffle_seed": 1986}
 GNN_TRAINING = {"conv_type": "GINE", "gnn_mode": "final_layer", "arch": "fl8_sd4"}

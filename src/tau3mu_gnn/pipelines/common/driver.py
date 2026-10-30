@@ -22,10 +22,12 @@ class Submission:
     upstream: str | None
 
 
-def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, proxy=True, *, create) \
-        -> Submission:
+def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, proxy=True, *, create,
+            pipeline: str) -> Submission:
     """jobs_for(version_dir) -> job list. Shared tail of the submit functions of both pipelines.
-    create(): makes the version folder (the pipeline's create_version, with its settings snapshot)."""
+    create(): makes the version folder (the pipeline's create_version, with its settings snapshot).
+    pipeline: 'analysis' or 'training'; the logs go to <log_dir>/<pipeline>/<run_name>/..., so a training and an
+    analysis with the same name do not share a log folder."""
     if proxy:
         check_proxy(cfg, chain_hours(cfg, jobs_for("<version>")))
     name = runs.next_version(parent, prefix)
@@ -34,7 +36,7 @@ def _submit(cfg, jobs_for, prefix, parent, log_parts, upstream, dry_run, env, pr
     else:
         version_dir = create()
     name = version_dir.rsplit("/", 1)[-1]
-    log_folder = Path(cfg.paths.log_dir, cfg.run_name, *log_parts, name)
+    log_folder = Path(cfg.paths.log_dir, pipeline, cfg.run_name, *log_parts, name)
     ids = submit_jobs(cfg, jobs_for(version_dir), version_dir, log_folder, env, dry_run=dry_run)
     if not dry_run:
         storage.write_text(storage.join(version_dir, JOBS_FILE), json.dumps(ids, indent=2) + "\n")

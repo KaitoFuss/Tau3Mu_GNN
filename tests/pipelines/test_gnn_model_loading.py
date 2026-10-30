@@ -3,7 +3,7 @@ import torch
 
 from conftest import REPO_ROOT
 
-MODEL = "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
+MODEL = "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
 ARGS = dict(conv_type="GINE", gnn_mode="final_layer",
             graph_type="skimmed_dzd0_cone_size_0.5_knn_10", tau_channel="W", device=torch.device("cpu"))
 

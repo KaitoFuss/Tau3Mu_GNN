@@ -6,7 +6,7 @@ from tau3mu_gnn.pipelines.common.config import REPO_ROOT
 def test_arch_config_equals_frozen_file():
     from tau3mu_gnn.architectures.GNN_archs import get_arch_configs
     config, ident = get_arch_configs("fl8_sd4", "W", 0.0, registry_path=None)
-    frozen = json.loads((REPO_ROOT / "models/W/gnn/new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2/arch_config.json").read_text())
+    frozen = json.loads((REPO_ROOT / "models/W/gnn/W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons/arch_config.json").read_text())
     assert json.loads(json.dumps(config)) == frozen and ident == ["fl_8", "sd_4"]
 
 

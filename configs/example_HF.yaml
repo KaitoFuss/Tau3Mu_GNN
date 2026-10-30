@@ -38,7 +38,8 @@ models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USE
 
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
-  # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known
+  # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known. Like the W value, it
+  # only scales the signal to comparable limits for now (Kaito, 2026-10-30)
   # (spec docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
   signal_weight: 0.000152
   # One cut or a list of cuts on the GNN score (the raw logit of the GNN). A list runs a cut scan.

@@ -39,7 +39,7 @@ def test_bdt_phase(cfg, env, fake_sbatch):
     s = submit_phase(cfg, "bdt", env=env)
     assert s.version_dir == f"{cfg.output_dir}/bdt_vs1" and s.upstream is None
     assert s.job_ids == {"skim": "1001", "bdt": "1002"}
-    assert Path(s.log_folder) == Path(cfg.paths.log_dir) / "toy_run" / "bdt_vs1"
+    assert Path(s.log_folder) == Path(cfg.paths.log_dir) / "analysis" / "toy_run" / "bdt_vs1"
     calls = sbatch_calls(fake_sbatch)
     assert calls[1].startswith("--parsable --dependency=afterok:1001 ")
     assert json.loads((Path(s.version_dir) / "jobs.json").read_text()) == {"skim": "1001", "bdt": "1002"}
@@ -108,7 +108,7 @@ def test_stage_eval_debug(cfg, env, fake_sbatch):
     b1 = complete(cfg, "gnn_vs1", upstream="bdt_vs1")
     s = submit_stage(cfg, "eval", env=env)
     assert s.version_dir == f"{cfg.output_dir}/debug/eval_vs1"
-    assert Path(s.log_folder) == Path(cfg.paths.log_dir) / "toy_run" / "debug" / "eval_vs1"
+    assert Path(s.log_folder) == Path(cfg.paths.log_dir) / "analysis" / "toy_run" / "debug" / "eval_vs1"
     last = (s.log_folder / "eval.sh").read_text().splitlines()[-1]
     assert last.endswith(f"--upstream {a1} --source {b1} --no-manifest")
 
