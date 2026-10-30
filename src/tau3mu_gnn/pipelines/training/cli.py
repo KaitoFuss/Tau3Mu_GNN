@@ -1,4 +1,4 @@
-"""tau3mu training driver: submit the SLURM jobs of all training phases or one phase.
+"""tau3mu training driver: submit the batch jobs of all training phases or one phase.
 
   tau3mu-training all       --config my_training.yaml [--dry-run]
   tau3mu-training bdt       --config my_training.yaml [--dry-run]
@@ -7,6 +7,7 @@
 
 tau3mu-training is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.training.cli` is the same.
 The jobs use paths.conda_env from the config, else the conda env that is active when you submit.
+Batch system: config key scheduler, htcondor (default, lxplus) or slurm (PSI T3).
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ import sys
 
 from tau3mu_gnn.pipelines.common.config import ConfigError
 from tau3mu_gnn.pipelines.common.manifest import UpstreamError
-from tau3mu_gnn.pipelines.common.slurm import SubmitError
+from tau3mu_gnn.pipelines.common.batch import SubmitError
 from tau3mu_gnn.pipelines.training.config import load_training_config
 from tau3mu_gnn.pipelines.training.driver import submit_all, submit_phase
 
@@ -30,7 +31,7 @@ def _parser() -> argparse.ArgumentParser:
         if name in ("gnn", "benchmark"):
             s.add_argument("--from", dest="from_", metavar="VERSION",
                            help="bdt version, e.g. bdt_vs2 (default: the highest complete one)")
-        s.add_argument("--dry-run", action="store_true", help="write the job scripts and print the sbatch "
+        s.add_argument("--dry-run", action="store_true", help="write the job files and print the submit "
                                                               "commands; submit nothing")
     return p
 

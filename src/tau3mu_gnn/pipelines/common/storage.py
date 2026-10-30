@@ -1,6 +1,7 @@
-"""Run-folder storage: dCache (root://host[:port]//pnfs/...) or a local disk path.
+"""Run-folder storage: dCache (root://host[:port]//pnfs/...), EOS (root://eosuser.cern.ch//eos/...) or a local disk path.
 
-dCache is read through its /pnfs NFS mount and written with xrdfs / xrdcp (needs a valid VOMS proxy).
+A root:// URL is read through the mount of its path (/pnfs NFS on the T3, /eos FUSE on lxplus) and written with
+xrdfs / xrdcp. dCache needs a valid VOMS proxy; EOS uses the Kerberos token of the job (needs_proxy).
 Every xrdfs / xrdcp call is tried ATTEMPTS times (pause RETRY_WAIT_S, then twice that, ...): one storage
 timeout must not lose a long job (raw W analysis skim, job 960697: xrdcp socket timeout after 7.5 h).
 A local path uses plain file operations. Stages never call this; the job bodies (jobs.py) do.
@@ -27,6 +28,14 @@ def is_remote(path: str | Path) -> bool:
     return str(path).startswith("root://")
 
 
+def needs_proxy(path: str | Path) -> bool:
+    """True for a dCache URL. EOS (root://eos*.cern.ch) uses Kerberos; a local path needs nothing."""
+    if not is_remote(path):
+        return False
+    host = _split(str(path))[0].split(":")[0]
+    return not (host.startswith("eos") and host.endswith(".cern.ch"))
+
+
 def _split(url: str) -> tuple[str, str]:
     m = _URL_RE.match(url)
     if not m:
@@ -35,7 +44,7 @@ def _split(url: str) -> tuple[str, str]:
 
 
 def local_path(path: str | Path) -> Path:
-    """Path to read from: the /pnfs path of a root:// URL, else the path itself."""
+    """Path to read from: the mounted path (/pnfs/..., /eos/...) of a root:// URL, else the path itself."""
     path = str(path)
     return Path(_split(path)[1]) if is_remote(path) else Path(path)
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import torch
 
-from tau3mu_gnn.pipelines.common import slurm, storage
+from tau3mu_gnn.pipelines.common import batch, storage
 from tau3mu_gnn.pipelines.common.branches import TRAINING_EXTRA
 from tau3mu_gnn.pipelines.common.jobs import RESONANCE_DIR, SKIM_DIR, _name, _read, _scratch
 from tau3mu_gnn.pipelines.common.stages import limit as limit_stage
@@ -46,9 +46,9 @@ def _put(scratch: Path, phase_dir) -> None:
 
 
 def _check_proxy(cfg, resources: str) -> None:
-    """The dCache proxy must outlive this job (its own SLURM time limit): storage.put runs at the end.
-    Raises slurm.ProxyError at once, before any work. No-op for a local output_base."""
-    slurm.check_proxy(cfg, slurm.time_hours(cfg.slurm.jobs[resources].time))
+    """The dCache proxy must outlive this job (its own batch time limit): storage.put runs at the end.
+    Raises batch.ProxyError at once, before any work. No-op for a local or EOS output_base."""
+    batch.check_proxy(cfg, batch.time_hours(batch.resources(cfg)[resources].time))
 
 
 def skim(cfg, phase_dir) -> None:
@@ -125,7 +125,7 @@ def gnn_train(cfg, phase_dir, upstream_dir) -> None:
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:  # allowed (Kaito, 2026-10-23), but much slower: say so in the log
-        log.warning("gnn_train: no CUDA device visible on this node (check the SLURM gres / partition); "
+        log.warning("gnn_train: no CUDA device visible on this node (check the GPU request of the batch job); "
                     "training on CPU")
         device = torch.device("cpu")
     scratch = _scratch("gnn_train")
@@ -173,7 +173,7 @@ def benchmark_summary(cfg, phase_dir, upstream_dir) -> None:
 
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="python -m tau3mu_gnn.pipelines.training.jobs",
-                                description="Run one training job (called by the generated SLURM job scripts).")
+                                description="Run one training job (called by the generated batch job scripts).")
     p.add_argument("job", choices=JOBS)
     p.add_argument("--config", required=True, help="training user config file")
     p.add_argument("--phase-dir", required=True, help="output folder: <phase>_vsN")

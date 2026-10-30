@@ -38,3 +38,13 @@ slurm:                         # SLURM resources per job (step 9). Times: first 
     eval:           {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
     limit:          {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
     summary:        {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
+
+htcondor:                      # HTCondor resources per job (lxplus, step 14): the SLURM values. time -> +MaxRuntime,
+  jobs:                        # mem -> request_memory. Optional per job: gpus, requirements.
+    skim:           {mem: 256G, time: "1-00:00:00", cpus: 4}
+    bdt:            {mem: 128G, time: "0-06:00:00", cpus: 1}
+    gnn_signal:     {mem: 64G,  time: "1-00:00:00", cpus: 1}
+    gnn_background: {mem: 128G, time: "2-00:00:00", cpus: 1}
+    eval:           {mem: 32G,  time: "0-01:00:00", cpus: 1}
+    limit:          {mem: 128G, time: "0-01:30:00", cpus: 1}
+    summary:        {mem: 4G,   time: "0-00:30:00", cpus: 1}

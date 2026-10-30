@@ -13,9 +13,10 @@ from pathlib import Path
 from typing import Mapping
 
 from tau3mu_gnn.pipelines.common.config import (
-    REPO_ROOT, ConfigError, InputsConfig, PathsConfig, ResonanceSkimConfig, SkimConfig, SlurmConfig, _abs_or_url,
-    _bool, _channel, _Field, _inputs, _local_path, _name, _non_empty_str, _number_list, _optional_local_path,
-    _paths, _positive_number, _read_flat_user, _resonance_skim, _skim, _str_map, _user_path_list,
+    REPO_ROOT, ConfigError, HTCondorConfig, InputsConfig, PathsConfig, ResonanceSkimConfig, SkimConfig, SlurmConfig,
+    _abs_or_url, _bool, _channel, _Field, _inputs, _local_path, _name, _non_empty_str, _number_list,
+    _optional_local_path, _paths, _positive_number, _read_flat_user, _resonance_skim, _scheduler, _skim, _str_map,
+    _user_path_list,
 )
 from tau3mu_gnn.pipelines.common.defaults import DEFAULTS_FIELDS, read_analysis_defaults
 
@@ -40,6 +41,7 @@ USER_FIELDS: dict[str, _Field] = {
     "limit.signal_weight": _Field(_positive_number),
     "limit.gnn_score_cut": _Field(_number_list, required=False, default=[3.5]),
     "models": _Field(_models, required=False, default="frozen"),
+    "scheduler": _Field(_scheduler, required=False, default="htcondor"),
 }
 
 
@@ -82,9 +84,11 @@ class Config:
     gnn: GNNConfig
     limit: LimitConfig
     slurm: SlurmConfig
+    htcondor: HTCondorConfig
     user_file: Path
     defaults_file: Path
     models: str = "frozen"   # or the path of a training gnn_vsN (the models then come from its manifests)
+    scheduler: str = "htcondor"   # htcondor (lxplus) or slurm (PSI T3)
 
     @property
     def output_dir(self) -> str:
@@ -93,7 +97,7 @@ class Config:
 
     @property
     def run_name(self) -> str:
-        """Name shared with the training config (SLURM job names, log folder)."""
+        """Name shared with the training config (batch job names, log folder)."""
         return self.analysis_name
 
 
@@ -152,7 +156,9 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
             cl=defaults["limit.cl"],
         ),
         slurm=SlurmConfig(account=defaults["slurm.account"], jobs=defaults["slurm.jobs"]),
+        htcondor=HTCondorConfig(jobs=defaults["htcondor.jobs"]),
         user_file=user_path.resolve(),
         defaults_file=defaults_path.resolve(),
         models=user["models"],
+        scheduler=user["scheduler"],
     )

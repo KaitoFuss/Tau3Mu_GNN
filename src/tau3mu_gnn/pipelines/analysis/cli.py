@@ -1,4 +1,4 @@
-"""tau3mu-analysis (analysis): submit the SLURM jobs of all phases, one phase or one stage.
+"""tau3mu-analysis (analysis): submit the batch jobs of all phases, one phase or one stage.
 
   tau3mu-analysis all   --config my.yaml [--dry-run]
   tau3mu-analysis bdt   --config my.yaml [--dry-run]                       skim + BDT scores
@@ -9,6 +9,7 @@
 
 tau3mu-analysis is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.analysis.cli` is the same.
 The jobs use paths.conda_env from the config, else the conda env that is active when you submit.
+Batch system: config key scheduler, htcondor (default, lxplus) or slurm (PSI T3).
 """
 from __future__ import annotations
 
@@ -21,7 +22,7 @@ from tau3mu_gnn.pipelines.common.config import ConfigError
 from tau3mu_gnn.pipelines.analysis.config import load_config
 from tau3mu_gnn.pipelines.analysis.driver import STAGES, submit_all, submit_phase, submit_stage
 from tau3mu_gnn.pipelines.common.manifest import UpstreamError
-from tau3mu_gnn.pipelines.common.slurm import SubmitError
+from tau3mu_gnn.pipelines.common.batch import SubmitError
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -38,7 +39,7 @@ def _parser() -> argparse.ArgumentParser:
         s.add_argument("--config", required=True, help="your user config file")
         if name not in ("all", "bdt"):
             s.add_argument("--from", dest="from_", metavar="VERSION", help="upstream version, e.g. bdt_vs2")
-        s.add_argument("--dry-run", action="store_true", help="write the job scripts and print the sbatch "
+        s.add_argument("--dry-run", action="store_true", help="write the job files and print the submit "
                                                               "commands; submit nothing")
     return p
 

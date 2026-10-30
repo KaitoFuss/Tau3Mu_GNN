@@ -63,3 +63,16 @@ slurm:                         # SLURM resources per job. First values (2026-10-
     gnn_train:         {partition: gpu,      mem: 128G, time: "3-00:00:00", cpus: 5, account: gpu_gres, gres: "gpu:1"}
     benchmark_limit:   {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
     benchmark_summary: {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
+
+htcondor:                      # HTCondor resources per job (lxplus, step 14): the SLURM values. time -> +MaxRuntime,
+  jobs:                        # mem -> request_memory. GPU line from the old jobs/condor/train_*.sub.
+    skim:              {mem: 256G, time: "1-00:00:00", cpus: 4}
+    bdt_train:         {mem: 128G, time: "0-06:00:00", cpus: 4}
+    bdt_infer:         {mem: 128G, time: "0-06:00:00", cpus: 1}
+    npvs:              {mem: 32G,  time: "0-01:00:00", cpus: 1}
+    graphs_signal:     {mem: 256G, time: "2-00:00:00", cpus: 1}
+    graphs_background: {mem: 256G, time: "2-00:00:00", cpus: 1}
+    gnn_train:         {mem: 128G, time: "3-00:00:00", cpus: 5, gpus: 1,
+                        requirements: "(GPUs_Capability >= 7.0) && (GPUs_GlobalMemoryMb >= 30000)"}
+    benchmark_limit:   {mem: 128G, time: "0-01:30:00", cpus: 1}
+    benchmark_summary: {mem: 4G,   time: "0-00:30:00", cpus: 1}

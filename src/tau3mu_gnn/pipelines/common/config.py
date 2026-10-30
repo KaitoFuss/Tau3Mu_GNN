@@ -1,5 +1,5 @@
 """Config building blocks shared by both pipelines: value parsers, field tables, YAML reading,
-and the config sections both pipelines use (paths, inputs, resonance skim, skim, SLURM).
+and the config sections both pipelines use (paths, inputs, resonance skim, skim, SLURM, HTCondor).
 
 The analysis config is in pipelines/analysis/config.py, the training config in
 pipelines/training/config.py. All problems are collected and raised together as one ConfigError.
@@ -208,7 +208,7 @@ def _user_path_list(v):
 def _local_path(v):
     v = _user_path(v)
     if v.startswith("root://") or v.startswith("/pnfs"):
-        raise ValueError(f"must be a local disk path (SLURM cannot write logs to dCache), got {v!r}")
+        raise ValueError(f"must be a local disk path (the batch system cannot write logs to dCache), got {v!r}")
     if not v.startswith("/"):
         raise ValueError(f"must be an absolute path, got {v!r}")
     return v
@@ -263,6 +263,60 @@ def _slurm_jobs_parser(job_names: tuple[str, ...]):
     return parse
 
 
+SCHEDULERS = ("htcondor", "slurm")
+
+
+def _scheduler(v):
+    v = _non_empty_str(v)
+    if v not in SCHEDULERS:
+        raise ValueError(f"must be one of {list(SCHEDULERS)}, got {v!r}")
+    return v
+
+
+_HTCONDOR_KEYS = ("mem", "time", "cpus")
+_HTCONDOR_OPTIONAL_KEYS = ("gpus", "requirements")
+
+
+def _htcondor_jobs_parser(job_names: tuple[str, ...]):
+    """Parser of an HTCondor job table with exactly the jobs job_names. mem and time use the SLURM formats
+    (64G, 1-00:00:00): the HTCondor layer turns them into request_memory (MB) and +MaxRuntime (s)."""
+    def parse(v):
+        if not isinstance(v, dict):
+            raise ValueError(f"must be a mapping job -> {{{', '.join(_HTCONDOR_KEYS)}}}, got {v!r}")
+        reasons = [f"missing job '{j}'" for j in job_names if j not in v]
+        reasons += [f"unknown job '{j}'" for j in v if j not in job_names]
+        jobs = {}
+        for name in job_names:
+            if name not in v:
+                continue
+            spec = v[name]
+            if not isinstance(spec, dict):
+                reasons.append(f"job '{name}' must be a mapping, got {spec!r}")
+                continue
+            reasons += [f"job '{name}': missing key '{k}'" for k in _HTCONDOR_KEYS if k not in spec]
+            reasons += [f"job '{name}': unknown key '{k}'" for k in spec
+                        if k not in _HTCONDOR_KEYS + _HTCONDOR_OPTIONAL_KEYS]
+            if not set(_HTCONDOR_KEYS) <= set(spec):
+                continue
+            mem, time, cpus = (spec[k] for k in _HTCONDOR_KEYS)
+            gpus, requirements = spec.get("gpus", 0), spec.get("requirements")
+            if not isinstance(mem, str) or not _MEM_RE.match(mem):
+                reasons.append(f"job '{name}': mem must look like 64G, got {mem!r}")
+            if not isinstance(time, str) or not _TIME_RE.match(time):
+                reasons.append(f"job '{name}': time must look like 1-00:00:00 or 06:00:00, got {time!r}")
+            if isinstance(cpus, bool) or not isinstance(cpus, int) or cpus < 1:
+                reasons.append(f"job '{name}': cpus must be an integer >= 1, got {cpus!r}")
+            if isinstance(gpus, bool) or not isinstance(gpus, int) or gpus < 0:
+                reasons.append(f"job '{name}': gpus must be an integer >= 0, got {gpus!r}")
+            if requirements is not None and (not isinstance(requirements, str) or not requirements.strip()):
+                reasons.append(f"job '{name}': requirements must be a non-empty string, got {requirements!r}")
+            jobs[name] = HTCondorJob(mem, time, cpus, gpus, requirements)
+        if reasons:
+            raise ValueError("; ".join(reasons))
+        return MappingProxyType(jobs)
+    return parse
+
+
 # ---------------------------------------------------------------- field tables
 
 @dataclass(frozen=True)
@@ -273,7 +327,7 @@ class _Field:
 
 
 # Keys whose value is a mapping but must not be flattened.
-_LEAF_KEYS = {"branch_map", "slurm.jobs"}
+_LEAF_KEYS = {"branch_map", "slurm.jobs", "htcondor.jobs"}
 
 
 # ---------------------------------------------------------------- config objects
@@ -322,6 +376,20 @@ class SlurmJob:
 class SlurmConfig:
     account: str
     jobs: Mapping[str, SlurmJob]
+
+
+@dataclass(frozen=True)
+class HTCondorJob:
+    mem: str         # like SlurmJob.mem, e.g. 128G
+    time: str        # like SlurmJob.time; becomes +MaxRuntime
+    cpus: int
+    gpus: int = 0
+    requirements: str | None = None   # HTCondor requirements expression, e.g. for the GPU type
+
+
+@dataclass(frozen=True)
+class HTCondorConfig:
+    jobs: Mapping[str, HTCondorJob]
 
 
 # ---------------------------------------------------------------- loading

@@ -1,4 +1,4 @@
-"""Analysis job bodies: what one SLURM job runs (step 9). The generated job scripts (step 9b) call main().
+"""Analysis job bodies: what one batch job runs (step 9). The generated job scripts (step 9b) call main().
 
 Each job works in a fresh scratch folder under $TMPDIR (the job script points TMPDIR to /scratch), then
 copies its outputs into the phase folder with storage.put. Upstream files are read through
@@ -122,7 +122,7 @@ def summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -
 
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="python -m tau3mu_gnn.pipelines.analysis.jobs",
-                                description="Run one pipeline job (called by the generated SLURM job scripts).")
+                                description="Run one pipeline job (called by the generated batch job scripts).")
     p.add_argument("job", choices=JOBS)
     p.add_argument("--config", required=True, help="user config file")
     p.add_argument("--phase-dir", required=True, help="output folder: <phase>_vsN or debug/<stage>_vsN")

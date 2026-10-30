@@ -6,8 +6,10 @@ benchmark (benchmark_limit_<cut> per cut -> benchmark_summary, afterany). gnn an
 """
 from __future__ import annotations
 
-from tau3mu_gnn.pipelines.common.driver import Submission, _submit
-from tau3mu_gnn.pipelines.common.slurm import TRAINING_MODULE, Job, JobEnv, SubmitError, chain_hours, check_proxy
+from tau3mu_gnn.pipelines.common.batch import (
+    TRAINING_MODULE, Job, JobEnv, SubmitError, chain_hours, check_proxy, make_batch,
+)
+from tau3mu_gnn.pipelines.common.driver import Submission, _submit, finish, write_jobs
 from tau3mu_gnn.pipelines.training.config import TrainingConfig
 from tau3mu_gnn.pipelines.training.manifest import PHASES, PIPELINE, create_version, pick_upstream
 
@@ -21,7 +23,7 @@ def _job(name, resources, args, **kw) -> Job:
 
 def _phase_jobs(cfg: TrainingConfig, phase: str, version_dir: str, up: str | None,
                 after_ids: tuple[str, ...] = ()) -> list[Job]:
-    """after_ids: SLURM IDs the first jobs of the phase wait for (`all`: bdt_infer)."""
+    """after_ids: batch IDs the first jobs of the phase wait for (`all`: bdt_infer)."""
     b = ("--config", str(cfg.user_file), "--phase-dir", version_dir)
     if phase == "bdt":
         return [_job("skim", "skim", ("skim", *b), after_ids=after_ids),
@@ -41,9 +43,10 @@ def _phase_jobs(cfg: TrainingConfig, phase: str, version_dir: str, up: str | Non
                           after=tuple(j.name for j in limits), dependency="afterany", after_ids=after_ids)]
 
 
-def _submit_phase(cfg, phase, up, dry_run, env, proxy=True, after_ids=()) -> Submission:
+def _submit_phase(cfg, phase, up, dry_run, env, proxy=True, after_ids=(), batch=None) -> Submission:
     return _submit(cfg, lambda v: _phase_jobs(cfg, phase, v, up, after_ids), phase, cfg.output_dir, (), up,
-                   dry_run, env, proxy=proxy, create=lambda: create_version(cfg, phase), pipeline=PIPELINE)
+                   dry_run, env, proxy=proxy, create=lambda: create_version(cfg, phase), pipeline=PIPELINE,
+                   batch=batch)
 
 
 def submit_phase(cfg: TrainingConfig, phase: str, from_: str | None = None, dry_run: bool = False,
@@ -59,19 +62,23 @@ def submit_phase(cfg: TrainingConfig, phase: str, from_: str | None = None, dry_
 
 def submit_all(cfg: TrainingConfig, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
     """Submit bdt, then gnn and benchmark on the new bdt version (it has no manifest yet). The first jobs of
-    gnn and benchmark wait (afterok) for bdt_infer; their upstream check runs when they start."""
+    gnn and benchmark wait (afterok) for bdt_infer; their upstream check runs when they start.
+    HTCondor: one DAG over the three phases."""
     env = env if env is not None else JobEnv.from_config(cfg)
     hours = {p: chain_hours(cfg, _phase_jobs(cfg, p, "<version>", "<upstream>")) for p in PHASES}
     check_proxy(cfg, hours["bdt"] + max(hours["gnn"], hours["benchmark"]))
-    bdt = _submit_phase(cfg, "bdt", None, dry_run, env, proxy=False)
+    batch = make_batch(cfg)
+    bdt = _submit_phase(cfg, "bdt", None, dry_run, env, proxy=False, batch=batch)
     subs = [bdt]
     for phase in ("gnn", "benchmark"):
         try:
             s = _submit_phase(cfg, phase, bdt.version_dir, dry_run, env, proxy=False,
-                              after_ids=(bdt.job_ids[LAST_JOB["bdt"]],))
+                              after_ids=(bdt.job_ids[LAST_JOB["bdt"]],), batch=batch)
         except SubmitError as e:
+            if not dry_run:
+                write_jobs(subs)
             done = [i for prev in subs for i in prev.job_ids.values()] + list(e.submitted.values())
             raise SubmitError(f"{e} Earlier phases are already submitted ({', '.join(x.version_dir for x in subs)});"
                               f" to cancel everything: scancel {' '.join(done)}") from e
         subs.append(s)
-    return subs
+    return finish(batch, subs, dry_run)

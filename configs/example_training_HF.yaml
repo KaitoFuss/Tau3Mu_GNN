@@ -6,6 +6,9 @@ training_name: HF_training                 # letters, digits, _ - . only; used a
 
 channel: HF                                # selects configs/training_defaults_HF.yaml + analysis_defaults_HF.yaml
 
+# Batch system: htcondor (default, lxplus) or slurm (PSI T3). The paths below are T3 paths.
+scheduler: slurm
+
 paths:
   # All outputs go to <output_base>/<training_name>.
   # Jobs write to /scratch first and then xrdcp to this location.

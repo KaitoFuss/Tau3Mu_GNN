@@ -44,11 +44,16 @@ TOY_DEFAULTS = {
         "jobs": {name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
                  for name in ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")},
     },
+    "htcondor": {
+        "jobs": {name: {"mem": "4G", "time": "0-01:00:00", "cpus": 1}
+                 for name in ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")},
+    },
 }
 
 TOY_USER = {
     "analysis_name": "toy_run",
     "channel": "W",
+    "scheduler": "slurm",      # most tests use the fake sbatch; test_htcondor.py sets htcondor
     "paths": {"output_base": "/tmp/toy_out", "log_dir": "/tmp/toy_logs"},
     "inputs": {
         "signal": ["/data/sig.root"],
@@ -144,11 +149,19 @@ TOY_TRAINING_DEFAULTS = {
                  "gnn_train": {"partition": "gpu", "mem": "4G", "time": "0-01:00:00", "cpus": 1,
                                "account": "gpu_gres", "gres": "gpu:1"}},
     },
+    "htcondor": {
+        "jobs": {**{name: {"mem": "4G", "time": "0-01:00:00", "cpus": 1}
+                    for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background",
+                                 "benchmark_limit", "benchmark_summary")},
+                 "gnn_train": {"mem": "4G", "time": "0-01:00:00", "cpus": 1, "gpus": 1,
+                               "requirements": "(GPUs_Capability >= 7.0)"}},
+    },
 }
 
 TOY_TRAINING_USER = {
     "training_name": "toy_train",
     "channel": "W",
+    "scheduler": "slurm",
     "paths": {"output_base": "/tmp/toy_out", "log_dir": "/tmp/toy_logs"},
     "inputs": {
         "signal": ["/data/sig.root"],

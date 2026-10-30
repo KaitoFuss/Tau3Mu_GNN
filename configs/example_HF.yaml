@@ -5,6 +5,9 @@ analysis_name: HF_analysis                 # letters, digits, _ - . only; used a
 
 channel: HF                                # selects configs/analysis_defaults_HF.yaml
 
+# Batch system: htcondor (default, lxplus) or slurm (PSI T3). The paths below are T3 paths.
+scheduler: slurm
+
 paths:
   # All outputs go to <output_base>/<analysis_name>.
   # Jobs write to /scratch first and then xrdcp to this location.
