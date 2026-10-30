@@ -59,11 +59,15 @@ class JobEnv:
 
     @classmethod
     def from_config(cls, cfg: Config, environ: Mapping[str, str] = os.environ) -> "JobEnv":
-        """The env in paths.conda_env (<base>/envs/<name> or the base env itself), else the active env."""
+        """The env in paths.conda_env (<base>/envs/<name> or the base env itself), else the active env.
+        An env outside its conda base (lxplus: /eos/.../envs/Tau3Mu, base /eos/.../miniforge3) takes the base of
+        the active conda (CONDA_EXE)."""
         if cfg.paths.conda_env is None:
             return cls.from_environment(environ)
         prefix = Path(cfg.paths.conda_env)
         base = prefix.parents[1] if prefix.parent.name == "envs" else prefix
+        if not (base / "bin" / "activate").is_file() and environ.get("CONDA_EXE"):
+            base = Path(environ["CONDA_EXE"]).parents[1]
         missing = [str(f) for f in (prefix / "bin" / "python", base / "bin" / "activate") if not f.is_file()]
         if missing:
             raise EnvError(f"paths.conda_env {prefix} is not a conda env: missing {', '.join(missing)}")

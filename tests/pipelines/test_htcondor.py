@@ -308,3 +308,58 @@ limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
     assert res.returncode != 0
     assert (Path(version_dir) / "logs" / "bad-77.err").is_file()
     assert res.stderr.strip()                                                     # job stderr shown to HTCondor
+
+
+@pytest.mark.parametrize("value, environ, expected", [
+    ("/eos/user/$USER_INITIAL/$USER/x", {"USER": "kfuss"}, "/eos/user/k/kfuss/x"),
+    ("/eos/user/${USER_INITIAL}/${USER}/x", {"USER": "abc"}, "/eos/user/a/abc/x"),
+    ("/eos/user/$USER_INITIAL/x", {"USER": "kfuss", "USER_INITIAL": "z"}, "/eos/user/z/x"),   # set: wins
+    ("/a/$USER_INITIALS/x", {"USER": "kfuss", "USER_INITIALS": "q"}, "/a/q/x"),            # another variable
+])
+def test_user_initial(monkeypatch, value, environ, expected):
+    from tau3mu_gnn.pipelines.common.config import _user_path
+
+    for k in ("USER", "USER_INITIAL", "USER_INITIALS"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in environ.items():
+        monkeypatch.setenv(k, v)
+    assert _user_path(value) == expected
+
+
+def test_user_initial_needs_user(monkeypatch):
+    from tau3mu_gnn.pipelines.common.config import _user_path
+
+    monkeypatch.delenv("USER", raising=False)
+    monkeypatch.delenv("USER_INITIAL", raising=False)
+    with pytest.raises(ValueError, match=r"\$USER_INITIAL is not set"):
+        _user_path("/eos/user/$USER_INITIAL/x")
+
+
+def test_script_sets_user_for_the_config(load, condor_user, tmp_path):
+    """The job reads the config again on the node; its paths may use $USER."""
+    from tau3mu_gnn.pipelines.common.batch import Job
+    from tau3mu_gnn.pipelines.common.htcondor import render_script
+
+    text = render_script(load(condor_user), Job("skim", "skim", ("skim",)), "/out/run/bdt_vs1", _env())
+    path = tmp_path / "probe.sh"
+    head = text.split("JOB_ID=")[0]                      # shebang, set -eo pipefail, USER line
+    path.write_text(head + 'echo "$USER"\n')
+    env = {k: v for k, v in os.environ.items() if k != "USER"}
+    out = subprocess.run(["bash", str(path)], env=env, capture_output=True, text=True, check=True).stdout
+    assert out.strip() == subprocess.run(["id", "-un"], capture_output=True, text=True).stdout.strip()
+
+
+def test_job_env_outside_conda_base(load, user, tmp_path):
+    """lxplus: env /eos/.../envs/Tau3Mu, conda base /eos/.../miniforge3 (not its parent)."""
+    from tau3mu_gnn.pipelines.common.batch import EnvError, JobEnv
+
+    base, prefix = tmp_path / "miniforge3", tmp_path / "envs" / "T"
+    for f in (base / "bin" / "activate", base / "bin" / "conda", prefix / "bin" / "python"):
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("")
+    user["paths"]["conda_env"] = str(prefix)
+    cfg = load(user)
+    env = JobEnv.from_config(cfg, environ={"CONDA_EXE": str(base / "bin" / "conda")})
+    assert (env.conda_base, env.env_prefix) == (base, prefix)
+    with pytest.raises(EnvError, match="activate"):
+        JobEnv.from_config(cfg, environ={})

@@ -175,8 +175,17 @@ def _str_map(v):
     return MappingProxyType(dict(v))
 
 
+_USER_INITIAL_RE = re.compile(r"\$(USER_INITIAL\b|\{USER_INITIAL\})")
+
+
 def _user_path(v):
-    v = os.path.expandvars(os.path.expanduser(_non_empty_str(v)))
+    """~ and $VARS expanded. $USER_INITIAL: the first letter of $USER (EOS / AFS homes: /eos/user/k/kfuss),
+    unless it is set in the environment."""
+    v = os.path.expanduser(_non_empty_str(v))
+    user = os.environ.get("USER", "")
+    if "USER_INITIAL" not in os.environ and user:
+        v = _USER_INITIAL_RE.sub(user[0], v)
+    v = os.path.expandvars(v)
     unresolved = _UNRESOLVED_VAR_RE.search(v)
     if unresolved:
         raise ValueError(f"environment variable ${unresolved.group(1)} is not set (in {v!r})")

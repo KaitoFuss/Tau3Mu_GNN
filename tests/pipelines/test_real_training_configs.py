@@ -55,10 +55,10 @@ def test_example_training_hf(monkeypatch):
     assert hf.channel == "HF" and hf.training_name == "HF_training"
     assert hf.paths.output_base.endswith("/tau3mu_pipeline/training")
     assert [str(p) for p in hf.inputs.signal] == [
-        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/"
+        "/eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/"
         "ds_large_signal_skimmed_no_resonances.root"]
     assert [str(p) for p in hf.inputs.background] == [
-        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/"
+        "/eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/"
         "data_skimmed_no_resonances_part*.root"]
     assert hf.inputs.already_resonance_skimmed is True
     assert hf.limit.signal_weight == 0.000152

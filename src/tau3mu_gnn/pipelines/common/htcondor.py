@@ -59,6 +59,7 @@ def render_script(cfg: "Config | TrainingConfig", job: Job, version_dir: str, en
         "#!/bin/bash",
         f"# HTCondor job {job.name} of {version_dir}",
         "set -eo pipefail",
+        'export USER="${USER:-$(id -un)}"   # the config paths may use $USER; HTCondor does not always set it',
         'JOB_ID="${TAU3MU_JOB_ID:-local}"',
         'JOB_SCRATCH="${_CONDOR_SCRATCH_DIR:-${TMPDIR:-/tmp}}/tau3mu_$JOB_ID"',
         'mkdir -p "$JOB_SCRATCH/work" "$JOB_SCRATCH/logs"',
