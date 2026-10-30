@@ -9,7 +9,7 @@ from __future__ import annotations
 from tau3mu_gnn.pipelines.common.driver import Submission, _submit
 from tau3mu_gnn.pipelines.common.slurm import TRAINING_MODULE, Job, JobEnv, SubmitError, chain_hours, check_proxy
 from tau3mu_gnn.pipelines.training.config import TrainingConfig
-from tau3mu_gnn.pipelines.training.manifest import PHASES, create_version, pick_upstream
+from tau3mu_gnn.pipelines.training.manifest import PHASES, PIPELINE, create_version, pick_upstream
 
 MODULE = TRAINING_MODULE
 LAST_JOB = {"bdt": "bdt_infer", "gnn": "gnn_train", "benchmark": "benchmark_summary"}   # writes the manifest
@@ -43,7 +43,7 @@ def _phase_jobs(cfg: TrainingConfig, phase: str, version_dir: str, up: str | Non
 
 def _submit_phase(cfg, phase, up, dry_run, env, proxy=True, after_ids=()) -> Submission:
     return _submit(cfg, lambda v: _phase_jobs(cfg, phase, v, up, after_ids), phase, cfg.output_dir, (), up,
-                   dry_run, env, proxy=proxy, create=lambda: create_version(cfg, phase))
+                   dry_run, env, proxy=proxy, create=lambda: create_version(cfg, phase), pipeline=PIPELINE)
 
 
 def submit_phase(cfg: TrainingConfig, phase: str, from_: str | None = None, dry_run: bool = False,

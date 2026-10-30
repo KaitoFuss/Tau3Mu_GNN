@@ -38,7 +38,7 @@ USER_FIELDS: dict[str, _Field] = {
     "inputs.already_resonance_skimmed": _Field(_bool),
     "branch_map": _Field(_str_map, required=False, default=None),
     "limit.signal_weight": _Field(_positive_number),
-    "limit.gnn_score_cut": _Field(_number_list, required=False, default=[3.9]),
+    "limit.gnn_score_cut": _Field(_number_list, required=False, default=[3.5]),
     "models": _Field(_models, required=False, default="frozen"),
 }
 

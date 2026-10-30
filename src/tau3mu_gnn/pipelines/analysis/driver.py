@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 
 from tau3mu_gnn.pipelines.analysis.config import Config
-from tau3mu_gnn.pipelines.analysis.manifest import create_version, pick_upstream
+from tau3mu_gnn.pipelines.analysis.manifest import PIPELINE, create_version, pick_upstream
 from tau3mu_gnn.pipelines.common import runs, storage
 from tau3mu_gnn.pipelines.common.driver import Submission, _submit
 from tau3mu_gnn.pipelines.common.manifest import read_manifest
@@ -48,7 +48,7 @@ def submit_phase(cfg: Config, phase: str, from_: str | None = None, dry_run: boo
     if phase == "bdt" and from_ is not None:
         raise ValueError("phase bdt has no upstream; --from is not allowed")
     return _submit(cfg, lambda v: _phase_jobs(cfg, phase, v, up), phase, cfg.output_dir, (), up, dry_run, env,
-                   create=lambda: create_version(cfg, phase))
+                   create=lambda: create_version(cfg, phase), pipeline=PIPELINE)
 
 
 def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float | None = None,
@@ -93,7 +93,7 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 
     debug = storage.join(cfg.output_dir, "debug")
     return _submit(cfg, jobs_for, stage, debug, ("debug",), up or src, dry_run, env,
-                   create=lambda: create_version(cfg, stage, parent=debug))
+                   create=lambda: create_version(cfg, stage, parent=debug), pipeline=PIPELINE)
 
 
 def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
@@ -107,7 +107,7 @@ def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) ->
     for phase in PHASES:
         try:
             s = _submit(cfg, lambda v, phase=phase, up=up, after=after: _phase_jobs(cfg, phase, v, up, after),
-                        phase, cfg.output_dir, (), up, dry_run, env, proxy=False,
+                        phase, cfg.output_dir, (), up, dry_run, env, proxy=False, pipeline=PIPELINE,
                         create=lambda phase=phase: create_version(cfg, phase))
         except SubmitError as e:
             if not subs:

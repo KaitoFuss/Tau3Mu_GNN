@@ -41,7 +41,7 @@ def test_bdt_phase(cfg, env, fake_sbatch):
     s = submit_phase(cfg, "bdt", env=env)
     assert s.version_dir == f"{cfg.output_dir}/bdt_vs1" and s.upstream is None
     assert s.job_ids == {"skim": "1001", "bdt_train": "1002", "bdt_infer": "1003"}
-    assert Path(s.log_folder) == Path(cfg.paths.log_dir) / "toy_train" / "bdt_vs1"
+    assert Path(s.log_folder) == Path(cfg.paths.log_dir) / "training" / "toy_train" / "bdt_vs1"
     calls = sbatch_calls(fake_sbatch)
     assert calls[1].startswith("--parsable --dependency=afterok:1001 ")
     assert calls[2].startswith("--parsable --dependency=afterok:1002 ")

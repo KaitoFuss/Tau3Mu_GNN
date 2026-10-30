@@ -31,7 +31,7 @@ def test_valid_config_loads(load, user, fake_repo):
 def test_defaults_applied(load, user):
     cfg = load(user)
     assert cfg.inputs.tree_name == "Events"
-    assert cfg.limit.gnn_score_cut == (3.9,)
+    assert cfg.limit.gnn_score_cut == (3.5,)
     assert dict(cfg.branch_map) == {}
 
 

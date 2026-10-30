@@ -4,14 +4,14 @@ import pytest
 
 from conftest import REPO_ROOT
 
-MODEL = "new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2"
+MODEL = "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
 
-# SHA-256 of the originals in /work/kfuss/SVJ_GNN/output/, taken 2026-10-07.
+# SHA-256 of the 13c models (training W_raw_Nano_AOD_fixed bdt_vs1 / gnn_vs1 on dCache), taken 2026-10-30.
 EXPECTED = {
-    f"models/W/gnn/{MODEL}/{MODEL}.pt": "b6991427c7e07cf01b8e5384dc6704bb151bbff3f94093ef4babecd8f2de3c1e",
-    f"models/W/gnn/{MODEL}/Normalization.pkl": "ffcf2239032b68ab222669dfb7010d3ad17511bdf2d5acb41669acd64395d57e",
+    f"models/W/gnn/{MODEL}/{MODEL}.pt": "fbbae1e34c5c1915cdbd774d2623129ab56059aa2960355f5cd71b8331721d1e",
+    f"models/W/gnn/{MODEL}/Normalization.pkl": "4eeede21e3ab17bd4e0b64f70714975e75bc9ba0759abcd52863dd6f7a971785",
     f"models/W/gnn/{MODEL}/arch_config.json": "bf5e2e1762b6a577853dad4150b1ae3e5f41efab0f0ba65ef8da5775e6a081bd",
-    "models/W/bdt/ISO_classifiers_24feb2026_v0.pck": "2aa4de47344a372ca0575c017fe48b8c1f222cc50dad353aeb459d0578003395",
+    "models/W/bdt/ISO_classifiers_W_raw_Nano_AOD_fixed.pck": "3005dfddf0f8c53e1874032e1125956faa964787939b0a89761be6076d261b93",
 }
 
 

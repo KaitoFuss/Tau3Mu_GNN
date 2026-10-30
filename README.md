@@ -16,16 +16,6 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 - [Analysis Pipeline (tau3mu-analysis)](#analysis-pipeline-tau3mu-analysis)
 - [Training Pipeline (tau3mu-training)](#training-pipeline-tau3mu-training)
 - [HF Channel](#hf-channel)
-- [Quick Start](#quick-start)
-- [Pipeline Overview](#pipeline-overview)
-  - [Step 0 — Skimming](#step-0--skimming-optional)
-  - [Step 1 — Graph Creation (T3)](#step-1--graph-creation-t3)
-  - [Step 2 — Copy Graphs to lxplus](#step-2--copy-graphs-to-lxplus)
-  - [Step 3 — GNN Training (lxplus)](#step-3--gnn-training-lxplus)
-  - [Step 4 — Copy Model back to T3](#step-4--copy-model-back-to-t3)
-  - [Step 5 — GNN Inference (T3)](#step-5--gnn-inference-t3)
-  - [Step 6 — Model Evaluation (T3)](#step-6--model-evaluation-t3-optional)
-  - [Step 7 — Limit Setting (T3)](#step-7--limit-setting-t3)
 - [Key Concepts](#key-concepts)
   - [Channels](#channels)
   - [Graph Construction](#graph-construction)
@@ -59,7 +49,6 @@ The work uses two clusters:
 > - [Infrastructure](#infrastructure): the clusters, the schedulers and the hardcoded paths.
 > - [CMS Combine](#cms-combine): the build on lxplus.
 > - [Analysis Pipeline](#analysis-pipeline-tau3mu-analysis): SLURM, `sbatch`, `squeue`, `sacct`, the dCache `root://` output, the VOMS proxy, `paths.log_dir` on `/work`, the `slurm.jobs` resources.
-> - [Quick Start](#quick-start) and [Pipeline Overview](#pipeline-overview): the copy steps between T3 and lxplus (Steps 1b, 2, 4).
 > - [Data Storage and Transfer](#data-storage-and-transfer): `/pnfs/`, `/work/`, the data flow.
 > - [Job Submission](#job-submission): SLURM on T3.
 
@@ -111,14 +100,9 @@ tau3mu_gnn/
     │   ├── datacard.py                            # CMS Combine datacards (GNN score or BDT ISO)
     │   ├── datacard_creation_ISO.py      # Generate CMS Combine datacards (ISO/BDT baseline)
     │   └── readout_limit.py              # Parse Combine output and save limits to JSON
-    ├── utils/
-    │   ├── skimmer.py            # Pre-selection skimmer
-    │   └── ...
-    └── data/                     # gitignored — ROOT files and generated .pt graphs live here
-        ├── signal_W/
-        ├── background_W/
-        ├── signal_HF/
-        └── background_HF/
+    └── utils/
+        ├── skimmer.py            # Pre-selection skimmer
+        └── ...
 ```
 
 ---
@@ -214,9 +198,9 @@ Edit `my_W.yaml`. It starts from raw NanoAOD (stage 0 runs). The comments in the
 | `branch_map` | Set it only if your branch names are different. For raw NanoAOD, use the raw names as keys (`TauTo3Mu_*`, `PFCands_*`). |
 | `limit.signal_weight` | **Required.** It has no default. See below. |
 | `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
-| `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/`. Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-training`). See below. |
+| `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/` (step 13c training `W_raw_Nano_AOD_fixed`; reference: expected limit 1.414 at GNN cut 3.5). Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-training`). See below. |
 
-> **`limit.signal_weight`:** compute it for **your** dataset (lumi, cross section, reference BR). The example value is correct only for Kaito's W dataset.
+> **`limit.signal_weight`:** the weight that scales the signal MC to the dataset (lumi, cross section, reference BR). The example values (W 0.000019, HF 0.000152) are not yet the physical values: they only scale the signal so that the limits have a comparable size. For a physics result, compute the value for **your** dataset.
 
 > **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The analysis also has `gnn_vsN` folders (GNN scores): use the one of `tau3mu-training`, under `<training_name>/`. The config stops with an error if the folder is not a training `gnn_vsN` (an analysis `gnn_vsN` is refused), its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
@@ -312,7 +296,7 @@ Each version folder also has these files:
 > **A version is complete only if `manifest.json` exists.**
 
 - **The limit:** `limit_vsN/limits.txt` has the expected limit and the best cut.
-- **Local copy:** `<log_dir>/<analysis_name>/<phase>_vsN/` also has the job scripts and the SLURM logs.
+- **Local copy:** `<log_dir>/analysis/<analysis_name>/<phase>_vsN/` also has the job scripts and the SLURM logs.
 
 ### 5. When a job fails
 
@@ -322,7 +306,7 @@ Each version folder also has these files:
    - Job names have the format `<phase><version>.<job>.<analysis_name>`, for example `GNN1.gnnS.my_W`.
      - Phase: `BDT`, `GNN`, `LIM`, or `D` for a debug stage. Version: the `N` of `_vsN`.
      - Job: `skim`, `bdt`, `gnnS` (gnn_signal), `gnnB` (gnn_background), `eval`, `lim<cut>`, `sum` (summary).
-2. **Read the log** of the failed job: `<log_dir>/<analysis_name>/<phase>_vsN/<job>-<ID>.err`.
+2. **Read the log** of the failed job: `<log_dir>/analysis/<analysis_name>/<phase>_vsN/<job>-<ID>.err`.
 3. **Fix the problem. Then submit the phase again.**
    - This makes the next version, for example `gnn_vs2`.
    - The failed version stays. It has no manifest.
@@ -378,6 +362,8 @@ The jobs use the code of the folder you submit from. Do not change that folder w
 └── benchmark_vsN/   cut_<cut>/, limits.json, limits.txt, limits.png   (BDT-only limit, best cut)
 ```
 
+The job scripts and the SLURM logs: `<log_dir>/training/<training_name>/<phase>_vsN/`.
+
 Job names: `BDT<N>`, `GNN<N>`, `BEN<N>` plus the job, for example `GNN1.gnnT.my_training`.
 
 ### 4. Use the new models in the analysis
@@ -410,284 +396,6 @@ tau3mu-training all --config configs/example_training_HF.yaml
 # when the training is done: set models: in your copy of example_HF.yaml to the new gnn_vsN
 tau3mu-analysis all --config configs/example_HF.yaml
 ```
-
----
-
-## Quick Start
-
-> **Old manual workflow.** The [Analysis Pipeline](#analysis-pipeline-tau3mu-analysis) and the [Training Pipeline](#training-pipeline-tau3mu-training) replace these steps. They are kept for reference.
-
-A short end-to-end run for the W channel.
-
-- It uses the standard configuration from `jobs/condor/train_W_GINE_deleted.sh`.
-- All arguments: see [Pipeline Overview](#pipeline-overview).
-- Storage layout: see [Data Storage and Transfer](#data-storage-and-transfer).
-
-**Before you start, you need:**
-
-- The `Tau3Mu` conda env, active.
-- A valid CMS VOMS proxy.
-- The skimmed ROOT files in `src/tau3mu_gnn/data/{signal,background}_W/` on T3.
-
-```bash
-# Step 1 — Build graphs (T3)
-sbatch jobs/graph_creation/GraphCreation_W.sh
-
-# Step 1b — Stage graphs to T3 /pnfs/, then copy to lxplus
-cp /work/kfuss/SVJ_GNN/src/tau3mu_gnn/data/signal_W/processed/<GRAPH_FILE> \
-    /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/processed/
-# (repeat for background_W)
-xrdcp -r root://t3se01.psi.ch//pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/processed \
-    /eos/user/k/kfuss/tau3mu_gnn_round2/data/signal_W/
-
-# Step 3 — Train on lxplus (HTCondor)
-condor_submit jobs/condor/train_W_GINE.sub   # submits train_W_GINE_deleted.sh
-
-# Step 4 — Copy trained model back to T3 (run on lxplus, then on T3)
-xrdcp -r /eos/user/k/kfuss/SVJ_GNN/output/pt_ft/ \
-    root://t3se01.psi.ch//pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/gnn_from_lxplus/
-mv /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/gnn_from_lxplus/pt_ft \
-    /work/kfuss/SVJ_GNN/output/
-
-# Steps 5–7 — Score, evaluate, set limit (T3)
-sbatch jobs/gnn_score_creation/create_score_W_bkg.sh
-sbatch jobs/model_eval/ROC_curves_comparison.sh   # optional
-sbatch jobs/analysis/create_datacard.sh
-```
-
----
-
-## Pipeline Overview
-
-> **Old manual workflow.** The [Training Pipeline](#training-pipeline-tau3mu-training) replaces Steps 0–4 and the [Analysis Pipeline](#analysis-pipeline-tau3mu-analysis) Steps 5–7. They are kept for reference.
-
-Do the steps in this order. Each step has a job script in `jobs/`.
-
-### Step 0 — Skimming (OPTIONAL)
-
-You can pre-select the raw ROOT files before graph creation. The skimmer does this.
-
-- Examples: fiducial cuts, resonance vetoes.
-- All cuts of the pipeline, with their values: see [Skimming cuts](#skimming-cuts).
-
-```bash
-# jobs/graph_creation/skimming.sh
-python -m tau3mu_gnn.utils.skimmer \
-  --input  <path/to/raw.root> \
-  --output <path/to/skimmed.root>
-```
-
-### Step 1 — Graph Creation (T3)
-
-This step makes the graphs.
-
-- It reads the skimmed ROOT files.
-- It applies the selection cuts.
-- It builds PyTorch Geometric graph objects (`.pt` files).
-- It makes separate graphs for signal and background, and for each channel.
-
-```bash
-# SLURM: jobs/graph_creation/GraphCreation_W.sh
-# SLURM: jobs/graph_creation/GraphCreation_HF.sh
-
-python -m tau3mu_gnn.scripts.GraphCreation \
-  --graph_type       knn \
-  --k                10 \
-  --tau_channel      W \
-  --unsculpting_mode <mode>
-```
-
-**The output dataset name:**
-
-- The script makes the name from the parameters.
-- It writes the files into `src/tau3mu_gnn/data/signal_<channel>/processed/` and `src/tau3mu_gnn/data/background_<channel>/processed/`.
-- In Step 3, you use this name as `--model`.
-- For the `--unsculpting_mode` options, see [Unsculpting / Mass Decorrelation](#unsculpting--mass-decorrelation).
-
-> **Input and output folders:**
-> - The script reads the ROOT files from `src/tau3mu_gnn/data/signal_<channel>/` and `src/tau3mu_gnn/data/background_<channel>/` (relative to the repo root).
-> - It writes the `.pt` graphs next to them, in `processed/`.
-> - Git ignores these folders. Put the ROOT files there by hand before you run the script.
-
-> **`--bdt_preselection_cut`** (boolean flag). When you set it, the script does three things:
-> 1. It reads the ROOT files from the `bdt_full/` subfolder (for example `src/tau3mu_gnn/data/signal_W/bdt_full/`). You must put ROOT files with BDT scores there.
-> 2. It adds `small_with_bdt_iso` to the output dataset name.
-> 3. It saves the BDT ISO score as a graph-level attribute. Then [Fine-Tuning](#fine-tuning) can pre-select events with a BDT threshold.
-
-After graph creation, copy the `.pt` files to the T3 storage. Then go to Step 2.
-
-```bash
-cp /work/kfuss/SVJ_GNN/src/tau3mu_gnn/data/signal_W/processed/<GRAPH_FILE> \
-    /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_W/processed/
-cp /work/kfuss/SVJ_GNN/src/tau3mu_gnn/data/background_W/processed/<GRAPH_FILE> \
-    /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/processed/
-# Repeat for HF channel as needed
-```
-
-**The features:**
-
-- **Node features:** particle kinematics (pT, η, φ), displacement (dz, d0), PUPPI weights, charge.
-- **Edge features:** relative angles (ΔR, Δη, Δφ), pairwise pT.
-- **Graph-level features:** τ candidate kinematics, MET, vertex quality, displacement significance. These were the BDT input features before.
-
-### Step 2 — Copy Graphs to lxplus
-
-Copy the `.pt` graph files from the T3 storage to lxplus.
-
-- You can also train on T3 (see [Job Submission](#job-submission)).
-- For full-size runs, use lxplus. Its GPU nodes are more powerful.
-
-> **Proxy:** all `xrdcp` calls need a valid CMS VOMS proxy: `voms-proxy-init --voms cms --valid 192:00`
-
-```bash
-# Run on T3
-xrdcp -r root://t3se01.psi.ch//pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_W/processed \
-    /eos/user/k/kfuss/tau3mu_gnn_round2/data/background_W/
-# Repeat for signal and for HF channel as needed
-```
-
-### Step 3 — GNN Training (lxplus)
-
-The training runs on the lxplus GPU nodes with HTCondor. The entry point is `Train_TauMuNet.py`.
-
-```bash
-# HTCondor: jobs/condor/train_W_GINE.sub  (submit file)
-#           jobs/condor/train_W_GINE_deleted.sh  (executable)
-
-python -m tau3mu_gnn.scripts.Train_TauMuNet \
-  --epochs           1000 \
-  --batch            128 \
-  --name             <run_name> \
-  --model            <graph_identifier> \
-  --lr               0.0016 \
-  --disco            <float> \
-  --arch             <arch_name> \
-  --tau_channel      W \
-  --gnn_mode         <mode> \
-  --conv_type        <type> \
-  --unsculpting_mode <mode> \
-  --data_base        /eos/user/k/kfuss/tau3mu_gnn_round2/data
-```
-
-- **`--model`** must be the dataset name from [Step 1](#step-1--graph-creation-t3). This is the suffix of the `.pt` files in `processed/`.
-- **Optional fine-tuning flags:** `--finetune`, `--finetune_lr <float>`, `--finetune_epochs <int>`, `--bdt_threshold <float>`. See [Fine-Tuning](#fine-tuning).
-- **Other arguments:** see [Key Concepts](#key-concepts).
-
-The training uses:
-
-- **Loss:** binary cross-entropy. Optional: a DisCo term on the background.
-- **Optimiser:** Adam with the `ReduceLROnPlateau` scheduler.
-- **Early stopping:** on by default. It saves the best checkpoint.
-- **Experiment tracking:** CometML. It logs the project automatically.
-- **Outputs** in `output/<run_name>/`:
-  - model checkpoint (`.pt`)
-  - normalisation parameters (`Normalization.pkl`)
-  - loss curves, ROC plots, sculpting check plots
-  - architecture config (`arch_config.json`)
-
-At the end, the script evaluates the model on the held-out test set. These are the events in the 70–100% window. The script saves the plots.
-
-### Step 4 — Copy Model back to T3
-
-```bash
-# On lxplus — push trained model to T3 storage
-xrdcp -r /eos/user/k/kfuss/SVJ_GNN/output/<MODEL_NAME>/ \
-    root://t3se01.psi.ch//pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/gnn_from_lxplus/
-
-# On T3 — move into working directory
-mv /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/gnn_from_lxplus/<MODEL_NAME> \
-    /work/kfuss/SVJ_GNN/output/
-```
-
-### Step 5 — GNN Inference (T3)
-
-This step runs a trained model on ROOT files. It writes a new ROOT file with the GNN score of each event.
-
-```bash
-# SLURM: jobs/gnn_score_creation/create_score_W_bkg.sh
-#        jobs/gnn_score_creation/create_score_W_signal.sh
-
-python -m tau3mu_gnn.scripts.ScoreCreation \
-  --root             <path/to/root/files> \
-  --output_folder    /work/kfuss/SVJ_GNN/output/ \
-  --model_names      <model_name1> [<model_name2> ...] \
-  --archs            <arch1> [<arch2> ...] \
-  --conv_types       <type1> [<type2> ...] \
-  --tau_channel      W \
-  --gnn_mode         <mode> \
-  --storage_folder   <scratch_dir> \
-  --unsculpting_mode <mode>
-```
-
-Optional arguments:
-
-- `--bdt_preselection_cut <float>`: use only the events above this BDT score.
-- `--max_events_to_process <int>`: the maximum number of events.
-
-**The output:**
-
-- The script writes the output ROOT files to `--storage_folder`. They have the `GNN_score` branch.
-- After the scores, the job script calls `ModelEval` automatically.
-- `ModelEval` makes tau mass histograms at a fixed FPR. Use them to check for mass sculpting.
-
-### Step 6 — Model Evaluation (T3) (OPTIONAL)
-
-This step compares the ROC curves of many models. It can also compare them to the BDT baseline.
-
-```bash
-# jobs/model_eval/ROC_curves_comparison.sh
-
-python -m tau3mu_gnn.model_eval.ModelEval \
-  --plot_mode       ROC_comp_full \
-  --tau_channel     W \
-  --gnn_archs_location  <path/to/model1/> [<path/to/model2/> ...] \
-  --lambdas         <label1> [<label2> ...] \
-  --archs           <arch1> [<arch2> ...] \
-  --bdt_location    <path/to/bdt_model/>
-```
-
-- **`--lambdas`:** free-text labels for each model in the plot legend.
-  - Usually the DisCo λ value of the training, for example `0.0` or `0.5`.
-  - Any descriptive text is also possible.
-- **Other `--plot_mode` options:** `tau_hist`, `tau_hist_fpr`, `score_cut`.
-
-### Step 7 — Limit Setting (T3)
-
-You need a valid CMS VOMS proxy and CMS Combine.
-
-**7a — Make the datacard and run Combine:**
-
-```bash
-# jobs/analysis/create_datacard.sh
-python -m tau3mu_gnn.analysis.datacard \
-  --model   <model_name> \
-  --channel W \
-  --cut     <score_cut>
-
-# Run Combine (the SLURM job script cd's into the datacard directory)
-combine -M FitDiagnostics datacard.txt                        # sanity-checks the fit; produces pre/post-fit distributions
-combine -C 0.90 --run blind -M AsymptoticLimits datacard.txt  # 90% CL expected upper limit, asymptotic approximation, blinded
-```
-
-The model:
-
-- **Signal:** a Gaussian at m(τ) = 1.78 GeV.
-- **Background:** a falling exponential.
-- **Limit:** expected, blinded. The fit does not use the signal mass window.
-
-**7b — Read and save the limit:**
-
-```bash
-python -m tau3mu_gnn.analysis.readout_limit \
-  --model   <model_name> \
-  --channel W \
-  --cut     <score_cut> \
-  --path    <path/to/combine/output/>
-```
-
-- The script reads the median expected limit.
-- It adds the limit to `/work/kfuss/SVJ_GNN/output/<channel>_limits.json`.
-- It sorts the file by model performance.
 
 ---
 
@@ -863,35 +571,6 @@ The Combine outputs and the limit results go to:
 
 - `/work/kfuss/SVJ_GNN/output/`
 - `/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/<MODEL_NAME>`
-
-### Location roles and data flow
-
-| Location | Purpose |
-|---|---|
-| `src/tau3mu_gnn/data/` (repo, T3) | Temporary place for the ROOT inputs and the `.pt` graphs. Git ignores it. |
-| T3 `/pnfs/` | Permanent CMS xrootd storage. The source for `xrdcp` transfers. |
-| T3 `/work/kfuss/` | Fast local disk. Running SLURM jobs load models from it and write output to it. |
-| lxplus `/eos/user/k/kfuss/` | EOS storage for the training data and the model outputs on lxplus. |
-
-```
-ROOT files (T3 /work/kfuss/SVJ_GNN/)
-    │  placed manually into src/tau3mu_gnn/data/ before Step 1
-    ▼
-.pt graphs (repo src/tau3mu_gnn/data/…/processed/)   ← Step 1 output
-    │  cp to T3 /pnfs/ (end of Step 1)
-    ▼
-.pt graphs (T3 /pnfs/…/data/{signal,background}_W/processed/)
-    │  xrdcp to lxplus (Step 2)
-    ▼
-.pt graphs (lxplus /eos/…/tau3mu_gnn_round2/data/)
-    │  Train_TauMuNet.py (Step 3)
-    ▼
-trained model (lxplus /eos/user/k/kfuss/SVJ_GNN/output/<name>/)
-    │  xrdcp to T3 /pnfs/ staging area (Step 4)
-    │  mv to T3 /work/kfuss/SVJ_GNN/output/ (Step 4)
-    ▼
-scored ROOT files + limit JSON (T3 /work/kfuss/ and /pnfs/)   ← Steps 5–7
-```
 
 ---
 
