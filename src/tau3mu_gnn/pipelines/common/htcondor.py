@@ -166,7 +166,8 @@ class HTCondorBatch(Batch):
         if free is not None and free < AFS_MIN_FREE_MB:
             log.warning("only %.0f MB free on AFS in %s: the job logs may not fit (delete old logs; they are "
                         "also next to the results, <version>/logs/)", free, dag.parent)
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        # cwd: the job's start folder (Iwd) is the folder of condor_submit_dag; the CERN schedds refuse /eos there
+        res = subprocess.run(cmd, capture_output=True, text=True, cwd=dag.parent)
         m = _CLUSTER_RE.search(res.stdout)
         if res.returncode != 0 or not m:
             raise SubmitError(f"condor_submit_dag failed for {dag}: {(res.stderr or res.stdout).strip()}")

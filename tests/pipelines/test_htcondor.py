@@ -36,6 +36,7 @@ def fake_dag(tmp_path, monkeypatch):
     exe.write_text(f"""#!/bin/sh
 if [ "${{FAKE_DAG_FAIL:-0}}" = 1 ]; then echo "ERROR: no schedd" >&2; exit 1; fi
 echo "$*" >> {log}
+pwd > {log}.cwd
 for a in "$@"; do last=$a; done
 cat "$last" >> {log}
 echo "Submitting job(s)."
@@ -363,3 +364,15 @@ def test_job_env_outside_conda_base(load, user, tmp_path):
     assert (env.conda_base, env.env_prefix) == (base, prefix)
     with pytest.raises(EnvError, match="activate"):
         JobEnv.from_config(cfg, environ={})
+
+
+def test_submit_runs_in_the_log_folder(load, condor_user, fake_dag, monkeypatch, tmp_path):
+    """CERN schedds refuse a DAG submitted from /eos (Iwd = the current folder): submit from the log folder."""
+    from tau3mu_gnn.pipelines.analysis.driver import submit_phase
+    from tau3mu_gnn.pipelines.common.batch import JobEnv
+
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    s = submit_phase(load(condor_user), "bdt", env=JobEnv.from_environment(ENV))
+    assert Path(str(fake_dag) + ".cwd").read_text().strip() == str(s.log_folder)
