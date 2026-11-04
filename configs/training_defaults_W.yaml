@@ -74,5 +74,5 @@ htcondor:                      # HTCondor resources per job (lxplus): the SLURM 
     graphs_background: {mem: 256G, time: "2-00:00:00", cpus: 1}
     gnn_train:         {mem: 128G, time: "3-00:00:00", cpus: 5, gpus: 1,
                         requirements: "(GPUs_Capability >= 7.0) && (GPUs_GlobalMemoryMb >= 30000)"}
-    benchmark_limit:   {mem: 128G, time: "0-01:30:00", cpus: 1}
+    benchmark_limit:   {mem: 2G,   time: "0-01:00:00", cpus: 1}  # not measured: same limit code as the analysis limit (815 MB)
     benchmark_summary: {mem: 4G,   time: "0-00:30:00", cpus: 1}
