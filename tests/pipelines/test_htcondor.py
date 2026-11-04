@@ -308,3 +308,16 @@ limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
     assert res.returncode != 0
     assert (Path(version_dir) / "logs" / "bad-77.err").is_file()
     assert res.stderr.strip()                                                     # job stderr shown to HTCondor
+
+
+@pytest.mark.parametrize("scheduler, module, name", [
+    ("slurm", "tau3mu_gnn.pipelines.common.slurm", "SlurmBatch"),
+    ("htcondor", "tau3mu_gnn.pipelines.common.htcondor", "HTCondorBatch"),
+])
+def test_make_batch_per_scheduler(load, user, scheduler, module, name):
+    """Each batch system has its Batch class in its own module."""
+    from tau3mu_gnn.pipelines.common.batch import Batch, make_batch
+
+    user["scheduler"] = scheduler
+    b = make_batch(load(user))
+    assert isinstance(b, Batch) and type(b).__module__ == module and type(b).__name__ == name

@@ -134,6 +134,8 @@ def afs_free_mb(path: Path) -> float | None:
 
 
 class HTCondorBatch(Batch):
+    """Writes the job files in add(); finish() submits one DAG over all add() calls."""
+
     def __init__(self):
         self._parts: list[tuple[str, list[Job], Path]] = []
         self._run_name = ""

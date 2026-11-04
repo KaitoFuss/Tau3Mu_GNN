@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Sequence
 
 from tau3mu_gnn.pipelines.common import storage
 from tau3mu_gnn.pipelines.common.batch import (  # noqa: F401  (re-exported)
-    PROXY_HINT, SHORT_JOB, TRAINING_MODULE, VERSION_CODES, EnvError, Job, JobEnv, ProxyError, SubmitError,
+    PROXY_HINT, SHORT_JOB, TRAINING_MODULE, VERSION_CODES, Batch, EnvError, Job, JobEnv, ProxyError, SubmitError,
     chain_hours, check_dependencies, check_proxy, time_hours,
 )
 from tau3mu_gnn.pipelines.common.batch import job_name as slurm_job_name
@@ -92,3 +92,18 @@ def submit_jobs(cfg: Config, jobs: Sequence[Job], version_dir: str, log_folder: 
             raise SubmitError(f"sbatch failed for job {job.name}: {res.stderr.strip()}.{hint}", ids)
         ids[job.name] = res.stdout.strip().split(";")[0]
     return ids
+
+
+class SlurmBatch(Batch):
+    """Submits in add() (sbatch returns the job IDs at once); finish() only returns the IDs."""
+
+    def __init__(self):
+        self._ids: dict[str, dict[str, str]] = {}
+
+    def add(self, cfg, jobs, version_dir, log_folder, env, dry_run=False):
+        ids = submit_jobs(cfg, jobs, version_dir, log_folder, env, dry_run=dry_run)
+        self._ids[version_dir] = ids
+        return ids
+
+    def finish(self, dry_run=False):
+        return dict(self._ids)
