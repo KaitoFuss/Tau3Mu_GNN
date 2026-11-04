@@ -1,6 +1,6 @@
-"""Analysis phase and single-stage submission (step 9b): pick the upstream version, make the next version
+"""Analysis phase and single-stage submission: pick the upstream version, make the next version
 folder, write and submit the job scripts. The job bodies are in jobs.py; the shared submission in
-common/driver.py; the SLURM details in common/slurm.py."""
+common/driver.py; the batch details in common/batch.py, slurm.py and htcondor.py."""
 from __future__ import annotations
 
 import logging
@@ -8,9 +8,9 @@ import logging
 from tau3mu_gnn.pipelines.analysis.config import Config
 from tau3mu_gnn.pipelines.analysis.manifest import PIPELINE, create_version, pick_upstream
 from tau3mu_gnn.pipelines.common import runs, storage
-from tau3mu_gnn.pipelines.common.driver import Submission, _submit
+from tau3mu_gnn.pipelines.common.batch import Job, JobEnv, SubmitError, chain_hours, check_proxy, make_batch
+from tau3mu_gnn.pipelines.common.driver import Submission, _submit, finish, write_jobs
 from tau3mu_gnn.pipelines.common.manifest import read_manifest
-from tau3mu_gnn.pipelines.common.slurm import Job, JobEnv, SubmitError, chain_hours, check_proxy
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def _base(cfg: Config, version_dir: str) -> tuple[str, ...]:
 
 def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None, after_ids: tuple[str, ...] = ()) \
         -> list[Job]:
-    """after_ids: SLURM IDs the first jobs of the phase wait for (`all`: the last job of the phase before)."""
+    """after_ids: batch IDs the first jobs of the phase wait for (`all`: the last job of the phase before)."""
     b = _base(cfg, version_dir)
     if phase == "bdt":
         return [Job("skim", "skim", ("skim", *b), after_ids=after_ids),
@@ -99,22 +99,26 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
     """Submit the phases bdt, gnn and limit at once. gnn uses the new bdt version, limit the new gnn version (not
     the newest complete one: they have no manifest yet). The first jobs of gnn and limit wait (afterok) for the
-    last job of the phase before; their upstream check runs when they start. If a job fails, SLURM cancels the jobs after it."""
+    last job of the phase before; their upstream check runs when they start. If a job fails, the batch system
+    does not start the jobs after it. HTCondor: one DAG over the three phases."""
     env = env if env is not None else JobEnv.from_config(cfg)
     check_proxy(cfg, sum(chain_hours(cfg, _phase_jobs(cfg, p, "<version>", "<upstream>")) for p in PHASES))
+    batch = make_batch(cfg)
     subs: list[Submission] = []
     up, after = None, ()
     for phase in PHASES:
         try:
             s = _submit(cfg, lambda v, phase=phase, up=up, after=after: _phase_jobs(cfg, phase, v, up, after),
                         phase, cfg.output_dir, (), up, dry_run, env, proxy=False, pipeline=PIPELINE,
-                        create=lambda phase=phase: create_version(cfg, phase))
+                        create=lambda phase=phase: create_version(cfg, phase), batch=batch)
         except SubmitError as e:
             if not subs:
                 raise
+            if not dry_run:
+                write_jobs(subs)
             done = [i for prev in subs for i in prev.job_ids.values()] + list(e.submitted.values())
             raise SubmitError(f"{e} Earlier phases are already submitted ({', '.join(x.version_dir for x in subs)});"
                               f" to cancel everything: scancel {' '.join(done)}") from e
         subs.append(s)
         up, after = s.version_dir, (s.job_ids[LAST_JOB[phase]],) if phase in LAST_JOB else ()
-    return subs
+    return finish(batch, subs, dry_run)

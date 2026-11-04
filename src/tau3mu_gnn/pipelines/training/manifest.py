@@ -64,6 +64,10 @@ def config_dict(cfg: TrainingConfig) -> dict:
                   "jobs": {name: {"partition": j.partition, "mem": j.mem, "time": j.time, "cpus": j.cpus,
                                   "account": j.account, "gres": j.gres}
                            for name, j in cfg.slurm.jobs.items()}},
+        "scheduler": cfg.scheduler,
+        "htcondor": {"jobs": {name: {"mem": j.mem, "time": j.time, "cpus": j.cpus, "gpus": j.gpus,
+                                     "requirements": j.requirements}
+                              for name, j in cfg.htcondor.jobs.items()}},
     }
 
 

@@ -341,7 +341,7 @@ def _env():
     ("limit_3.9", "limit", ("limit", "--cut", "3.9")),
 ])
 def test_analysis_script_unchanged(load, user, name, resources, args):
-    """Expected text rendered by the code before step 12g (tests/pipelines/expected/, module path updated for the pipelines/ layout)."""
+    """Expected text rendered by an earlier version of the code (tests/pipelines/expected/): the SLURM script must not change."""
     from tau3mu_gnn.pipelines.common.slurm import Job, render_script
 
     text = render_script(load(user), Job(name, resources, args), "/out/toy_run/bdt_vs1",

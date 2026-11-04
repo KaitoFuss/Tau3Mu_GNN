@@ -27,7 +27,7 @@ from xgboost import XGBClassifier  # noqa: E402
 from tau3mu_gnn.bdt_training.BDT_ScoreProducer import PREFIX, _add_features, _load  # noqa: E402
 from tau3mu_gnn.bdt_training.bdt_inputs import bdt_branches  # noqa: E402
 
-ROC_WORKING_POINTS = [0.80, 0.85, 0.90, 0.925, 0.95, 0.975, 0.99]   # BDT cuts marked on the ROC (Kaito, PR #37)
+ROC_WORKING_POINTS = [0.80, 0.85, 0.90, 0.925, 0.95, 0.975, 0.99]   # BDT cuts marked on the ROC
 MASS = f"{PREFIX}TauTo3Mu_fitted_mass"
 
 
@@ -62,7 +62,7 @@ def load_training_data(signal_files, background_files, tree_name: str, channel: 
     sig, bkg = (df[np.isfinite(df[bdt_features].to_numpy(dtype=float)).all(axis=1)].reset_index(drop=True)
                 for df in (sig, bkg))
     sig["target"], bkg["target"] = 1, 0
-    # Background weights stay 1; signal is rescaled to the background total (Kaito, PR #28). This
+    # Background weights stay 1; signal is rescaled to the background total. This
     # corrects for dropped rows and a class below max_events_per_class. The old script used 1 for both.
     sig["weight"], bkg["weight"] = len(bkg) / len(sig), 1.
     data = pd.concat([sig, bkg], ignore_index=True)

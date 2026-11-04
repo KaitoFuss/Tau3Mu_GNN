@@ -10,10 +10,10 @@ from typing import Any
 
 from tau3mu_gnn.pipelines.common.config import (
     _Field, _flatten, _name, _non_empty_str, _number, _number_list, _open_unit_interval, _parse,
-    _positive_number, _range, _read_yaml, _slurm_jobs_parser,
+    _positive_number, _range, _read_yaml, _slurm_jobs_parser, _htcondor_jobs_parser,
 )
 
-SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")
+SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")   # also the HTCondor jobs
 
 # Keys of the frozen defaults file. Paths are relative to the repo root.
 # The channel is not repeated here: the user file selects analysis_defaults_<channel>.yaml.
@@ -34,6 +34,7 @@ DEFAULTS_FIELDS: dict[str, _Field] = {
     "limit.cl": _Field(_open_unit_interval),
     "slurm.account": _Field(_non_empty_str),
     "slurm.jobs": _Field(_slurm_jobs_parser(SLURM_JOBS)),
+    "htcondor.jobs": _Field(_htcondor_jobs_parser(SLURM_JOBS)),
 }
 
 

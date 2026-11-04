@@ -81,7 +81,7 @@ def test_aligned_tauplusmet_passes(load, user, tmp_path):
 
 
 def test_misaligned_tauplusmet_is_refused(load, user, tmp_path):
-    """E1: TauPlusMET_* not slimmed with TauTo3Mu_* -> no way to find the entry of a candidate: refuse."""
+    """TauPlusMET_* not slimmed with TauTo3Mu_* -> no way to find the entry of a candidate: refuse."""
     _jagged_inputs(user, tmp_path, n_tau=[1, 2, 1], n_met=[1, 3, 2])
     with pytest.raises(b.BranchError, match=r"signal: 2 of 3 events .*already_resonance_skimmed: false") as e:
         resonance_skim.run(load(user), tmp_path / "0_resonance_skim")

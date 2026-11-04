@@ -52,7 +52,7 @@ def _varied(n, rng, signal, first_event):
 
 
 def _toy_graphs(tmp_path, cfg, n=60):
-    """n signal + n background events through the 12d graph stage -> data_base for the training."""
+    """n signal + n background events through the graph stage -> data_base for the training."""
     from conftest import write_tree
     from tau3mu_gnn.pipelines.training.stages import graphs
     rng = np.random.default_rng(5)

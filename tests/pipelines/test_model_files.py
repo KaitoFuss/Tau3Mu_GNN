@@ -6,7 +6,7 @@ from conftest import REPO_ROOT
 
 MODEL = "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
 
-# SHA-256 of the 13c models (training W_raw_Nano_AOD_fixed bdt_vs1 / gnn_vs1 on dCache), taken 2026-10-30.
+# SHA-256 of the frozen W models (training W_raw_Nano_AOD_fixed bdt_vs1 / gnn_vs1).
 EXPECTED = {
     f"models/W/gnn/{MODEL}/{MODEL}.pt": "fbbae1e34c5c1915cdbd774d2623129ab56059aa2960355f5cd71b8331721d1e",
     f"models/W/gnn/{MODEL}/Normalization.pkl": "4eeede21e3ab17bd4e0b64f70714975e75bc9ba0759abcd52863dd6f7a971785",

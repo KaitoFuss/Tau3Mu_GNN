@@ -2,7 +2,7 @@
 
 Writes <out_dir>/cut_<cut>/: the datacard files (datacard.txt/.root, mass.pdf, temp trees), the Combine
 outputs and logs, and limit.json ({"cut", "limit", "limitErr"}: median expected limit at CL = limit.cl).
-Cut scan (step 8b): one run() per cut of limit.gnn_score_cut, then summarize() writes <out_dir>/limits.json,
+Cut scan: one run() per cut of limit.gnn_score_cut, then summarize() writes <out_dir>/limits.json,
 limits.txt and limits.png (best cut = lowest limit). run_scan() does both in one process.
 """
 from __future__ import annotations
@@ -79,7 +79,7 @@ def run_cut(inputs: Mapping[str, str | Path], out_dir: str | Path, cut: float, *
 
 def run_scan(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path) -> dict:
     """All cuts of limit.gnn_score_cut one after the other in this process, then summarize. For local runs;
-    the driver (step 9) sends one job per cut and a final summarize job instead.
+    the driver sends one job per cut and a final summarize job instead.
 
     Missing inputs or a missing Combine stop before the first cut. A cut whose Combine fails (non-zero exit or
     no median limit) is logged and becomes a missing row. Other errors stop the scan.

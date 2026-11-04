@@ -25,7 +25,7 @@ def toy_npz(dir_, suffix=""):
 
 
 def toy_pickle(path, extra_gnn_keys=False):
-    """As stage 2 writes it: pandas Series. extra_gnn_keys: as the old (pre step 5) pickle."""
+    """As stage 2 writes it: pandas Series. extra_gnn_keys: as the pickle of the old manual workflow."""
     data = {"ISO_score_sig": pd.Series(RNG.uniform(0.5, 1.0, 3000)),
             "ISO_score_bkg": pd.Series(RNG.uniform(0.0, 1.0, 30000)),
             "tau_mass": pd.Series(RNG.uniform(1.4, 2.5, 30000))}

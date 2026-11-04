@@ -152,7 +152,7 @@ def test_training_graph_equals_inference_graph(tmp_path):
 
 
 def test_pair_charge_is_the_product_of_the_two_charges(tmp_path):
-    """Edge feature 1 (pair_charge) = q_i * q_j (was q_i), in the training and the inference graphs."""
+    """Edge feature 1 (pair_charge) = q_i * q_j, in the training and the inference graphs."""
     from tau3mu_gnn.gnn_training.ScoreProducer import score_events
     from test_gnn_scores import PF
     data = _rich_events(5, np.random.default_rng(11))

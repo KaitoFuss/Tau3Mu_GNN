@@ -6,7 +6,7 @@ from tau3mu_gnn.pipelines.training.config import load_training_config
 def _load(monkeypatch):
     monkeypatch.setenv("USER", "kfuss")
     return (load_training_config(REPO_ROOT / "configs" / "example_training_W.yaml"),
-            load_config(REPO_ROOT / "configs" / "example_W_raw.yaml"))  # the runnable analysis example (E1)
+            load_config(REPO_ROOT / "configs" / "example_W_raw.yaml"))  # the runnable analysis example
 
 
 def test_example_training_w_loads_the_recipe(monkeypatch):
@@ -55,10 +55,10 @@ def test_example_training_hf(monkeypatch):
     assert hf.channel == "HF" and hf.training_name == "HF_training"
     assert hf.paths.output_base.endswith("/tau3mu_pipeline/training")
     assert [str(p) for p in hf.inputs.signal] == [
-        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/"
+        "/eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/"
         "ds_large_signal_skimmed_no_resonances.root"]
     assert [str(p) for p in hf.inputs.background] == [
-        "/pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/"
+        "/eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/"
         "data_skimmed_no_resonances_part*.root"]
     assert hf.inputs.already_resonance_skimmed is True
     assert hf.limit.signal_weight == 0.000152
@@ -68,6 +68,6 @@ def test_example_training_hf(monkeypatch):
 
 
 def test_skim_job_memory_256g(monkeypatch):
-    # raw W training (job 854069): MaxRSS 127.99G with 128G requested
+    # raw W training skim: peak memory 128 GB with 128G requested
     cfg, _ = _load(monkeypatch)
     assert cfg.slurm.jobs["skim"].mem == "256G"

@@ -6,12 +6,15 @@ from tau3mu_gnn.pipelines.analysis.config import load_config
 
 def test_example_w_raw_matches_production_settings(monkeypatch):
     monkeypatch.setenv("USER", "tester")
+    monkeypatch.delenv("USER_INITIAL", raising=False)
     cfg = load_config(REPO_ROOT / "configs" / "example_W_raw.yaml")
+    assert cfg.scheduler == "htcondor"
     assert cfg.channel == "W"
     assert cfg.inputs.already_resonance_skimmed is False
     assert all("/manzoni/tau3mu_gnn/" in p for p in cfg.inputs.signal + cfg.inputs.background)
-    assert cfg.output_dir == ("root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/"
-                              "tester/tau3mu_pipeline/kaito_W_raw")
+    assert all(p.startswith("/eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/")
+               for p in cfg.inputs.signal + cfg.inputs.background)
+    assert cfg.output_dir == "root://eosuser.cern.ch//eos/user/t/tester/tau3mu_pipeline/my_W_raw"
     assert cfg.gnn.model_name == "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
     assert cfg.gnn.conv_type == "GINE"
     assert cfg.gnn.gnn_mode == "final_layer"
@@ -30,7 +33,9 @@ def test_example_w_raw_matches_production_settings(monkeypatch):
     assert cfg.limit.mass_window == 0.060
     assert cfg.limit.fit_range == (1.6, 2.0)
     assert cfg.limit.cl == 0.90
-    assert cfg.paths.log_dir == "/work/tester/SVJ_GNN/tau3mu_logs"
+    assert cfg.paths.log_dir == "/afs/cern.ch/user/t/tester/tau3mu_logs"
+    condor = cfg.htcondor.jobs
+    assert (condor["skim"].mem, condor["skim"].time, condor["skim"].cpus) == ("256G", "1-00:00:00", 4)
     jobs = cfg.slurm.jobs
     assert cfg.slurm.account == "t3"
     assert (jobs["skim"].partition, jobs["skim"].mem, jobs["skim"].time, jobs["skim"].cpus) == \
@@ -52,7 +57,7 @@ def test_hf_analysis_defaults_differ_from_w_only_in_models():
     assert hf["gnn"].pop("model_dir") == "models/HF/gnn" and w["gnn"].pop("model_dir") == "models/W/gnn"
     assert hf["bdt"].pop("classifier").startswith("models/HF/") and w["bdt"].pop("classifier")
     assert hf["gnn"].pop("model_name") != w["gnn"].pop("model_name")
-    assert hf["limit"]["fit_range"] == [1.6, 2.0]   # E4: one mass range for fit and workspace
+    assert hf["limit"]["fit_range"] == [1.6, 2.0]   # one mass range for fit and workspace
     assert hf == w
 
 
@@ -79,4 +84,5 @@ def test_example_hf_cut_scan_and_inputs():
     assert hf["inputs"] == _yaml("example_training_HF.yaml")["inputs"]
     assert hf["analysis_name"] == "HF_analysis"
     assert hf["paths"]["output_base"].endswith("/tau3mu_pipeline/analysis")
-    assert hf["models"].endswith("/tau3mu_pipeline/training/HF_training/gnn_vs1")
+    assert hf["models"] == ("root://eosuser.cern.ch//eos/user/k/kfuss/tau3mu_pipeline/training/"
+                            "HF_training_fixed/gnn_vs1")

@@ -247,7 +247,7 @@ def test_main_required_arguments(cfg, monkeypatch, capsys, argv):
 
 
 def test_gnn_train_cpu_fallback_warns(cfg, scratch, fake_stages, monkeypatch, caplog):
-    """Kaito, 2026-10-23: CPU fallback is allowed; the log must say so."""
+    """CPU fallback is allowed; the log must say so."""
     from tau3mu_gnn.pipelines.training import jobs
 
     monkeypatch.setattr(jobs.torch.cuda, "is_available", lambda: False)
@@ -287,8 +287,8 @@ def test_jobs_check_proxy_with_own_time(cfg, scratch, fake_stages, monkeypatch):
     from tau3mu_gnn.pipelines.training import jobs
 
     seen = []
-    monkeypatch.setattr(jobs.slurm, "check_proxy", lambda c, hours: seen.append(hours))
+    monkeypatch.setattr(jobs.batch, "check_proxy", lambda c, hours: seen.append(hours))
     run_gnn(cfg, run_bdt(cfg))
-    want = [jobs.slurm.time_hours(cfg.slurm.jobs[k].time) for k in
+    want = [jobs.batch.time_hours(jobs.batch.resources(cfg)[k].time) for k in
             ("skim", "bdt_train", "bdt_infer", "graphs_background", "npvs", "graphs_signal", "gnn_train")]
     assert seen == want

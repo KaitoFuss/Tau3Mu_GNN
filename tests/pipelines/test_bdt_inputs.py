@@ -44,7 +44,7 @@ OLD_HF_FEATURES = [  # feature_names of OLD_HF_CLASSIFIER, in order
     "max(Muon_tkRelIso_Selected_TauTo3Mu_mu1_idx Muon_tkRelIso_Selected_TauTo3Mu_mu2_idx "
     "Muon_tkRelIso_Selected_TauTo3Mu_mu3_idx)",
 ]
-W_BRANCHES = [  # bdt_branches("W")[1]: the list of main (2026-10-25), TauPlusMET_Puppi_phi moved to the end
+W_BRANCHES = [  # bdt_branches("W")[1], TauPlusMET_Puppi_phi at the end
     "Selected_TauTo3Mu_fitted_pt", "TauPlusMET_Tau_Puppi_mT", "TauPlusMET_PuppiMET_pt", "TauPlusMET_Puppi_pt",
     "TauPlusMET_PuppiMETminPz", "TauPlusMET_PuppiMETmaxPz", "Selected_TauTo3Mu_dZmu12",
     "Selected_TauTo3Mu_dZmu13", "Selected_TauTo3Mu_dZmu23", "Selected_TauTo3Mu_sigLxy_3muVtxBS",
@@ -53,8 +53,8 @@ W_BRANCHES = [  # bdt_branches("W")[1]: the list of main (2026-10-25), TauPlusME
     "Selected_TauTo3Mu_fitted_mass", "Selected_TauTo3Mu_fitted_phi",
     "Selected_TauTo3Mu_iso_ptChargedFromPV", "Selected_TauTo3Mu_iso_ptPhotons",
     "Selected_TauTo3Mu_iso_ptChargedFromPU", "run", "luminosityBlock", "event",
-    "TauPlusMET_Puppi_phi",   # W block at the end (PR #46 review); order of loaded columns does not matter
-    "tau3mu_mask",            # E1: TauPlusMET_* entries of the selected candidates
+    "TauPlusMET_Puppi_phi",   # W block at the end; order of loaded columns does not matter
+    "tau3mu_mask",            # TauPlusMET_* entries of the selected candidates
 ]
 
 

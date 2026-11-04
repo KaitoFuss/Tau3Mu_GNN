@@ -87,7 +87,7 @@ def test_datacard_text_matches_result(toy_inputs, tmp_path):
 
 
 def test_workspace_slope_range_is_ten_sigma(toy_inputs, tmp_path):
-    """E3: the workspace slope starts at the fitted value, range +-10 sigma (was [err, err])."""
+    """The workspace slope starts at the fitted value, range +-10 sigma."""
     import ROOT
     from tau3mu_gnn.analysis.datacard import make_datacard
 
@@ -102,7 +102,7 @@ def test_workspace_slope_range_is_ten_sigma(toy_inputs, tmp_path):
 
 
 def test_fit_and_workspace_use_one_mass_range(toy_inputs, tmp_path):
-    """E4: the fit datasets (so nbkg and the signal rate) and the workspace mass use the same range."""
+    """The fit datasets (so nbkg and the signal rate) and the workspace mass use the same range."""
     import ROOT
     from tau3mu_gnn.analysis.datacard import make_datacard
 

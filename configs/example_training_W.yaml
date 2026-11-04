@@ -2,30 +2,36 @@
 # Frozen training settings live in training_defaults_W.yaml, frozen analysis settings in
 # analysis_defaults_W.yaml; neither may be set here.
 
-training_name: kaito_W_train               # letters, digits, _ - . only; used as folder name
+training_name: my_W_train                  # letters, digits, _ - . only; used as folder name
 
 channel: W                                 # selects configs/training_defaults_W.yaml + analysis_defaults_W.yaml
 
+# Batch system: htcondor (default, lxplus). The paths below are lxplus paths.
+# On the PSI T3: scheduler: slurm, with T3 paths (dCache output_base, log_dir on /work).
+# scheduler: htcondor
+
 paths:
   # All outputs go to <output_base>/<training_name>.
-  # Jobs write to /scratch first and then xrdcp to this location.
-  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline
-  # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
+  # EOS user space ($USER_INITIAL = the first letter of $USER, e.g. /eos/user/k/kfuss).
+  # Jobs write to their scratch folder first and then xrdcp to this location.
+  output_base: root://eosuser.cern.ch//eos/user/$USER_INITIAL/$USER/tau3mu_pipeline
+  # Folder on AFS for the job scripts and HTCondor logs (HTCondor cannot write its logs to EOS).
   # Logs are also copied next to the results (<phase>_vsN/logs/).
-  log_dir: /work/$USER/SVJ_GNN/tau3mu_logs
+  log_dir: /afs/cern.ch/user/$USER_INITIAL/$USER/tau3mu_logs
   # Optional. Conda env that the jobs activate. Not set: the env that is active when you submit.
-  conda_env: /work/$USER/miniforge3/envs/Tau3Mu
+  # conda_env: /eos/user/$USER_INITIAL/$USER/envs/Tau3Mu
 
 inputs:
   # Globs are allowed. A single path is also fine.
-  # Riccardo's raw W NanoAOD (TauTo3Mu_*, PFCands_* branches, no Slimmed_*).
+  # Riccardo's raw W NanoAOD (TauTo3Mu_*, PFCands_* branches, no Slimmed_*); copy of the T3 files
+  # in the B-physics group space (jobs/migration/).
   signal:
-    - /pnfs/psi.ch/cms/trivcat/store/user/manzoni/tau3mu_gnn/WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8/05may25v2__WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8_RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2_MINIAODSIM/250506_093818/*/*.root
+    - /eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/tau3mu_gnn/WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8/05may25v2__WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8_RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2_MINIAODSIM/250506_093818/*/*.root
   # All 8 ParkingDoubleMuonLowMass streams, Run2024B-I. Only the era folders (they start with "_"):
   # the 29apr2025 folders of streams 0-4 are older copies of eras B-E. The old skims used only
-  # the era folders (checked 2026-10-21: no event that is only in 29apr2025 is in the old skim).
+  # the era folders (checked: no event that is only in 29apr2025 is in the old skim).
   background:
-    - /pnfs/psi.ch/cms/trivcat/store/user/manzoni/tau3mu_gnn/ParkingDoubleMuonLowMass*/_ParkingDoubleMuonLowMass*_Run2024*/*/*/*.root
+    - /eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/tau3mu_gnn/ParkingDoubleMuonLowMass*/_ParkingDoubleMuonLowMass*_Run2024*/*/*/*.root
   tree_name: Events                        # optional, default: Events
   already_resonance_skimmed: false         # true: skip stage 0 (resonance skim); false: inputs are raw NanoAOD
 
@@ -49,5 +55,5 @@ benchmark:
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
   # 0.000019 is not yet the physical value: it only scales the signal so that the limits have a
-  # comparable size (Kaito, 2026-10-30). Compute the real value for YOUR dataset.
+  # comparable size. Compute the real value for YOUR dataset.
   signal_weight: 0.000019

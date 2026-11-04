@@ -15,15 +15,15 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from tau3mu_gnn.pipelines.common.config import (
-    REPO_ROOT, ConfigError, InputsConfig, PathsConfig, ResonanceSkimConfig, SkimConfig,
-    SlurmConfig, _abs_or_url, _bool, _channel, _Field, _increasing_number_list, _inputs,
+    REPO_ROOT, ConfigError, HTCondorConfig, InputsConfig, PathsConfig, ResonanceSkimConfig, SkimConfig,
+    SlurmConfig, _abs_or_url, _bool, _channel, _Field, _htcondor_jobs_parser, _increasing_number_list, _inputs,
     _LEAF_KEYS, _linspace, _local_path, _name, _non_empty_str, _number, _number_list, _open_unit_interval,
     _optional_local_path, _parse, _paths, _positive_int, _positive_number, _read_yaml,
-    _resonance_skim, _skim, _slurm_jobs_parser, _str_map, _unsculpting_mode, _user_path_list, _windows,
+    _resonance_skim, _scheduler, _skim, _slurm_jobs_parser, _str_map, _unsculpting_mode, _user_path_list, _windows,
 )
 from tau3mu_gnn.pipelines.common.defaults import DEFAULTS_FIELDS, read_analysis_defaults
 
-TRAINING_SLURM_JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal",
+TRAINING_SLURM_JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal",   # also the HTCondor jobs
                        "graphs_background", "gnn_train", "benchmark_limit", "benchmark_summary")
 GRAPH_CONNECTIONS = ("knn", "fully")   # r_threshold needs a delta_r setting first
 
@@ -75,6 +75,7 @@ TRAINING_USER_FIELDS: dict[str, _Field] = {
     "paths.output_base": _Field(_abs_or_url),
     "paths.log_dir": _Field(_local_path),
     "paths.conda_env": _Field(_optional_local_path, required=False, default=None),
+    "scheduler": _Field(_scheduler, required=False, default="htcondor"),
     "inputs.signal": _Field(_user_path_list),
     "inputs.background": _Field(_user_path_list),
     "inputs.tree_name": _Field(_non_empty_str, required=False, default="Events"),
@@ -127,6 +128,7 @@ TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "comet.api_key": _Field(_non_empty_str),
     "slurm.account": _Field(_non_empty_str),
     "slurm.jobs": _Field(_slurm_jobs_parser(TRAINING_SLURM_JOBS)),
+    "htcondor.jobs": _Field(_htcondor_jobs_parser(TRAINING_SLURM_JOBS)),
 }
 
 _TRAINING_LEAF_KEYS = _LEAF_KEYS | {"gnn_training.windows"}
@@ -232,9 +234,11 @@ class TrainingConfig:
     benchmark: BenchmarkConfig
     limit: TrainingLimitConfig
     slurm: SlurmConfig
+    htcondor: HTCondorConfig
     user_file: Path
     defaults_file: Path
     analysis_defaults_file: Path
+    scheduler: str = "htcondor"   # htcondor (lxplus) or slurm (PSI T3)
 
     @property
     def output_dir(self) -> str:
@@ -243,7 +247,7 @@ class TrainingConfig:
 
     @property
     def run_name(self) -> str:
-        """Name shared with the analysis config (SLURM job names, log folder)."""
+        """Name shared with the analysis config (batch job names, log folder)."""
         return self.training_name
 
 
@@ -315,7 +319,9 @@ def load_training_config(user_path: str | Path, defaults_dir: str | Path | None 
                                   mass_window=analysis["limit.mass_window"], fit_range=analysis["limit.fit_range"],
                                   cl=analysis["limit.cl"]),
         slurm=SlurmConfig(account=defaults["slurm.account"], jobs=defaults["slurm.jobs"]),
+        htcondor=HTCondorConfig(jobs=defaults["htcondor.jobs"]),
         user_file=user_path.resolve(),
         defaults_file=defaults_path.resolve(),
         analysis_defaults_file=analysis_path.resolve(),
+        scheduler=user["scheduler"],
     )

@@ -561,7 +561,7 @@ def train_and_validate(model, epochs, dataloader_training, dataloader_validation
 
 
 
-    # Always keep the best epoch (Kaito, 2026-10-23): early_stop saved it to <name>.pt; load it back
+    # Always keep the best epoch: early_stop saved it to <name>.pt; load it back
     # so that the evaluation uses it. The old code overwrote <name>.pt with the last epoch when all
     # epochs ran.
     best_idx = early_stop.best_epoch

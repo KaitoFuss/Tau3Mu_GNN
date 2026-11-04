@@ -5,24 +5,30 @@ analysis_name: HF_analysis                 # letters, digits, _ - . only; used a
 
 channel: HF                                # selects configs/analysis_defaults_HF.yaml
 
+# Batch system: htcondor (default, lxplus). The paths below are lxplus paths.
+# On the PSI T3: scheduler: slurm, with T3 paths (dCache output_base, log_dir on /work).
+# scheduler: htcondor
+
 paths:
   # All outputs go to <output_base>/<analysis_name>.
-  # Jobs write to /scratch first and then xrdcp to this location.
-  output_base: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/analysis
-  # Local disk folder for the job scripts and SLURM logs (SLURM cannot write to dCache).
+  # EOS user space ($USER_INITIAL = the first letter of $USER, e.g. /eos/user/k/kfuss).
+  # Jobs write to their scratch folder first and then xrdcp to this location.
+  output_base: root://eosuser.cern.ch//eos/user/$USER_INITIAL/$USER/tau3mu_pipeline/analysis
+  # Folder on AFS for the job scripts and HTCondor logs (HTCondor cannot write its logs to EOS).
   # Logs are also copied next to the results (<phase>_vsN/logs/).
-  log_dir: /work/$USER/SVJ_GNN/tau3mu_logs
+  log_dir: /afs/cern.ch/user/$USER_INITIAL/$USER/tau3mu_logs
   # Optional. Conda env that the jobs activate. Not set: the env that is active when you submit.
-  conda_env: /work/$USER/miniforge3/envs/Tau3Mu
+  # conda_env: /eos/user/$USER_INITIAL/$USER/envs/Tau3Mu
 
 inputs:
   # Globs are allowed. A single path is also fine.
-  # Kaito's old HF inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*).
+  # Kaito's old HF inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*);
+  # copy of the T3 files in Kaito's EOS space (jobs/migration/).
   # The background is in 4 parts; the glob takes all of them.
   signal:
-    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/ds_large_signal_skimmed_no_resonances.root
+    - /eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/ds_large_signal_skimmed_no_resonances.root
   background:
-    - /pnfs/psi.ch/cms/trivcat/store/user/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/data_skimmed_no_resonances_part*.root
+    - /eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/background_HF/old_data/data_skimmed_no_resonances_part*.root
   tree_name: Events                        # optional, default: Events
   already_resonance_skimmed: true          # true: skip stage 0 (resonance skim); false: inputs are raw NanoAOD
 
@@ -32,15 +38,14 @@ inputs:
 branch_map: {}
 #   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
 
-# REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet (step 13), so set the path
+# REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet, so set the path
 # of a finished HF training GNN phase (tau3mu-training): its BDT, GNN and the model settings are used.
-models: root://t3dcachedb03.psi.ch:1094//pnfs/psi.ch/cms/trivcat/store/user/$USER/tau3mu_pipeline/training/HF_training/gnn_vs1
+models: root://eosuser.cern.ch//eos/user/k/kfuss/tau3mu_pipeline/training/HF_training_fixed/gnn_vs1
 
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
   # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known. Like the W value, it
-  # only scales the signal to comparable limits for now (Kaito, 2026-10-30)
-  # (spec docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
+  # only scales the signal to comparable limits for now (design: docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
   signal_weight: 0.000152
   # One cut or a list of cuts on the GNN score (the raw logit of the GNN). A list runs a cut scan.
   # HF GNN (HF_training/gnn_vs1, AUC 0.77): logit 2 keeps 6% of the preselected signal, logit 3 only 0.7%.
