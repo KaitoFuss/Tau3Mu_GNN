@@ -1,4 +1,4 @@
-"""Training phase submission (step 12g): pick the bdt upstream, make the next version folder, write and submit
+"""Training phase submission: pick the bdt upstream, make the next version folder, write and submit
 the job scripts. Same flow as the analysis driver (analysis/driver.py); the job bodies are in training/jobs.py.
 
 Phases: bdt (skim -> bdt_train -> bdt_infer), gnn (npvs -> graphs_signal; graphs_background; both -> gnn_train),

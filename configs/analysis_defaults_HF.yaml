@@ -2,7 +2,7 @@
 # NOT meant to be edited. Put your own settings in your user config (see example_HF.yaml).
 # Paths are relative to the repository root.
 # The channel is set once, in the user config (channel: HF selects this file).
-# No frozen HF models yet (step 13): the bdt / gnn paths below do not exist. Set `models:` in the user
+# No frozen HF models yet: the bdt / gnn paths below do not exist. Set `models:` in the user
 # config to an HF training gnn_vsN (its settings come from the training).
 
 resonance_skim:                # stage 0, per tau candidate (raw NanoAOD); used if already_resonance_skimmed: false
@@ -30,18 +30,18 @@ limit:                         # stage 5, mass fit + Combine
   fit_range: [1.6, 2.0]        # GeV, mass range of the sideband fit and of the Combine workspace
   cl: 0.90                     # confidence level of the expected limit
 
-slurm:                         # SLURM resources per job (step 9). Times: first values (Kaito, 2026-10-12);
-  account: t3                  # raise them here if jobs hit the limit.
+slurm:                         # SLURM resources per job (PSI T3). Raise them here if jobs hit the limit.
+  account: t3
   jobs:
-    skim:           {partition: long,     mem: 256G, time: "1-00:00:00", cpus: 4}  # full raw W: 5 h, MaxRSS 127.99G of 128G (job 854069, 2026-10-26)
-    bdt:            {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 1}  # full W: MaxRSS 107 GiB (job 202616)
+    skim:           {partition: long,     mem: 256G, time: "1-00:00:00", cpus: 4}  # full raw W: 5 h, peak memory 128 GB
+    bdt:            {partition: standard, mem: 128G, time: "0-06:00:00", cpus: 1}  # full W: peak memory 107 GiB
     gnn_signal:     {partition: long,     mem: 64G,  time: "1-00:00:00", cpus: 1}
-    gnn_background: {partition: long,     mem: 128G, time: "2-00:00:00", cpus: 1}  # full W: MaxRSS 64 GB = old limit (job 205117)
+    gnn_background: {partition: long,     mem: 128G, time: "2-00:00:00", cpus: 1}  # full W: needs more than 64 GB
     eval:           {partition: standard, mem: 32G,  time: "0-01:00:00", cpus: 1}
     limit:          {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
     summary:        {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
 
-htcondor:                      # HTCondor resources per job (lxplus, step 14): the SLURM values. time -> +MaxRuntime,
+htcondor:                      # HTCondor resources per job (lxplus): the SLURM values. time -> +MaxRuntime,
   jobs:                        # mem -> request_memory. Optional per job: gpus, requirements.
     skim:           {mem: 256G, time: "1-00:00:00", cpus: 4}
     bdt:            {mem: 128G, time: "0-06:00:00", cpus: 1}

@@ -2,7 +2,7 @@
 # Frozen training settings live in training_defaults_W.yaml, frozen analysis settings in
 # analysis_defaults_W.yaml; neither may be set here.
 
-training_name: kaito_W_train               # letters, digits, _ - . only; used as folder name
+training_name: my_W_train                  # letters, digits, _ - . only; used as folder name
 
 channel: W                                 # selects configs/training_defaults_W.yaml + analysis_defaults_W.yaml
 
@@ -24,12 +24,12 @@ paths:
 inputs:
   # Globs are allowed. A single path is also fine.
   # Riccardo's raw W NanoAOD (TauTo3Mu_*, PFCands_* branches, no Slimmed_*); copy of the T3 files
-  # in the B-physics group space (step 14, jobs/migration/).
+  # in the B-physics group space (jobs/migration/).
   signal:
     - /eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/tau3mu_gnn/WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8/05may25v2__WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8_RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2_MINIAODSIM/250506_093818/*/*.root
   # All 8 ParkingDoubleMuonLowMass streams, Run2024B-I. Only the era folders (they start with "_"):
   # the 29apr2025 folders of streams 0-4 are older copies of eras B-E. The old skims used only
-  # the era folders (checked 2026-10-21: no event that is only in 29apr2025 is in the old skim).
+  # the era folders (checked: no event that is only in 29apr2025 is in the old skim).
   background:
     - /eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/tau3mu_gnn/ParkingDoubleMuonLowMass*/_ParkingDoubleMuonLowMass*_Run2024*/*/*/*.root
   tree_name: Events                        # optional, default: Events
@@ -55,5 +55,5 @@ benchmark:
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
   # 0.000019 is not yet the physical value: it only scales the signal so that the limits have a
-  # comparable size (Kaito, 2026-10-30). Compute the real value for YOUR dataset.
+  # comparable size. Compute the real value for YOUR dataset.
   signal_weight: 0.000019

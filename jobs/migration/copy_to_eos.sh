@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step 14: copy the T3 files of a file list (from t3_list_files.py) to EOS. Run on lxplus.
+# Copy the T3 files of a file list (from t3_list_files.py) to EOS. Run on lxplus.
 #
 #   voms-proxy-init --voms cms --valid 192:00      # T3 read needs a grid proxy
 #   tmux                                           # long copy: keep it alive (note the lxplus node name)
@@ -16,7 +16,7 @@ shift
 GROUPS_WANTED=" $* "
 T3=root://t3se01.psi.ch:1094   # public T3 door; t3dcachedb03 is reachable only inside PSI
 # The lxplus xrdcp (5.9.8) fails the GSI login of the T3 dCache ("malformed random tag ... refuse to sign");
-# 5.5-5.8 work (tested 2026-10-30). XRD: folder of the xrootd build to use.
+# 5.5-5.8 work. XRD: folder of the xrootd build to use.
 XRD=${XRD:-/cvmfs/sft.cern.ch/lcg/releases/xrootd/5.8.3-1e12b/x86_64-el9-gcc11-opt}
 export PATH="$XRD/bin:$PATH" LD_LIBRARY_PATH="$XRD/lib64:$XRD/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 PARALLEL=${PARALLEL:-4}

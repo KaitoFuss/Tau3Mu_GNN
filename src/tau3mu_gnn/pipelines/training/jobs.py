@@ -1,4 +1,4 @@
-"""Job bodies of the training phases (step 12g). The generated job scripts call main().
+"""Job bodies of the training phases. The generated job scripts call main().
 
 Same pattern as the analysis jobs (analysis/jobs.py): each job works in a fresh scratch folder under $TMPDIR,
 then copies its outputs into the phase folder with storage.put. Upstream files are read through
@@ -124,7 +124,7 @@ def gnn_train(cfg, phase_dir, upstream_dir) -> None:
     log.info("job gnn_train: %s, upstream %s", phase_dir, upstream_dir)
     if torch.cuda.is_available():
         device = torch.device("cuda")
-    else:  # allowed (Kaito, 2026-10-23), but much slower: say so in the log
+    else:  # allowed, but much slower: say so in the log
         log.warning("gnn_train: no CUDA device visible on this node (check the GPU request of the batch job); "
                     "training on CPU")
         device = torch.device("cpu")

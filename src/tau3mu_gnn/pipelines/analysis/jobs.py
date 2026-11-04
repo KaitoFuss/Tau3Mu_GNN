@@ -1,6 +1,6 @@
-"""Analysis job bodies: what one batch job runs (step 9). The generated job scripts (step 9b) call main().
+"""Analysis job bodies: what one batch job runs. The generated job scripts call main().
 
-Each job works in a fresh scratch folder under $TMPDIR (the job script points TMPDIR to /scratch), then
+Each job works in a fresh scratch folder under $TMPDIR (the job script points TMPDIR to the job scratch folder), then
 copies its outputs into the phase folder with storage.put. Upstream files are read through
 storage.local_path (dCache: the /pnfs path). The last job of a phase writes the manifest.
 """

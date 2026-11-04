@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 def model_name(cfg: TrainingConfig) -> str:
-    """e.g. kaito_W_train_W_fl_8_sd_4_GINE_delete_muons (frozen-model pattern without _vsN)."""
+    """e.g. my_W_train_W_fl_8_sd_4_GINE_delete_muons (frozen-model pattern without _vsN)."""
     fl, sd = cfg.gnn_training.arch.lower().split("_")
     unsculpting = f"_{cfg.graphs.unsculpting_mode}" if cfg.graphs.unsculpting_mode else ""
     return (f"{cfg.training_name}_{cfg.channel}_fl_{fl[2:]}_sd_{sd[2:]}_{cfg.gnn_training.conv_type}"

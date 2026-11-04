@@ -74,7 +74,7 @@ def bdt_branches(tau_channel: str, prefix: str = "Selected_") -> tuple[list[str]
     # Only W uses these. TauPlusMET_Puppi_phi: deltaPhi(TauPlusMET, tau) feature; HF does not load it
     # (BDT_ScoreProducer drops rows with NaN in any loaded column). tau3mu_mask: TauPlusMET_* has one entry
     # per Slimmed candidate; the stage 1 mask selects the entries of the Selected candidates, so the BDT
-    # takes TauPlusMET_* of the same candidate as Selected_TauTo3Mu_*[0] (E1).
+    # takes TauPlusMET_* of the same candidate as Selected_TauTo3Mu_*[0].
     if tau_channel == "W":
         branches += [
             'TauPlusMET_Puppi_phi',

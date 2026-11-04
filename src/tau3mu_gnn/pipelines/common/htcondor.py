@@ -1,5 +1,5 @@
-"""HTCondor layer (lxplus): one bash script + one submit file per job, all jobs of one tau3mu-* call in one DAG
-(step 14). Shared parts (Job, JobEnv, errors, proxy check) are in batch.py.
+"""HTCondor layer (lxplus): one bash script + one submit file per job, all jobs of one tau3mu-* call in one DAG.
+Shared parts (Job, JobEnv, errors, proxy check) are in batch.py.
 
 DAGMan has no afterany: a job that an afterany job waits for gets a POST script that always succeeds, so its
 children run also if it failed (the summary jobs read whatever limits exist).

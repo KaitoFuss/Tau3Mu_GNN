@@ -1,4 +1,4 @@
-"""Analysis phase and single-stage submission (step 9b): pick the upstream version, make the next version
+"""Analysis phase and single-stage submission: pick the upstream version, make the next version
 folder, write and submit the job scripts. The job bodies are in jobs.py; the shared submission in
 common/driver.py; the batch details in common/batch.py, slurm.py and htcondor.py."""
 from __future__ import annotations

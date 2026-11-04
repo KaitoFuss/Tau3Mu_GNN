@@ -1,4 +1,4 @@
-"""Analysis key models: frozen (default) or a training gnn_vsN (step 12h)."""
+"""Analysis key models: frozen (default) or a training gnn_vsN."""
 import json
 import shutil
 

@@ -169,7 +169,7 @@ def test_duplicate_event_keys_fail_before_output(tmp_path, load, user):
 
 
 def test_tauplusmet_of_the_first_selected_candidate(tmp_path):
-    """E1: TauPlusMET_* has one entry per Slimmed candidate; the BDT takes the entry of the first selected one."""
+    """TauPlusMET_* has one entry per Slimmed candidate; the BDT takes the entry of the first selected one."""
     from tau3mu_gnn.bdt_training.BDT_ScoreProducer import _load
     from tau3mu_gnn.bdt_training.bdt_inputs import bdt_branches
 

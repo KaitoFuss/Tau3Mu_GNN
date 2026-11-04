@@ -2,9 +2,9 @@
 
 - Frozen (default): analysis_defaults gives only the paths (bdt.classifier, gnn.model_dir, gnn.model_name).
   The settings are in <model_dir>/<model_name>/model_settings.json.
-- Key `models:` (step 12h): the path of a training gnn_vsN folder. Its manifest (phase gnn) lists the model
+- Key `models:`: the path of a training gnn_vsN folder. Its manifest (phase gnn) lists the model
   files; its upstream bdt_vsN (a sibling folder) lists the BDT classifier. The settings are the gnn manifest
-  settings. Files are read through storage.local_path (the /pnfs path of a root:// URL).
+  settings. Files are read through storage.local_path (the mounted path of a root:// URL).
 
 model_settings.json has the layout of those manifest settings: {"channel", "graphs": {bdt_preselection_cut,
 connection, k, cone_size, use_displacement, unsculpting_mode}, "gnn_training": {conv_type, gnn_mode}}. The

@@ -131,7 +131,7 @@ def _resonance_skim(df, columns: list[str], rs: ResonanceSkimConfig):
 def check_tauplusmet_aligned(frames) -> None:
     """Raise BranchError if, in any event of resonance-skimmed inputs, TauPlusMET_* has not one entry per
     Slimmed_TauTo3Mu candidate. Old resonance skims slimmed TauTo3Mu_* but not TauPlusMET_*, so the entry of a
-    candidate cannot be found (E1). frames: sample -> (RDataFrame, columns), branch map applied."""
+    candidate cannot be found. frames: sample -> (RDataFrame, columns), branch map applied."""
     problems = []
     for sample, (df, columns) in frames.items():
         met = sorted(c for c in columns if c.startswith("TauPlusMET_"))

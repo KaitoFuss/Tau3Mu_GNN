@@ -1,7 +1,7 @@
 """GNN training for the pipeline (scripts/Train_TauMuNet.py without fine-tune).
 
 Settings come from GNNTrainingConfig: architecture lookup without the registry side effect, patience,
-seed, class mix, data windows. Kaito, 2026-10-23: the best epoch is always kept; the seed is set.
+seed, class mix, data windows. The best epoch is always kept; the seed is set.
 Writes <out_dir>/<model_name>/ with the files the analysis loads (<model_name>.pt, Normalization.pkl,
 arch_config.json) and the old extra files (losses, evaluation, plots).
 """

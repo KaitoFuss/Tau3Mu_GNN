@@ -247,7 +247,7 @@ def test_main_required_arguments(cfg, monkeypatch, capsys, argv):
 
 
 def test_gnn_train_cpu_fallback_warns(cfg, scratch, fake_stages, monkeypatch, caplog):
-    """Kaito, 2026-10-23: CPU fallback is allowed; the log must say so."""
+    """CPU fallback is allowed; the log must say so."""
     from tau3mu_gnn.pipelines.training import jobs
 
     monkeypatch.setattr(jobs.torch.cuda, "is_available", lambda: False)

@@ -129,7 +129,7 @@ def _flaky(tmp_path, monkeypatch, name, n_fail):
 
 
 def test_remote_copy_retries_after_a_timeout(tmp_path, monkeypatch):
-    # raw W analysis skim (job 960697): one xrdcp socket timeout lost a 7.5 h job
+    # seen: one xrdcp socket timeout lost a 7.5 h raw W skim job
     from tau3mu_gnn.pipelines.common import storage
 
     log, sleeps = _flaky(tmp_path, monkeypatch, "xrdcp", n_fail=2)

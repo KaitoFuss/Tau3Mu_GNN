@@ -6,7 +6,7 @@ from tau3mu_gnn.pipelines.training.config import load_training_config
 def _load(monkeypatch):
     monkeypatch.setenv("USER", "kfuss")
     return (load_training_config(REPO_ROOT / "configs" / "example_training_W.yaml"),
-            load_config(REPO_ROOT / "configs" / "example_W_raw.yaml"))  # the runnable analysis example (E1)
+            load_config(REPO_ROOT / "configs" / "example_W_raw.yaml"))  # the runnable analysis example
 
 
 def test_example_training_w_loads_the_recipe(monkeypatch):
@@ -68,6 +68,6 @@ def test_example_training_hf(monkeypatch):
 
 
 def test_skim_job_memory_256g(monkeypatch):
-    # raw W training (job 854069): MaxRSS 127.99G with 128G requested
+    # raw W training skim: peak memory 128 GB with 128G requested
     cfg, _ = _load(monkeypatch)
     assert cfg.slurm.jobs["skim"].mem == "256G"

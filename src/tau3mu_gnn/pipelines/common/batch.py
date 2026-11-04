@@ -1,4 +1,4 @@
-"""Batch layer shared by SLURM (slurm.py, PSI T3) and HTCondor (htcondor.py, lxplus) (step 14).
+"""Batch layer shared by SLURM (slurm.py, PSI T3) and HTCondor (htcondor.py, lxplus).
 
 The stages and job bodies know nothing about the batch system. The drivers describe jobs (Job) and hand them to
 a Batch (make_batch): Batch.add() per phase, then Batch.finish() once. SLURM submits in add(); HTCondor writes

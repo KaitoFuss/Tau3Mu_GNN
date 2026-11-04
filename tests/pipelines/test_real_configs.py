@@ -14,7 +14,7 @@ def test_example_w_raw_matches_production_settings(monkeypatch):
     assert all("/manzoni/tau3mu_gnn/" in p for p in cfg.inputs.signal + cfg.inputs.background)
     assert all(p.startswith("/eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/")
                for p in cfg.inputs.signal + cfg.inputs.background)
-    assert cfg.output_dir == "root://eosuser.cern.ch//eos/user/t/tester/tau3mu_pipeline/kaito_W_raw"
+    assert cfg.output_dir == "root://eosuser.cern.ch//eos/user/t/tester/tau3mu_pipeline/my_W_raw"
     assert cfg.gnn.model_name == "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
     assert cfg.gnn.conv_type == "GINE"
     assert cfg.gnn.gnn_mode == "final_layer"
@@ -57,7 +57,7 @@ def test_hf_analysis_defaults_differ_from_w_only_in_models():
     assert hf["gnn"].pop("model_dir") == "models/HF/gnn" and w["gnn"].pop("model_dir") == "models/W/gnn"
     assert hf["bdt"].pop("classifier").startswith("models/HF/") and w["bdt"].pop("classifier")
     assert hf["gnn"].pop("model_name") != w["gnn"].pop("model_name")
-    assert hf["limit"]["fit_range"] == [1.6, 2.0]   # E4: one mass range for fit and workspace
+    assert hf["limit"]["fit_range"] == [1.6, 2.0]   # one mass range for fit and workspace
     assert hf == w
 
 

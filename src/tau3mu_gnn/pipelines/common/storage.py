@@ -3,7 +3,7 @@
 A root:// URL is read through the mount of its path (/pnfs NFS on the T3, /eos FUSE on lxplus) and written with
 xrdfs / xrdcp. dCache needs a valid VOMS proxy; EOS uses the Kerberos token of the job (needs_proxy).
 Every xrdfs / xrdcp call is tried ATTEMPTS times (pause RETRY_WAIT_S, then twice that, ...): one storage
-timeout must not lose a long job (raw W analysis skim, job 960697: xrdcp socket timeout after 7.5 h).
+timeout must not lose a long job (seen: an xrdcp socket timeout after 7.5 h of a raw W skim job).
 A local path uses plain file operations. Stages never call this; the job bodies (jobs.py) do.
 """
 from __future__ import annotations

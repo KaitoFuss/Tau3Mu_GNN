@@ -1,4 +1,4 @@
-"""SLURM layer (PSI T3): one bash script per job, submitted with sbatch (step 9b).
+"""SLURM layer (PSI T3): one bash script per job, submitted with sbatch.
 
 The stages and job bodies know nothing about SLURM. The parts shared with the HTCondor layer (htcondor.py) are in
 batch.py; they are imported here too, so `from ...common.slurm import Job` still works.

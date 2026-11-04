@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Step 14: list the T3 files that move to EOS. Run on T3 (needs the /pnfs mount), not on lxplus.
+"""List the T3 files that move to EOS. Run on T3 (needs the /pnfs mount), not on lxplus.
 
     python3 jobs/migration/t3_list_files.py                 # sizes per group, writes filelist.tsv
     python3 jobs/migration/t3_list_files.py --out my.tsv W_signal_raw HF_signal_old
@@ -7,7 +7,7 @@
 filelist.tsv: one line per file, <group> <bytes> <T3 path> <EOS path>, tab separated.
 Copy it to lxplus and give it to copy_to_eos.sh.
 
-Path rule (Kaito, 2026-10-30), with Y = the path after /pnfs/psi.ch/cms/trivcat/store/user/:
+Path rule, with Y = the path after /pnfs/psi.ch/cms/trivcat/store/user/:
 - raw NanoAOD (manzoni/...)  -> /eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/Y  (B-physics group space:
   copied once, never deleted; the e-group may write but not delete)
 - kfuss/tau3mu_pipeline/X    -> /eos/user/k/kfuss/tau3mu_pipeline/X
@@ -26,7 +26,7 @@ EOS_GROUP = "/eos/cms/store/group/phys_bphys/kfuss/"
 RAW = T3_USER + "manzoni/tau3mu_gnn/"
 OLD = T3_USER + "kfuss/tau3mu_gnn_round2/data/"
 
-# globs from configs/example_*.yaml; results: the T3 reference runs (roadmap step 14 handoff)
+# globs from configs/example_*.yaml; results: the T3 reference runs
 GROUPS = {
     "W_signal_raw": [RAW + "WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_pythia8/05may25v2__WtoTauNu-Tauto3Mu_TuneCP5_13p6TeV_"
                            "pythia8_RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2_MINIAODSIM/"

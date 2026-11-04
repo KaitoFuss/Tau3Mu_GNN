@@ -23,7 +23,7 @@ paths:
 inputs:
   # Globs are allowed. A single path is also fine.
   # Kaito's old HF inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*);
-  # copy of the T3 files in Kaito's EOS space (step 14, jobs/migration/).
+  # copy of the T3 files in Kaito's EOS space (jobs/migration/).
   # The background is in 4 parts; the glob takes all of them.
   signal:
     - /eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/ds_large_signal_skimmed_no_resonances.root
@@ -38,15 +38,14 @@ inputs:
 branch_map: {}
 #   Slimmed_TauTo3Mu_fitted_pt: Tau3Mu_fit_pt
 
-# REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet (step 13), so set the path
+# REQUIRED for HF. Which BDT and GNN to use. There are no frozen HF models yet, so set the path
 # of a finished HF training GNN phase (tau3mu-training): its BDT, GNN and the model settings are used.
 models: root://eosuser.cern.ch//eos/user/k/kfuss/tau3mu_pipeline/training/HF_training_fixed/gnn_vs1
 
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
   # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known. Like the W value, it
-  # only scales the signal to comparable limits for now (Kaito, 2026-10-30)
-  # (spec docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
+  # only scales the signal to comparable limits for now (design: docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
   signal_weight: 0.000152
   # One cut or a list of cuts on the GNN score (the raw logit of the GNN). A list runs a cut scan.
   # HF GNN (HF_training/gnn_vs1, AUC 0.77): logit 2 keeps 6% of the preselected signal, logit 3 only 0.7%.

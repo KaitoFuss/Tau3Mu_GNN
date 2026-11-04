@@ -24,7 +24,7 @@ paths:
 inputs:
   # Globs are allowed. A single path is also fine.
   # Kaito's old HF inputs: resonance-skimmed, before stage 1 (Slimmed_* branches, no Selected_*);
-  # copy of the T3 files in Kaito's EOS space (step 14, jobs/migration/).
+  # copy of the T3 files in Kaito's EOS space (jobs/migration/).
   # The background is in 4 parts; the glob takes all of them.
   signal:
     - /eos/user/k/kfuss/tau3mu_inputs/kfuss/tau3mu_gnn_round2/data/signal_HF/old_data/ds_large_signal_skimmed_no_resonances.root
@@ -53,6 +53,5 @@ benchmark:
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
   # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known. Like the W value, it
-  # only scales the signal to comparable limits for now (Kaito, 2026-10-30)
-  # (spec docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
+  # only scales the signal to comparable limits for now (design: docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
   signal_weight: 0.000152
