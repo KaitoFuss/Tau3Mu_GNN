@@ -151,7 +151,12 @@ def check_proxy(cfg: Config, hours: float, environ: Mapping[str, str] = os.envir
 class Batch:
     """add(): one phase (or one debug stage); returns job name -> ID. The IDs are valid as after_ids of the jobs
     of a later add() of the same batch. finish(): submits what is not submitted yet; returns
-    version_dir -> {job name -> final ID} for every add()."""
+    version_dir -> {job name -> final ID} for every add().
+
+    One subclass per batch system, in its module: slurm.SlurmBatch, htcondor.HTCondorBatch. They submit at
+    different times because the batch systems link jobs differently: sbatch returns a job ID at once and later
+    jobs wait for that ID, so SLURM submits in add(); DAGMan needs the whole DAG (all phases) in one submit,
+    so HTCondor writes the job files in add() and submits in finish()."""
 
     def add(self, cfg, jobs: Sequence[Job], version_dir: str, log_folder: Path, env: JobEnv,
             dry_run: bool = False) -> dict[str, str]:
@@ -161,22 +166,9 @@ class Batch:
         raise NotImplementedError
 
 
-class SlurmBatch(Batch):
-    def __init__(self):
-        self._ids: dict[str, dict[str, str]] = {}
-
-    def add(self, cfg, jobs, version_dir, log_folder, env, dry_run=False):
-        from tau3mu_gnn.pipelines.common import slurm
-        ids = slurm.submit_jobs(cfg, jobs, version_dir, log_folder, env, dry_run=dry_run)
-        self._ids[version_dir] = ids
-        return ids
-
-    def finish(self, dry_run=False):
-        return dict(self._ids)
-
-
 def make_batch(cfg) -> Batch:
     if cfg.scheduler == "htcondor":
         from tau3mu_gnn.pipelines.common.htcondor import HTCondorBatch
         return HTCondorBatch()
+    from tau3mu_gnn.pipelines.common.slurm import SlurmBatch
     return SlurmBatch()

@@ -376,3 +376,16 @@ def test_submit_runs_in_the_log_folder(load, condor_user, fake_dag, monkeypatch,
     monkeypatch.chdir(elsewhere)
     s = submit_phase(load(condor_user), "bdt", env=JobEnv.from_environment(ENV))
     assert Path(str(fake_dag) + ".cwd").read_text().strip() == str(s.log_folder)
+
+
+@pytest.mark.parametrize("scheduler, module, name", [
+    ("slurm", "tau3mu_gnn.pipelines.common.slurm", "SlurmBatch"),
+    ("htcondor", "tau3mu_gnn.pipelines.common.htcondor", "HTCondorBatch"),
+])
+def test_make_batch_per_scheduler(load, user, scheduler, module, name):
+    """Each batch system has its Batch class in its own module."""
+    from tau3mu_gnn.pipelines.common.batch import Batch, make_batch
+
+    user["scheduler"] = scheduler
+    b = make_batch(load(user))
+    assert isinstance(b, Batch) and type(b).__module__ == module and type(b).__name__ == name
