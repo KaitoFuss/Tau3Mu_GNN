@@ -93,18 +93,19 @@ def test_htcondor_table_errors():
 
     parse = _htcondor_jobs_parser(("a", "b"))
     with pytest.raises(ValueError) as e:
-        parse({"a": {"mem": "4G", "time": "1:00", "cpus": 1, "gpus": -1, "partition": "x"},
+        parse({"a": {"mem": "4G", "time": "1:00", "cpus": 1, "gpus": -1, "partition": "x", "disk": "lots"},
                "c": {"mem": "4G", "time": "01:00:00", "cpus": 1}})
     msg = str(e.value)
     for part in ("missing job 'b'", "unknown job 'c'", "job 'a': unknown key 'partition'",
-                 "job 'a': time must look like", "job 'a': gpus must be an integer >= 0"):
+                 "job 'a': time must look like", "job 'a': gpus must be an integer >= 0",
+                 "job 'a': disk must look like 100G"):
         assert part in msg
 
 
 def test_training_gpu_job(load_training, training_user):
     training_user["scheduler"] = "htcondor"
     j = load_training(training_user).htcondor.jobs["gnn_train"]
-    assert (j.gpus, j.requirements) == (1, "(GPUs_Capability >= 7.0)")
+    assert (j.gpus, j.requirements, j.disk) == (1, "(GPUs_Capability >= 7.0)", "10G")
 
 
 # ---------------------------------------------------------------- rendering
@@ -122,6 +123,7 @@ def test_render_submit_cpu_job(load, condor_user, tmp_path):
     assert lines[-1] == "queue"
     text = "\n".join(lines)
     assert "request_gpus" not in text and "requirements" not in text and "x509" not in text
+    assert "request_disk" not in text
 
 
 def test_render_submit_gpu_job(load_training, training_user, tmp_path):
@@ -134,6 +136,7 @@ def test_render_submit_gpu_job(load_training, training_user, tmp_path):
                           tmp_path).splitlines()
     assert "request_gpus   = 1" in lines
     assert "requirements   = (GPUs_Capability >= 7.0)" in lines
+    assert "request_disk   = 10485760" in lines   # KB
 
 
 @pytest.mark.parametrize("output_base, proxy", [(DCACHE, True), (EOS, False)])

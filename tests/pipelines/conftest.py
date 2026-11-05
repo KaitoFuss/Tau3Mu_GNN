@@ -154,7 +154,7 @@ TOY_TRAINING_DEFAULTS = {
                     for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background",
                                  "benchmark_limit", "benchmark_summary")},
                  "gnn_train": {"mem": "4G", "time": "0-01:00:00", "cpus": 1, "gpus": 1,
-                               "requirements": "(GPUs_Capability >= 7.0)"}},
+                               "requirements": "(GPUs_Capability >= 7.0)", "disk": "10G"}},
     },
 }
 

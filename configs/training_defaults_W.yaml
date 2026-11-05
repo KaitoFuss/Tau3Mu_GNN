@@ -65,10 +65,10 @@ slurm:                         # SLURM resources per job (PSI T3). Raise them he
     benchmark_summary: {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
 
 htcondor:                      # HTCondor resources per job (lxplus): the SLURM values. time -> +MaxRuntime,
-  jobs:                        # mem -> request_memory. GPU: 1 GPU, compute capability >= 7.0, >= 30 GB.
-    skim:              {mem: 256G, time: "1-00:00:00", cpus: 4}
+  jobs:                        # mem -> request_memory, disk -> request_disk (optional). GPU: 1 GPU, compute capability >= 7.0, >= 30 GB.
+    skim:              {mem: 8G,   time: "0-08:00:00", cpus: 8, disk: 100G}  # analysis skim code, measured (full W): 5.3 GB, 4.6 h, 81 GB disk
     bdt_train:         {mem: 128G, time: "0-06:00:00", cpus: 4}
-    bdt_infer:         {mem: 128G, time: "0-06:00:00", cpus: 1}
+    bdt_infer:         {mem: 4G,   time: "0-04:00:00", cpus: 1, disk: 50G}   # analysis bdt code, measured (full W): 2.7 GB, 2.2 h, 41 GB disk
     npvs:              {mem: 32G,  time: "0-01:00:00", cpus: 1}
     graphs_signal:     {mem: 256G, time: "2-00:00:00", cpus: 1}
     graphs_background: {mem: 256G, time: "2-00:00:00", cpus: 1}

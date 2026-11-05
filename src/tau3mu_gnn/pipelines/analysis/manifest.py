@@ -56,7 +56,7 @@ def config_dict(cfg: Config) -> dict:
                            for name, j in cfg.slurm.jobs.items()}},
         "scheduler": cfg.scheduler,
         "htcondor": {"jobs": {name: {"mem": j.mem, "time": j.time, "cpus": j.cpus, "gpus": j.gpus,
-                                     "requirements": j.requirements}
+                                     "requirements": j.requirements, "disk": j.disk}
                               for name, j in cfg.htcondor.jobs.items()}},
     }
 

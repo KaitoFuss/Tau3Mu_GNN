@@ -35,7 +35,8 @@ def test_example_w_raw_matches_production_settings(monkeypatch):
     assert cfg.limit.cl == 0.90
     assert cfg.paths.log_dir == "/afs/cern.ch/user/t/tester/tau3mu_logs"
     condor = cfg.htcondor.jobs
-    assert (condor["skim"].mem, condor["skim"].time, condor["skim"].cpus) == ("256G", "1-00:00:00", 4)
+    assert (condor["skim"].mem, condor["skim"].time, condor["skim"].cpus, condor["skim"].disk) == \
+        ("8G", "0-08:00:00", 8, "100G")
     jobs = cfg.slurm.jobs
     assert cfg.slurm.account == "t3"
     assert (jobs["skim"].partition, jobs["skim"].mem, jobs["skim"].time, jobs["skim"].cpus) == \
