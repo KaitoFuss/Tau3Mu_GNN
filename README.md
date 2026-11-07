@@ -51,7 +51,7 @@ cp configs/example_W_raw.yaml my_W.yaml                                         
 tau3mu-analysis all --config my_W.yaml --dry-run
 tau3mu-analysis all --config my_W.yaml
 condor_q                                                                                 # watch
-cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/<analysis_name>/limit_vs1/limits.txt  # result
+cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/analysis/<analysis_name>/limit_vs1/limits.txt  # result
 ```
 
 First time? Do [Check Your Setup](#check-your-setup) before a full run.
@@ -448,7 +448,7 @@ HTCondor batch name: `<training_name>.<versions>`. SLURM job names: `BDT<N>`, `G
 Set `models` in your analysis config to the `gnn_vsN` folder, then run the analysis as usual (`tau3mu-analysis all`):
 
 ```yaml
-models: root://eosuser.cern.ch//eos/user/<initial>/<you>/tau3mu_pipeline/<training_name>/gnn_vs1
+models: root://eosuser.cern.ch//eos/user/<initial>/<you>/tau3mu_pipeline/training/<training_name>/gnn_vs1
 ```
 
 The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `limit_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
