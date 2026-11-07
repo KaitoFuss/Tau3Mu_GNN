@@ -14,7 +14,7 @@ def test_example_w_raw_matches_production_settings(monkeypatch):
     assert all("/manzoni/tau3mu_gnn/" in p for p in cfg.inputs.signal + cfg.inputs.background)
     assert all(p.startswith("/eos/cms/store/group/phys_bphys/kfuss/tau3mu_inputs/manzoni/")
                for p in cfg.inputs.signal + cfg.inputs.background)
-    assert cfg.output_dir == "root://eosuser.cern.ch//eos/user/t/tester/tau3mu_pipeline/my_W_raw"
+    assert cfg.output_dir == "root://eosuser.cern.ch//eos/user/t/tester/tau3mu_pipeline/analysis/my_W_raw"
     assert cfg.gnn.model_name == "W_raw_Nano_AOD_fixed_W_fl_8_sd_4_GINE_delete_muons"
     assert cfg.gnn.conv_type == "GINE"
     assert cfg.gnn.gnn_mode == "final_layer"

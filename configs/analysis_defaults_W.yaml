@@ -46,5 +46,5 @@ htcondor:                      # HTCondor resources per job (lxplus): the SLURM 
     gnn_signal:     {mem: 10G, time: "1-00:00:00", cpus: 8, disk: 10G}   # measured (full W): peak 6.8 GB, 10.8 h, 8 cores, 4 GB disk
     gnn_background: {mem: 10G, time: "0-08:00:00", cpus: 8, disk: 50G}   # measured (full W): peak 7.0 GB, 3.8 h, 4 cores, 37 GB disk
     eval:           {mem: 2G,  time: "0-01:00:00", cpus: 1}              # measured (full W): peak 0.6 GB, 5 min
-    limit:          {mem: 2G,  time: "0-01:00:00", cpus: 1}              # measured (full W): peak 1.0 GB, 21 min
+    limit:          {mem: 2G,  time: "0-01:00:00", cpus: 1, disk: 4G}    # measured (full W): peak 1.0 GB, 21 min, 1 GB disk
     summary:        {mem: 1G,  time: "0-00:30:00", cpus: 1}              # measured (full W): peak 42 MB, < 1 min

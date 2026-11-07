@@ -36,7 +36,12 @@ def test_training_graph_type_matches_analysis_defaults(monkeypatch):
 
 def test_training_inputs_match_example_w(monkeypatch):
     t, a = _load(monkeypatch)
-    assert t.inputs == a.inputs and t.paths == a.paths
+    assert t.inputs == a.inputs
+    # same paths, but analysis and training outputs in their own subfolder of tau3mu_pipeline
+    assert (t.paths.log_dir, t.paths.conda_env) == (a.paths.log_dir, a.paths.conda_env)
+    assert t.paths.output_base.endswith("/tau3mu_pipeline/training")
+    assert a.paths.output_base.endswith("/tau3mu_pipeline/analysis")
+    assert t.paths.output_base.removesuffix("/training") == a.paths.output_base.removesuffix("/analysis")
 
 
 HF_BENCHMARK_CUTS = [0.88, 0.89, 0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97]
