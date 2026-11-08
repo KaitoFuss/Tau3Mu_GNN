@@ -283,12 +283,13 @@ def _scheduler(v):
 
 
 _HTCONDOR_KEYS = ("mem", "time", "cpus")
-_HTCONDOR_OPTIONAL_KEYS = ("gpus", "requirements")
+_HTCONDOR_OPTIONAL_KEYS = ("gpus", "requirements", "disk")
 
 
 def _htcondor_jobs_parser(job_names: tuple[str, ...]):
     """Parser of an HTCondor job table with exactly the jobs job_names. mem and time use the SLURM formats
-    (64G, 1-00:00:00): the HTCondor layer turns them into request_memory (MB) and +MaxRuntime (s)."""
+    (64G, 1-00:00:00): the HTCondor layer turns them into request_memory (MB) and +MaxRuntime (s).
+    Optional disk (same format as mem) becomes request_disk; not set: the HTCondor default."""
     def parse(v):
         if not isinstance(v, dict):
             raise ValueError(f"must be a mapping job -> {{{', '.join(_HTCONDOR_KEYS)}}}, got {v!r}")
@@ -308,7 +309,7 @@ def _htcondor_jobs_parser(job_names: tuple[str, ...]):
             if not set(_HTCONDOR_KEYS) <= set(spec):
                 continue
             mem, time, cpus = (spec[k] for k in _HTCONDOR_KEYS)
-            gpus, requirements = spec.get("gpus", 0), spec.get("requirements")
+            gpus, requirements, disk = spec.get("gpus", 0), spec.get("requirements"), spec.get("disk")
             if not isinstance(mem, str) or not _MEM_RE.match(mem):
                 reasons.append(f"job '{name}': mem must look like 64G, got {mem!r}")
             if not isinstance(time, str) or not _TIME_RE.match(time):
@@ -319,7 +320,9 @@ def _htcondor_jobs_parser(job_names: tuple[str, ...]):
                 reasons.append(f"job '{name}': gpus must be an integer >= 0, got {gpus!r}")
             if requirements is not None and (not isinstance(requirements, str) or not requirements.strip()):
                 reasons.append(f"job '{name}': requirements must be a non-empty string, got {requirements!r}")
-            jobs[name] = HTCondorJob(mem, time, cpus, gpus, requirements)
+            if disk is not None and (not isinstance(disk, str) or not _MEM_RE.match(disk)):
+                reasons.append(f"job '{name}': disk must look like 100G, got {disk!r}")
+            jobs[name] = HTCondorJob(mem, time, cpus, gpus, requirements, disk)
         if reasons:
             raise ValueError("; ".join(reasons))
         return MappingProxyType(jobs)
@@ -394,6 +397,7 @@ class HTCondorJob:
     cpus: int
     gpus: int = 0
     requirements: str | None = None   # HTCondor requirements expression, e.g. for the GPU type
+    disk: str | None = None           # like mem, e.g. 100G; becomes request_disk (scratch space of the job)
 
 
 @dataclass(frozen=True)

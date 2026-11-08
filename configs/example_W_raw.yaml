@@ -14,7 +14,7 @@ paths:
   # All outputs go to <output_base>/<analysis_name>.
   # EOS user space ($USER_INITIAL = the first letter of $USER, e.g. /eos/user/k/kfuss).
   # Jobs write to their scratch folder first and then xrdcp to this location.
-  output_base: root://eosuser.cern.ch//eos/user/$USER_INITIAL/$USER/tau3mu_pipeline
+  output_base: root://eosuser.cern.ch//eos/user/$USER_INITIAL/$USER/tau3mu_pipeline/analysis
   # Folder on AFS for the job scripts and HTCondor logs (HTCondor cannot write its logs to EOS).
   # Logs are also copied next to the results (<phase>_vsN/logs/).
   log_dir: /afs/cern.ch/user/$USER_INITIAL/$USER/tau3mu_logs

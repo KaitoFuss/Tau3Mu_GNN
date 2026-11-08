@@ -51,7 +51,7 @@ cp configs/example_W_raw.yaml my_W.yaml                                         
 tau3mu-analysis all --config my_W.yaml --dry-run
 tau3mu-analysis all --config my_W.yaml
 condor_q                                                                                 # watch
-cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/<analysis_name>/limit_vs1/limits.txt  # result
+cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/analysis/<analysis_name>/limit_vs1/limits.txt  # result
 ```
 
 First time? Do [Check Your Setup](#check-your-setup) before a full run.
@@ -385,7 +385,7 @@ Each version folder also has these files:
 3. **Fix the problem. Then submit the phase again.**
    - This makes the next version, for example `gnn_vs2`.
    - The failed version stays. It has no manifest.
-4. **Out of memory or time?** Increase the value for that job in `configs/analysis_defaults_W.yaml` (`htcondor.jobs`, or `slurm.jobs` on T3). Job memory: powers of 2 (64G, 128G, 256G).
+4. **Out of memory or time?** Increase the value for that job in `configs/analysis_defaults_W.yaml` (`htcondor.jobs`, or `slurm.jobs` on T3). Job memory: powers of 2 (64G, 128G, 256G). HTCondor job out of scratch disk? Increase `disk`.
 
 ---
 
@@ -448,7 +448,7 @@ HTCondor batch name: `<training_name>.<versions>`. SLURM job names: `BDT<N>`, `G
 Set `models` in your analysis config to the `gnn_vsN` folder, then run the analysis as usual (`tau3mu-analysis all`):
 
 ```yaml
-models: root://eosuser.cern.ch//eos/user/<initial>/<you>/tau3mu_pipeline/<training_name>/gnn_vs1
+models: root://eosuser.cern.ch//eos/user/<initial>/<you>/tau3mu_pipeline/training/<training_name>/gnn_vs1
 ```
 
 The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `limit_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
@@ -656,7 +656,7 @@ The pipelines write and submit the jobs; you do not write job scripts.
 | | HTCondor (lxplus, default) | SLURM (PSI T3) |
 |---|---|---|
 | Config | `scheduler: htcondor` | `scheduler: slurm` |
-| Resources | `htcondor.jobs` in the defaults files (`mem`, `time`, `cpus`; optional `gpus`, `requirements`) | `slurm.jobs` (`partition`, `mem`, `time`, `cpus`; optional `account`, `gres`) |
+| Resources | `htcondor.jobs` in the defaults files (`mem`, `time`, `cpus`; optional `gpus`, `requirements`, `disk`) | `slurm.jobs` (`partition`, `mem`, `time`, `cpus`; optional `account`, `gres`) |
 | One submit | one DAG (`condor_submit_dag`); `all` = one DAG over all phases | one `sbatch` per job, with dependencies |
 | Watch | `condor_q`, `condor_q -dag -nobatch`, `condor_history` | `squeue -u $USER`, `sacct -j <ID>` |
 | Cancel | `condor_rm <DAG cluster>` (the number before `:` in `jobs.json`) | `scancel <IDs>` |

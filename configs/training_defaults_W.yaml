@@ -65,14 +65,14 @@ slurm:                         # SLURM resources per job (PSI T3). Raise them he
     benchmark_summary: {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
 
 htcondor:                      # HTCondor resources per job (lxplus): the SLURM values. time -> +MaxRuntime,
-  jobs:                        # mem -> request_memory. GPU: 1 GPU, compute capability >= 7.0, >= 30 GB.
-    skim:              {mem: 256G, time: "1-00:00:00", cpus: 4}
-    bdt_train:         {mem: 128G, time: "0-06:00:00", cpus: 4}
-    bdt_infer:         {mem: 128G, time: "0-06:00:00", cpus: 1}
-    npvs:              {mem: 32G,  time: "0-01:00:00", cpus: 1}
-    graphs_signal:     {mem: 256G, time: "2-00:00:00", cpus: 1}
-    graphs_background: {mem: 256G, time: "2-00:00:00", cpus: 1}
-    gnn_train:         {mem: 128G, time: "3-00:00:00", cpus: 5, gpus: 1,
+  jobs:                        # mem -> request_memory, disk -> request_disk (optional). GPU: 1 GPU, compute capability >= 7.0, >= 30 GB.
+    skim:              {mem: 8G,   time: "0-08:00:00", cpus: 8, disk: 100G}  # analysis skim code, measured (full W): 5.3 GB, 4.6 h, 81 GB disk
+    bdt_train:         {mem: 4G,   time: "0-01:00:00", cpus: 1}              # measured (full W): 1.5 GB, 16 min
+    bdt_infer:         {mem: 4G,   time: "0-04:00:00", cpus: 1, disk: 50G}   # analysis bdt code, measured (full W): 2.7 GB, 2.2 h, 41 GB disk
+    npvs:              {mem: 1G,   time: "0-00:30:00", cpus: 1}              # measured (full W): 13 MB, 4 min
+    graphs_signal:     {mem: 48G,  time: "0-12:00:00", cpus: 1, disk: 20G}   # measured (full W): 37.9 GB, 7.1 h, 1 core, 9.7 GB disk
+    graphs_background: {mem: 96G,  time: "0-06:00:00", cpus: 1, disk: 20G}   # measured (full W): 63.8 GB, 1.7 h, 1 core
+    gnn_train:         {mem: 96G,  time: "3-00:00:00", cpus: 8, gpus: 1, disk: 20G,  # measured (full W): 58 GB, 4.4 h (63 epochs), 8 cores, 8.6 GB GPU
                         requirements: "(GPUs_Capability >= 7.0) && (GPUs_GlobalMemoryMb >= 30000)"}
-    benchmark_limit:   {mem: 128G, time: "0-01:30:00", cpus: 1}
-    benchmark_summary: {mem: 4G,   time: "0-00:30:00", cpus: 1}
+    benchmark_limit:   {mem: 2G,   time: "0-01:00:00", cpus: 1, disk: 4G}    # measured (full W): 1.4 GB, 38 min, 2.3 GB disk
+    benchmark_summary: {mem: 1G,   time: "0-00:30:00", cpus: 1}              # measured (full W): 12 MB, 3 min

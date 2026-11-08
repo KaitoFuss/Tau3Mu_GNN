@@ -42,11 +42,11 @@ slurm:                         # SLURM resources per job (PSI T3). Raise them he
     summary:        {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
 
 htcondor:                      # HTCondor resources per job (lxplus): the SLURM values. time -> +MaxRuntime,
-  jobs:                        # mem -> request_memory. Optional per job: gpus, requirements.
-    skim:           {mem: 256G, time: "1-00:00:00", cpus: 4}
-    bdt:            {mem: 128G, time: "0-06:00:00", cpus: 1}
-    gnn_signal:     {mem: 64G,  time: "1-00:00:00", cpus: 1}
-    gnn_background: {mem: 128G, time: "2-00:00:00", cpus: 1}
-    eval:           {mem: 32G,  time: "0-01:00:00", cpus: 1}
-    limit:          {mem: 128G, time: "0-01:30:00", cpus: 1}
-    summary:        {mem: 4G,   time: "0-00:30:00", cpus: 1}
+  jobs:                        # mem -> request_memory, disk -> request_disk. Optional per job: gpus, requirements, disk.
+    skim:           {mem: 8G,  time: "0-08:00:00", cpus: 8, disk: 100G}  # measured (full W): peak 5.3 GB, 4.6 h, 6 cores, 81 GB disk
+    bdt:            {mem: 4G,  time: "0-04:00:00", cpus: 1, disk: 50G}   # measured (full W): peak 2.7 GB, 2.2 h, 41 GB disk
+    gnn_signal:     {mem: 10G, time: "1-00:00:00", cpus: 8, disk: 10G}   # measured (full W): peak 6.8 GB, 10.8 h, 8 cores, 4 GB disk
+    gnn_background: {mem: 10G, time: "0-08:00:00", cpus: 8, disk: 50G}   # measured (full W): peak 7.0 GB, 3.8 h, 4 cores, 37 GB disk
+    eval:           {mem: 2G,  time: "0-01:00:00", cpus: 1}              # measured (full W): peak 0.6 GB, 5 min
+    limit:          {mem: 2G,  time: "0-01:00:00", cpus: 1, disk: 4G}    # measured (full W): peak 1.0 GB, 21 min, 1 GB disk
+    summary:        {mem: 1G,  time: "0-00:30:00", cpus: 1}              # measured (full W): peak 42 MB, < 1 min

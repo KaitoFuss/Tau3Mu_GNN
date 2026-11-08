@@ -100,6 +100,8 @@ def render_submit(cfg: "Config | TrainingConfig", job: Job, log_folder: Path) ->
         lines.append(f"request_gpus   = {res.gpus}")
     if res.requirements:
         lines.append(f"requirements   = {res.requirements}")
+    if res.disk:
+        lines.append(f"request_disk   = {memory_mb(res.disk) * 1024}")   # KB
     if storage.needs_proxy(cfg.output_dir):
         lines.append("use_x509userproxy = true")
     return "\n".join(lines + ["queue"]) + "\n"
