@@ -99,6 +99,17 @@ def apply_selection_and_weight_rdf(input_file, tree_name, selection_expr, output
     return df_filtered
 
 
+def draw_background(frame, pdf, nbkg, name="bkg_curve"):
+    """Draw the background pdf on frame as nbkg events in the full mass range (black line in mass.pdf).
+
+    nbkg is the fitted yield in the full range, for a sideband fit and for a full-range fit alike.
+    pdf.plotOn alone scales the curve to the events of the last plotted dataset: with blinded data
+    (sidebands only) the curve was ~30% too low, and with unblinded data it included the signal.
+    """
+    pdf.plotOn(frame, ROOT.RooFit.Normalization(nbkg.getVal(), ROOT.RooAbsReal.NumEvent),
+               ROOT.RooFit.LineColor(ROOT.kBlack), ROOT.RooFit.Name(name))
+
+
 def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Path], cut: float,
                   signal_weight: float, out_dir: str | Path, tau_mass: float = 1.78,
                   mass_window: float = 0.060, fit_range: tuple[float, float] = (1.6, 2.0),
@@ -258,7 +269,7 @@ def make_datacard(sig_files: Sequence[str | Path], bkg_files: Sequence[str | Pat
 
     # fit background with exponential model
     results_expo = expomodel.fitTo(fulldata, ROOT.RooFit.Range('left,right'), ROOT.RooFit.Save())
-    expo.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kBlack))     # this is the fit in the entire mass range
+    draw_background(frame, expo, nbkg)  # the fit in the entire mass range, scaled to nbkg
     if nbkg.getVal() > 0.99 * NBKG_START[2]:
         log.warning("nbkg = %.1f is at its upper limit %g; the background yield is clipped",
                     nbkg.getVal(), NBKG_START[2])
