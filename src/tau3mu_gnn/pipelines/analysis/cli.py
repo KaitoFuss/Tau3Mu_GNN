@@ -1,10 +1,11 @@
 """tau3mu-analysis (analysis): submit the batch jobs of all phases, one phase or one stage.
 
   tau3mu-analysis all   --config my.yaml [--dry-run]
-  tau3mu-analysis bdt   --config my.yaml [--dry-run]                       skim + BDT scores
-  tau3mu-analysis gnn   --config my.yaml [--from bdt_vsN] [--dry-run]      GNN scores + evaluation plots
-  tau3mu-analysis limit --config my.yaml [--from gnn_vsN] [--dry-run]      limit per cut + summary
-  tau3mu-analysis stage <skim|bdt|gnn|eval|limit|summary> --config my.yaml
+  tau3mu-analysis bdt       --config my.yaml [--dry-run]                   skim + BDT scores
+  tau3mu-analysis benchmark --config my.yaml [--from bdt_vsN] [--dry-run]  BDT-only limit per cut + summary
+  tau3mu-analysis gnn       --config my.yaml [--from bdt_vsN] [--dry-run]  GNN scores + evaluation plots
+  tau3mu-analysis limit     --config my.yaml [--from gnn_vsN] [--dry-run]  GNN limit per cut + summary
+  tau3mu-analysis stage <skim|bdt|gnn|eval|limit|summary|benchmark_limit|benchmark_summary> --config my.yaml
         [--from <phase>_vsN] [--cut X] [--sample signal|background] [--dry-run]
 
 tau3mu-analysis is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.analysis.cli` is the same.
@@ -28,13 +29,14 @@ from tau3mu_gnn.pipelines.common.batch import SubmitError
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tau3mu-analysis", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
-    helps = {"all": "phases bdt, gnn and limit at once", "bdt": "skim + BDT scores",
-             "gnn": "GNN scores + evaluation plots", "limit": "limit per cut + summary", "stage": "one stage (debug)"}
-    for name in ("all", "bdt", "gnn", "limit", "stage"):
+    helps = {"all": "phases bdt, benchmark, gnn and limit at once", "bdt": "skim + BDT scores",
+             "benchmark": "BDT-only limit per cut + summary", "gnn": "GNN scores + evaluation plots",
+             "limit": "GNN limit per cut + summary", "stage": "one stage (debug)"}
+    for name in ("all", "bdt", "benchmark", "gnn", "limit", "stage"):
         s = sub.add_parser(name, help=helps[name])
         if name == "stage":
             s.add_argument("stage", choices=STAGES)
-            s.add_argument("--cut", type=float, help="GNN score cut (stage limit)")
+            s.add_argument("--cut", type=float, help="score cut (stage limit: GNN, benchmark_limit: bdt_ISO)")
             s.add_argument("--sample", choices=("signal", "background"), help="sample (stage gnn)")
         s.add_argument("--config", required=True, help="your user config file")
         if name not in ("all", "bdt"):
@@ -62,7 +64,7 @@ def main(argv=None) -> int:
           f"results: {s.version_dir}\n" +
           (f"upstream: {s.upstream}\n" if s.upstream else "") +
           f"logs:    {s.log_folder}\n" +
-          "\n".join(f"  {name:<16} {job_id}" for name, job_id in s.job_ids.items()) for s in subs))
+          "\n".join(f"  {name:<22} {job_id}" for name, job_id in s.job_ids.items()) for s in subs))
     return 0
 
 

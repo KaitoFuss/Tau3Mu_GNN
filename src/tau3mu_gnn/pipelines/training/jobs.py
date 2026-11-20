@@ -2,7 +2,7 @@
 
 Same pattern as the analysis jobs (analysis/jobs.py): each job works in a fresh scratch folder under $TMPDIR,
 then copies its outputs into the phase folder with storage.put. Upstream files are read through
-storage.local_path. The last job of a phase writes the manifest (bdt_infer, gnn_train, benchmark_summary).
+storage.local_path. The last job of a phase writes the manifest (bdt_infer, gnn_train).
 """
 from __future__ import annotations
 
@@ -15,14 +15,12 @@ import torch
 from tau3mu_gnn.pipelines.common import batch, storage
 from tau3mu_gnn.pipelines.common.branches import TRAINING_EXTRA
 from tau3mu_gnn.pipelines.common.jobs import RESONANCE_DIR, SKIM_DIR, _name, _read, _scratch
-from tau3mu_gnn.pipelines.common.stages import limit as limit_stage
 from tau3mu_gnn.pipelines.common.stages import resonance_skim
 from tau3mu_gnn.pipelines.common.stages import skim as skim_stage
 from tau3mu_gnn.pipelines.training.config import load_training_config
 from tau3mu_gnn.pipelines.training.manifest import check_upstream, write_manifest
 from tau3mu_gnn.pipelines.training.stages import bdt_infer as bdt_infer_stage
 from tau3mu_gnn.pipelines.training.stages import bdt_train as bdt_train_stage
-from tau3mu_gnn.pipelines.training.stages import benchmark as benchmark_stage
 from tau3mu_gnn.pipelines.training.stages import gnn_train as gnn_train_stage
 from tau3mu_gnn.pipelines.training.stages import graphs as graphs_stage
 from tau3mu_gnn.pipelines.training.stages import npvs as npvs_stage
@@ -31,9 +29,8 @@ log = logging.getLogger(__name__)
 
 SAMPLES = ("signal", "background")
 BDT_TRAIN_DIR, BDT_DIR, NPVS_DIR, GRAPHS_DIR, GNN_TRAIN_DIR = "bdt_train", "2_bdt", "npvs", "graphs", "gnn_train"
-JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs", "gnn_train", "benchmark_limit", "benchmark_summary")
-NEEDS = {"npvs": ("upstream",), "graphs": ("upstream", "sample"), "gnn_train": ("upstream",),
-         "benchmark_limit": ("upstream", "cut"), "benchmark_summary": ("upstream",)}
+JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs", "gnn_train")
+NEEDS = {"npvs": ("upstream",), "graphs": ("upstream", "sample"), "gnn_train": ("upstream",)}
 
 
 def _rel(path, scratch: Path) -> str:
@@ -141,44 +138,13 @@ def gnn_train(cfg, phase_dir, upstream_dir) -> None:
     write_manifest(cfg, phase_dir, "gnn", _name(upstream_dir), outputs)
 
 
-def benchmark_limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
-    """benchmark, first jobs: BDT-only limit for one cut. Checks the bdt version.
-    cut_<cut>/ is copied also if the stage fails."""
-    _check_proxy(cfg, "benchmark_limit")
-    log.info("job benchmark_limit: %s, cut %s, upstream %s", phase_dir, cut, upstream_dir)
-    m = check_upstream(cfg, upstream_dir, "benchmark")
-    inputs = {s: _read(upstream_dir, m["outputs"][f"bdt_{s}"]) for s in SAMPLES}
-    scratch = _scratch("benchmark_limit")
-    cut_dir = scratch / limit_stage.cut_dir_name(cut)
-    try:
-        benchmark_stage.run(cfg, inputs, scratch, cut)
-    finally:
-        if cut_dir.exists():
-            dest = storage.join(phase_dir, cut_dir.name)
-            log.info("copy %s -> %s", cut_dir, dest)
-            storage.put(cut_dir, dest)
-
-
-def benchmark_summary(cfg, phase_dir, upstream_dir) -> None:
-    """benchmark, last job (afterany): limits.* from <phase_dir>/cut_*/. Writes the benchmark manifest,
-    with the cuts that have no limit in 'missing'."""
-    _check_proxy(cfg, "benchmark_summary")
-    log.info("job benchmark_summary: %s, upstream %s", phase_dir, upstream_dir)
-    scratch = _scratch("benchmark_summary")
-    s = benchmark_stage.summarize(cfg, storage.local_path(phase_dir), write_dir=scratch)
-    _put(scratch, phase_dir)
-    outputs = {f"limits_{k}": _rel(path, scratch) for k, path in s["files"].items()}
-    write_manifest(cfg, phase_dir, "benchmark", _name(upstream_dir), outputs, missing=s["missing"])
-
-
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="python -m tau3mu_gnn.pipelines.training.jobs",
                                 description="Run one training job (called by the generated batch job scripts).")
     p.add_argument("job", choices=JOBS)
     p.add_argument("--config", required=True, help="training user config file")
     p.add_argument("--phase-dir", required=True, help="output folder: <phase>_vsN")
-    p.add_argument("--upstream", help="upstream bdt version folder (gnn and benchmark jobs)")
-    p.add_argument("--cut", type=float, help="bdt_ISO score cut (benchmark_limit)")
+    p.add_argument("--upstream", help="upstream bdt version folder (gnn jobs)")
     p.add_argument("--sample", choices=SAMPLES, help="sample (graphs)")
     a = p.parse_args(argv)
     absent = [f"--{n}" for n in NEEDS.get(a.job, ()) if getattr(a, n) is None]
@@ -189,13 +155,10 @@ def main(argv=None) -> None:
     cfg = load_training_config(a.config)
     if a.job in ("skim", "bdt_train", "bdt_infer"):
         {"skim": skim, "bdt_train": bdt_train, "bdt_infer": bdt_infer}[a.job](cfg, a.phase_dir)
-    elif a.job in ("npvs", "gnn_train", "benchmark_summary"):
-        {"npvs": npvs, "gnn_train": gnn_train, "benchmark_summary": benchmark_summary}[a.job](
-            cfg, a.phase_dir, a.upstream)
-    elif a.job == "graphs":
-        graphs(cfg, a.phase_dir, a.upstream, a.sample)
+    elif a.job in ("npvs", "gnn_train"):
+        {"npvs": npvs, "gnn_train": gnn_train}[a.job](cfg, a.phase_dir, a.upstream)
     else:
-        benchmark_limit(cfg, a.phase_dir, a.upstream, a.cut)
+        graphs(cfg, a.phase_dir, a.upstream, a.sample)
 
 if __name__ == "__main__":
     main()

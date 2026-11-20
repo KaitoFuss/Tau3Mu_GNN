@@ -61,8 +61,6 @@ slurm:                         # SLURM resources per job (PSI T3). Raise them he
     graphs_signal:     {partition: long,     mem: 256G, time: "2-00:00:00", cpus: 1}
     graphs_background: {partition: long,     mem: 256G, time: "2-00:00:00", cpus: 1}
     gnn_train:         {partition: gpu,      mem: 128G, time: "3-00:00:00", cpus: 5, account: gpu_gres, gres: "gpu:1"}
-    benchmark_limit:   {partition: standard, mem: 128G, time: "0-01:30:00", cpus: 1}
-    benchmark_summary: {partition: short,    mem: 4G,   time: "0-00:30:00", cpus: 1}
 
 htcondor:                      # HTCondor resources per job (lxplus): the SLURM values. time -> +MaxRuntime,
   jobs:                        # mem -> request_memory, disk -> request_disk (optional). GPU: 1 GPU, compute capability >= 7.0, >= 30 GB.
@@ -74,5 +72,3 @@ htcondor:                      # HTCondor resources per job (lxplus): the SLURM 
     graphs_background: {mem: 96G,  time: "0-06:00:00", cpus: 1, disk: 20G}   # measured (full W): 63.8 GB, 1.7 h, 1 core
     gnn_train:         {mem: 96G,  time: "3-00:00:00", cpus: 8, gpus: 1, disk: 20G,  # measured (full W): 58 GB, 4.4 h (63 epochs), 8 cores, 8.6 GB GPU
                         requirements: "(GPUs_Capability >= 7.0) && (GPUs_GlobalMemoryMb >= 30000)"}
-    benchmark_limit:   {mem: 2G,   time: "0-01:00:00", cpus: 1, disk: 4G}    # measured (full W): 1.4 GB, 38 min, 2.3 GB disk
-    benchmark_summary: {mem: 1G,   time: "0-00:30:00", cpus: 1}              # measured (full W): 12 MB, 3 min

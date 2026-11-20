@@ -3,7 +3,8 @@
   tau3mu-training all       --config my_training.yaml [--dry-run]
   tau3mu-training bdt       --config my_training.yaml [--dry-run]
   tau3mu-training gnn       --config my_training.yaml [--from bdt_vsN] [--dry-run]
-  tau3mu-training benchmark --config my_training.yaml [--from bdt_vsN] [--dry-run]
+
+The BDT-only benchmark limit is a phase of tau3mu-analysis (same events as the GNN limit).
 
 tau3mu-training is installed by `pip install -e .`; `python -m tau3mu_gnn.pipelines.training.cli` is the same.
 The jobs use paths.conda_env from the config, else the conda env that is active when you submit.
@@ -25,10 +26,10 @@ from tau3mu_gnn.pipelines.training.driver import submit_all, submit_phase
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tau3mu-training", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
-    for name in ("all", "bdt", "gnn", "benchmark"):
-        s = sub.add_parser(name, help="bdt, then gnn and benchmark" if name == "all" else None)
+    for name in ("all", "bdt", "gnn"):
+        s = sub.add_parser(name, help="bdt, then gnn" if name == "all" else None)
         s.add_argument("--config", required=True, help="your training config file")
-        if name in ("gnn", "benchmark"):
+        if name == "gnn":
             s.add_argument("--from", dest="from_", metavar="VERSION",
                            help="bdt version, e.g. bdt_vs2 (default: the highest complete one)")
         s.add_argument("--dry-run", action="store_true", help="write the job files and print the submit "

@@ -84,6 +84,29 @@ def _open_unit_interval(v):
     return x
 
 
+def _cut_list(v):
+    """Cuts on a BDT score in (0, 1): bdt_ISO > cut. One number or a list."""
+    cuts = _number_list(v)
+    for x in cuts:
+        _open_unit_interval(x)
+    return cuts
+
+
+NOT_SCORED = -1.0   # score of an event without a score (no candidate, or below the GNN BDT preselection);
+                    # the default of utils/score_merge.scores_in_entry_order
+
+
+def _gnn_cut_list(v):
+    """Cuts on the GNN score (a logit): GNN_score > cut. Each cut must be > NOT_SCORED, else the events that the
+    GNN did not score (GNN_score = -1) pass the cut."""
+    cuts = _number_list(v)
+    low = [x for x in cuts if x <= NOT_SCORED]
+    if low:
+        raise ValueError(f"must be > {NOT_SCORED} (GNN_score = {NOT_SCORED} marks events the GNN did not score), "
+                         f"got {low}")
+    return cuts
+
+
 def _bool(v):
     if not isinstance(v, bool):
         raise ValueError(f"must be true or false, got {v!r}")

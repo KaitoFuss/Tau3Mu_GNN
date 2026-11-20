@@ -15,6 +15,7 @@ from tau3mu_gnn.pipelines.analysis.manifest import check_upstream, write_manifes
 from tau3mu_gnn.pipelines.common import storage
 from tau3mu_gnn.pipelines.common.jobs import RESONANCE_DIR, SKIM_DIR, _name, _read, _scratch
 from tau3mu_gnn.pipelines.common.stages import bdt as bdt_stage
+from tau3mu_gnn.pipelines.analysis.stages import benchmark as benchmark_stage
 from tau3mu_gnn.pipelines.analysis.stages import evaluation as evaluation_stage
 from tau3mu_gnn.pipelines.analysis.stages import gnn as gnn_stage
 from tau3mu_gnn.pipelines.common.stages import limit as limit_stage
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 
 SAMPLES = ("signal", "background")
 BDT_DIR, GNN_DIR, EVAL_DIR = "2_bdt", "3_gnn", "4_eval"
-JOBS = ("skim", "bdt", "gnn", "eval", "limit", "summary")
+JOBS = ("skim", "bdt", "gnn", "eval", "limit", "summary", "benchmark_limit", "benchmark_summary")
 
 
 def skim(cfg, phase_dir) -> None:
@@ -86,15 +87,12 @@ def evaluation(cfg, phase_dir, upstream_dir, source_dir=None, manifest=True) -> 
         write_manifest(cfg, phase_dir, "gnn", _name(upstream_dir), outputs)
 
 
-def limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
-    """Phase limit: stage 5 for one cut. Checks the gnn version. cut_<cut>/ is copied also if the stage fails."""
-    log.info("job limit: %s, cut %s, upstream %s", phase_dir, cut, upstream_dir)
-    m = check_upstream(cfg, upstream_dir, "limit")
-    inputs = {s: _read(upstream_dir, m["outputs"][f"gnn_{s}"]) for s in SAMPLES}
-    scratch = _scratch("limit")
+def _cut_job(job: str, run, phase_dir, cut: float) -> None:
+    """One cut of a cut scan (limit or benchmark): run(scratch, cut). cut_<cut>/ is copied also if run fails."""
+    scratch = _scratch(job)
     cut_dir = scratch / limit_stage.cut_dir_name(cut)
     try:
-        limit_stage.run(cfg, inputs, scratch, cut)
+        run(scratch, cut)
     finally:
         if cut_dir.exists():
             dest = storage.join(phase_dir, cut_dir.name)
@@ -102,22 +100,52 @@ def limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
             storage.put(cut_dir, dest)
 
 
-def summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -> None:
-    """Phase limit, last job (afterany): limits.* from <source_dir>/cut_*/ (default: this phase).
-    Writes the limit manifest, with the cuts that have no limit in 'missing'."""
+def _summary_job(cfg, job: str, phase: str, summarize, phase_dir, upstream_dir, source_dir, manifest) -> None:
+    """Last job of a cut scan phase (afterany): limits_<tail>.* from <source_dir>/cut_*/ (default: this phase).
+    Writes the manifest of `phase`, with the cuts that have no limit in 'missing'."""
     if manifest and upstream_dir is None:
-        raise ValueError("summary with a manifest needs the upstream gnn folder")
+        raise ValueError(f"{job} with a manifest needs the upstream folder")
     src = source_dir if source_dir is not None else phase_dir
-    log.info("job summary: %s, source %s, upstream %s", phase_dir, src, upstream_dir)
-    scratch = _scratch("summary")
-    s = limit_stage.summarize(cfg, storage.local_path(src), write_dir=scratch)
+    log.info("job %s: %s, source %s, upstream %s", job, phase_dir, src, upstream_dir)
+    scratch = _scratch(job)
+    s = summarize(cfg, storage.local_path(src), write_dir=scratch)
     log.info("copy %s -> %s", scratch, phase_dir)
     storage.put(scratch, phase_dir)
     if manifest:
-        outputs = {f"limits_{k}": name for k, name in limit_stage.SUMMARY_FILES.items()}
+        outputs = {f"limits_{k}": Path(f).name for k, f in s["files"].items()}
         outputs.update({f"limit_{r['cut']}": f"{limit_stage.cut_dir_name(r['cut'])}/limit.json"
                         for r in s["rows"] if r["limit"] is not None})
-        write_manifest(cfg, phase_dir, "limit", _name(upstream_dir), outputs, missing=s["missing"])
+        write_manifest(cfg, phase_dir, phase, _name(upstream_dir), outputs, missing=s["missing"])
+
+
+def limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
+    """Phase limit: stage 5 for one cut. Checks the gnn version. cut_<cut>/ is copied also if the stage fails."""
+    log.info("job limit: %s, cut %s, upstream %s", phase_dir, cut, upstream_dir)
+    m = check_upstream(cfg, upstream_dir, "limit")
+    inputs = {s: _read(upstream_dir, m["outputs"][f"gnn_{s}"]) for s in SAMPLES}
+    _cut_job("limit", lambda out, c: limit_stage.run(cfg, inputs, out, c), phase_dir, cut)
+
+
+def summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -> None:
+    """Phase limit, last job (afterany): limits_gnn.* from <source_dir>/cut_*/ (default: this phase).
+    Writes the limit manifest, with the cuts that have no limit in 'missing'."""
+    _summary_job(cfg, "summary", "limit", limit_stage.summarize, phase_dir, upstream_dir, source_dir, manifest)
+
+
+def benchmark_limit(cfg, phase_dir, upstream_dir, cut: float) -> None:
+    """Phase benchmark: BDT-only limit (bdt_ISO > cut) for one cut on the stage 2 outputs. Checks the bdt
+    version. cut_<cut>/ is copied also if the stage fails."""
+    log.info("job benchmark_limit: %s, cut %s, upstream %s", phase_dir, cut, upstream_dir)
+    m = check_upstream(cfg, upstream_dir, "benchmark")
+    inputs = {s: _read(upstream_dir, m["outputs"][f"bdt_{s}"]) for s in SAMPLES}
+    _cut_job("benchmark_limit", lambda out, c: benchmark_stage.run(cfg, inputs, out, c), phase_dir, cut)
+
+
+def benchmark_summary(cfg, phase_dir, upstream_dir=None, source_dir=None, manifest=True) -> None:
+    """Phase benchmark, last job (afterany): limits_benchmark.* from <source_dir>/cut_*/ (default: this phase).
+    Writes the benchmark manifest, with the cuts that have no limit in 'missing'."""
+    _summary_job(cfg, "benchmark_summary", "benchmark", benchmark_stage.summarize, phase_dir, upstream_dir,
+                 source_dir, manifest)
 
 
 def main(argv=None) -> None:
@@ -126,14 +154,15 @@ def main(argv=None) -> None:
     p.add_argument("job", choices=JOBS)
     p.add_argument("--config", required=True, help="user config file")
     p.add_argument("--phase-dir", required=True, help="output folder: <phase>_vsN or debug/<stage>_vsN")
-    p.add_argument("--upstream", help="upstream phase version folder (gnn, eval, limit, summary)")
+    p.add_argument("--upstream", help="upstream phase version folder (gnn, eval, limit, summary, benchmark_*)")
     p.add_argument("--source", help="read same-phase inputs from this folder (debug runs)")
-    p.add_argument("--cut", type=float, help="GNN score cut (limit)")
+    p.add_argument("--cut", type=float, help="score cut (limit: GNN_score, benchmark_limit: bdt_ISO)")
     p.add_argument("--sample", choices=SAMPLES, help="sample (gnn)")
     p.add_argument("--no-manifest", action="store_true", help="do not write a manifest (debug runs)")
     a = p.parse_args(argv)
-    need = {"gnn": ("upstream", "sample"), "eval": ("upstream",), "limit": ("upstream", "cut")}.get(a.job, ())
-    if a.job == "summary" and not a.no_manifest:
+    need = {"gnn": ("upstream", "sample"), "eval": ("upstream",), "limit": ("upstream", "cut"),
+            "benchmark_limit": ("upstream", "cut")}.get(a.job, ())
+    if a.job in ("summary", "benchmark_summary") and not a.no_manifest:
         need = ("upstream",)
     absent = [f"--{n}" for n in need if getattr(a, n) is None]
     if absent:
@@ -152,6 +181,10 @@ def main(argv=None) -> None:
         evaluation(cfg, a.phase_dir, a.upstream, a.source, manifest)
     elif a.job == "limit":
         limit(cfg, a.phase_dir, a.upstream, a.cut)
+    elif a.job == "benchmark_limit":
+        benchmark_limit(cfg, a.phase_dir, a.upstream, a.cut)
+    elif a.job == "benchmark_summary":
+        benchmark_summary(cfg, a.phase_dir, a.upstream, a.source, manifest)
     else:
         summary(cfg, a.phase_dir, a.upstream, a.source, manifest)
 

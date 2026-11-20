@@ -1,4 +1,4 @@
-"""Versions and manifests of the training phases: bdt, gnn, benchmark.
+"""Versions and manifests of the training phases: bdt, gnn.
 
 Thin wrappers over common/runs.py and common/manifest.py with the training phase maps and settings.
 """
@@ -10,13 +10,12 @@ from tau3mu_gnn.pipelines.common import runs as _runs
 from tau3mu_gnn.pipelines.training.config import TrainingConfig
 
 PIPELINE = "training"
-PHASES = ("bdt", "gnn", "benchmark")
-UPSTREAM = {"bdt": None, "gnn": "bdt", "benchmark": "bdt"}
+PHASES = ("bdt", "gnn")
+UPSTREAM = {"bdt": None, "gnn": "bdt"}
 _BDT = ("channel", "inputs", "branch_map", "resonance_skim", "skim", "sideband_half_width", "bdt_training")
 PHASE_SECTIONS = {
     "bdt": _BDT,
     "gnn": _BDT + ("npvs", "graphs", "gnn_training"),
-    "benchmark": _BDT + ("benchmark", "limit"),
 }
 HIDDEN = "***"
 
@@ -57,8 +56,7 @@ def config_dict(cfg: TrainingConfig) -> dict:
                          "class_fraction": list(t.class_fraction),
                          "windows": {k: list(v) for k, v in t.windows.items()}, "seed": t.seed},
         "comet": {"workspace": cfg.comet.workspace, "api_key": HIDDEN},
-        "benchmark": {"bdt_score_cut": list(cfg.benchmark.bdt_score_cut)},
-        "limit": {"signal_weight": lim.signal_weight, "tau_mass": lim.tau_mass, "mass_window": lim.mass_window,
+        "limit": {"tau_mass": lim.tau_mass, "mass_window": lim.mass_window,
                   "fit_range": list(lim.fit_range), "cl": lim.cl},
         "slurm": {"account": cfg.slurm.account,
                   "jobs": {name: {"partition": j.partition, "mem": j.mem, "time": j.time, "cpus": j.cpus,

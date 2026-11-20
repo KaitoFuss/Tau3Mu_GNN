@@ -212,11 +212,11 @@ src/tau3mu_gnn/pipelines/
 ├── analysis/        # tau3mu-pipeline
 │   ├── config.py, manifest.py, driver.py, cli.py, models.py
 │   ├── jobs.py      # job bodies, python -m tau3mu_gnn.pipelines.analysis.jobs
-│   └── stages/      # gnn (inference), evaluation
+│   └── stages/      # gnn (inference), evaluation, benchmark
 └── training/        # tau3mu-train
     ├── config.py, manifest.py, driver.py, cli.py
     ├── jobs.py      # job bodies, python -m tau3mu_gnn.pipelines.training.jobs
-    └── stages/      # npvs, bdt_train, bdt_infer, graphs, gnn_train, benchmark
+    └── stages/      # npvs, bdt_train, bdt_infer, graphs, gnn_train
 models/W/                     # frozen model files, committed to the repo (~40 MB)
 ├── gnn/new_hope_W_fl_8_sd_4_GINE_delete_muons_vs2.pt
 ├── gnn/Normalization.pkl
@@ -422,3 +422,4 @@ Tracked here. Answers move to section 8.
 | 2026-10-25 | E1 study: the `TauPlusMET` length mismatch comes only from the old resonance skim (stage 0 keeps the collections aligned). Kaito: option A, stage 0 refuses misaligned resonance-skimmed inputs (old `old_data` skims no longer run); BDT takes `TauPlusMET` of the first selected candidate. |
 | 2026-10-25 | Kaito: 13c measured with one retrain with all 4 fixes (E1, E3, E4, `pair_charge`), one combined limit vs 13b. |
 | 2026-10-30 | 13c result: W GNN 1.41 at cut 3.5 (13b 1.48), HF GNN 1.52 = BDT benchmark. Kaito: 13e = frozen W models from `W_raw_Nano_AOD_fixed`, new reference 1.41; delete `example_W.yaml` / `example_W_retrained.yaml` and the old manual README workflow; logs per pipeline. Event split (13d) becomes step 15, the clean dry run step 16. Signal weights only scale (not physical), fine for now. HF raw NanoAOD and HF preselection cut: later, after the move to lxplus (step 14). |
+| 2026-11-20 | Kaito: the BDT-only benchmark limit moves from the training to the analysis (phase `benchmark`, upstream `bdt`, runs in parallel to `gnn` in `all`). Reason: the benchmark and the GNN limit must use the same events, `signal_weight` and mass fit; with different training and analysis datasets the two limits were not comparable. `benchmark.bdt_score_cut` is required in the analysis config; the training config refuses `benchmark.*` and `limit.signal_weight` with a "moved" message. Summary files get a tail: `limits_benchmark.*` and `limits_gnn.*`. New check: `limit.gnn_score_cut` > -1 (`GNN_score = -1` marks events below the BDT preselection, not scored). |

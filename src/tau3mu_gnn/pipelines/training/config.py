@@ -4,7 +4,7 @@ Three YAML files are merged:
 - configs/training_defaults_<channel>.yaml : frozen training settings, not meant to be edited
 - configs/analysis_defaults_<channel>.yaml : frozen analysis settings; the training reads the
                                              shared stages from it (resonance_skim, skim, limit fit)
-- the user file                            : paths, inputs, branch map, graph BDT cut, benchmark cuts
+- the user file                            : paths, inputs, branch map, graph BDT cut
 
 All problems are collected and raised together as one ConfigError.
 """
@@ -17,25 +17,18 @@ from typing import Any, Mapping
 from tau3mu_gnn.pipelines.common.config import (
     REPO_ROOT, ConfigError, HTCondorConfig, InputsConfig, PathsConfig, ResonanceSkimConfig, SkimConfig,
     SlurmConfig, _abs_or_url, _bool, _channel, _Field, _htcondor_jobs_parser, _increasing_number_list, _inputs,
-    _LEAF_KEYS, _linspace, _local_path, _name, _non_empty_str, _number, _number_list, _open_unit_interval,
+    _LEAF_KEYS, _linspace, _local_path, _name, _non_empty_str, _number, _open_unit_interval,
     _optional_local_path, _parse, _paths, _positive_int, _positive_number, _read_yaml,
     _resonance_skim, _scheduler, _skim, _slurm_jobs_parser, _str_map, _unsculpting_mode, _user_path_list, _windows,
 )
 from tau3mu_gnn.pipelines.common.defaults import DEFAULTS_FIELDS, read_analysis_defaults
 
 TRAINING_SLURM_JOBS = ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal",   # also the HTCondor jobs
-                       "graphs_background", "gnn_train", "benchmark_limit", "benchmark_summary")
+                       "graphs_background", "gnn_train")
 GRAPH_CONNECTIONS = ("knn", "fully")   # r_threshold needs a delta_r setting first
 
 
 # ---------------------------------------------------------------- value parsers
-
-def _cut_list(v):
-    cuts = _number_list(v)
-    for x in cuts:
-        _open_unit_interval(x)
-    return cuts
-
 
 def _non_negative(v):
     x = _number(v)
@@ -84,9 +77,11 @@ TRAINING_USER_FIELDS: dict[str, _Field] = {
     "graphs.bdt_preselection_cut": _Field(_open_unit_interval),
     "graphs.max_events": _Field(_positive_int, required=False, default=600000),
     "bdt_training.max_events_per_class": _Field(_positive_int, required=False, default=100000),
-    "benchmark.bdt_score_cut": _Field(_cut_list),
-    "limit.signal_weight": _Field(_positive_number),
 }
+
+# Keys that moved to the analysis config: the BDT-only benchmark limit runs in the analysis now, on the same
+# events as the GNN limit (tau3mu-analysis phase benchmark).
+MOVED_TO_ANALYSIS = ("benchmark.bdt_score_cut", "limit.signal_weight")
 
 TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "sideband_half_width": _Field(_positive_number),
@@ -203,13 +198,8 @@ class CometConfig:
 
 
 @dataclass(frozen=True)
-class BenchmarkConfig:
-    bdt_score_cut: tuple[float, ...]
-
-
-@dataclass(frozen=True)
 class TrainingLimitConfig:
-    signal_weight: float
+    """The mass fit settings from analysis_defaults_<channel>.yaml (tau_mass: BDT sideband, graph mass windows)."""
     tau_mass: float
     mass_window: float
     fit_range: tuple[float, float]
@@ -231,7 +221,6 @@ class TrainingConfig:
     graphs: GraphsConfig
     gnn_training: GNNTrainingConfig
     comet: CometConfig
-    benchmark: BenchmarkConfig
     limit: TrainingLimitConfig
     slurm: SlurmConfig
     htcondor: HTCondorConfig
@@ -280,8 +269,13 @@ def load_training_config(user_path: str | Path, defaults_dir: str | Path | None 
     channel = raw_user.get("channel") if isinstance(raw_user.get("channel"), str) else "<channel>"
     frozen = [(TRAINING_DEFAULTS_FIELDS, f"frozen training setting (training_defaults_{channel}.yaml)"),
               (DEFAULTS_FIELDS, f"frozen analysis setting (analysis_defaults_{channel}.yaml)")]
-    user = _parse(_flatten_training(raw_user, TRAINING_USER_FIELDS), TRAINING_USER_FIELDS,
-                  f"user config {user_path}", problems, frozen=frozen)
+    flat_user = _flatten_training(raw_user, TRAINING_USER_FIELDS)
+    for key in MOVED_TO_ANALYSIS:
+        if key in flat_user:
+            del flat_user[key]
+            problems.append(f"user config {user_path}: key '{key}' moved to the analysis config (the BDT-only "
+                            f"benchmark limit is a phase of tau3mu-analysis now); remove it here")
+    user = _parse(flat_user, TRAINING_USER_FIELDS, f"user config {user_path}", problems, frozen=frozen)
     if "channel" not in user:
         raise ConfigError(problems)
 
@@ -314,8 +308,7 @@ def load_training_config(user_path: str | Path, defaults_dir: str | Path | None 
                             max_events=user["graphs.max_events"], **section("graphs.", defaults)),
         gnn_training=GNNTrainingConfig(**section("gnn_training.", defaults)),
         comet=CometConfig(**section("comet.", defaults)),
-        benchmark=BenchmarkConfig(bdt_score_cut=user["benchmark.bdt_score_cut"]),
-        limit=TrainingLimitConfig(signal_weight=user["limit.signal_weight"], tau_mass=analysis["limit.tau_mass"],
+        limit=TrainingLimitConfig(tau_mass=analysis["limit.tau_mass"],
                                   mass_window=analysis["limit.mass_window"], fit_range=analysis["limit.fit_range"],
                                   cl=analysis["limit.cl"]),
         slurm=SlurmConfig(account=defaults["slurm.account"], jobs=defaults["slurm.jobs"]),

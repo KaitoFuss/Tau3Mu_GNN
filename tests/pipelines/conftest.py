@@ -29,6 +29,9 @@ TOY_MODEL_SETTINGS = {   # <model_dir>/<model_name>/model_settings.json of the t
     "gnn_training": {"conv_type": "GINE", "gnn_mode": "final_layer"},
 }
 
+ANALYSIS_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary",
+                 "benchmark_limit", "benchmark_summary")
+
 TOY_DEFAULTS = {
     "resonance_skim": {"vtx_chi2_max": 20, "mass_range": [1.0, 3.0], "veto_masses": [0.78266, 1.019461],
                        "veto_half_width": 0.04, "pf_dr_max": 1.0},
@@ -42,11 +45,10 @@ TOY_DEFAULTS = {
     "slurm": {
         "account": "t3",
         "jobs": {name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
-                 for name in ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")},
+                 for name in ANALYSIS_JOBS},
     },
     "htcondor": {
-        "jobs": {name: {"mem": "4G", "time": "0-01:00:00", "cpus": 1}
-                 for name in ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")},
+        "jobs": {name: {"mem": "4G", "time": "0-01:00:00", "cpus": 1} for name in ANALYSIS_JOBS},
     },
 }
 
@@ -61,6 +63,7 @@ TOY_USER = {
         "already_resonance_skimmed": True,
     },
     "limit": {"signal_weight": 1.9e-5},
+    "benchmark": {"bdt_score_cut": [0.98, 0.99]},
 }
 
 
@@ -144,15 +147,13 @@ TOY_TRAINING_DEFAULTS = {
     "slurm": {
         "account": "t3",
         "jobs": {**{name: {"partition": "standard", "mem": "4G", "time": "0-01:00:00", "cpus": 1}
-                    for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background",
-                                 "benchmark_limit", "benchmark_summary")},
+                    for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background")},
                  "gnn_train": {"partition": "gpu", "mem": "4G", "time": "0-01:00:00", "cpus": 1,
                                "account": "gpu_gres", "gres": "gpu:1"}},
     },
     "htcondor": {
         "jobs": {**{name: {"mem": "4G", "time": "0-01:00:00", "cpus": 1}
-                    for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background",
-                                 "benchmark_limit", "benchmark_summary")},
+                    for name in ("skim", "bdt_train", "bdt_infer", "npvs", "graphs_signal", "graphs_background")},
                  "gnn_train": {"mem": "4G", "time": "0-01:00:00", "cpus": 1, "gpus": 1,
                                "requirements": "(GPUs_Capability >= 7.0)", "disk": "10G"}},
     },
@@ -169,8 +170,6 @@ TOY_TRAINING_USER = {
         "already_resonance_skimmed": True,
     },
     "graphs": {"bdt_preselection_cut": 0.8},
-    "benchmark": {"bdt_score_cut": [0.98, 0.99]},
-    "limit": {"signal_weight": 1.9e-5},
 }
 
 

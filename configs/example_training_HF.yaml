@@ -46,12 +46,5 @@ graphs:
 # bdt_training:
 #   max_events_per_class: 100000           # optional, default 100000; BDT training events per class
 
-benchmark:
-  # REQUIRED. BDT-only benchmark limit: one cut or a list of cuts on bdt_ISO. A list runs a cut scan.
-  bdt_score_cut: [0.88, 0.89, 0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97]   # scan 0.88 to 0.97 (old HF best: 0.91)
-
-limit:
-  # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
-  # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known. Like the W value, it
-  # only scales the signal to comparable limits for now (design: docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
-  signal_weight: 0.000152
+# The BDT-only benchmark limit (benchmark.bdt_score_cut) and limit.signal_weight are in the
+# analysis config now: the benchmark runs in tau3mu-analysis, on the same events as the GNN limit.

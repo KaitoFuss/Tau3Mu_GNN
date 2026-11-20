@@ -80,7 +80,17 @@ def fake_stages(monkeypatch):
     monkeypatch.setattr(jobs.bdt_stage, "run", bdt)
     monkeypatch.setattr(jobs.gnn_stage, "run", gnn)
     monkeypatch.setattr(jobs.evaluation_stage, "run", evaluation)
+    def benchmark(cfg, inputs, out_dir, cut):
+        seen.setdefault("benchmark", []).append({s: Path(inputs[s]).name for s in SAMPLES})
+        card = Path(out_dir) / jobs.limit_stage.cut_dir_name(cut)
+        write(card / "combine_asymptotic.log", "log")
+        if cut == seen.get("fail_cut"):
+            raise RuntimeError("Combine wrote no median expected limit")
+        write(card / "limit.json", json.dumps({"cut": cut, "limit": 2.0 - cut, "limitErr": 0.0}))
+        return {}
+
     monkeypatch.setattr(jobs.limit_stage, "run", limit)
+    monkeypatch.setattr(jobs.benchmark_stage, "run", benchmark)
     return seen
 
 
@@ -142,8 +152,8 @@ def test_gnn_and_limit_phases(cfg, scratch, fake_stages):
     jobs.summary(cfg, c, up)
     mc = read_manifest(c)
     assert mc["upstream"] == "gnn_vs1" and mc["missing"] == []
-    assert mc["outputs"]["limit_3.9"] == "cut_3.9/limit.json" and mc["outputs"]["limits_json"] == "limits.json"
-    assert json.loads((Path(c) / "limits.json").read_text())["best_cut"] == 3.9
+    assert mc["outputs"]["limit_3.9"] == "cut_3.9/limit.json" and mc["outputs"]["limits_json"] == "limits_gnn.json"
+    assert json.loads((Path(c) / "limits_gnn.json").read_text())["best_cut"] == 3.9
 
 
 def test_rerun_gnn_phase_gives_new_version(cfg, scratch, fake_stages):
@@ -257,7 +267,7 @@ def test_summary_debug_without_upstream(cfg, scratch, fake_stages, monkeypatch):
     d = am.create_version(cfg, "summary", parent=f"{cfg.output_dir}/debug")
     monkeypatch.setattr(jobs, "load_config", lambda path: cfg)
     jobs.main(["summary", "--config", "x.yaml", "--phase-dir", d, "--source", c, "--no-manifest"])
-    assert (Path(d) / "limits.json").is_file() and not (Path(d) / "manifest.json").exists()
+    assert (Path(d) / "limits_gnn.json").is_file() and not (Path(d) / "manifest.json").exists()
     with pytest.raises(SystemExit):
         jobs.main(["summary", "--config", "x.yaml", "--phase-dir", d])        # manifest needs --upstream
 
@@ -268,3 +278,53 @@ def test_job_logs_what_it_does(cfg, scratch, fake_stages, caplog):
     caplog.set_level(logging.INFO)
     a = run_bdt_phase(cfg)
     assert "job skim" in caplog.text and "job bdt" in caplog.text and a in caplog.text
+
+
+def test_benchmark_phase(cfg, scratch, fake_stages):
+    """Benchmark reads the stage 2 files of the analysis bdt version; summary files get the tail _benchmark."""
+    from tau3mu_gnn.pipelines.analysis import jobs
+    from tau3mu_gnn.pipelines.analysis import manifest as am
+    from tau3mu_gnn.pipelines.common.manifest import read_manifest
+
+    a = run_bdt_phase(cfg)
+    b = am.create_version(cfg, "benchmark")
+    fake_stages["fail_cut"] = 0.99
+    jobs.benchmark_limit(cfg, b, a, 0.98)
+    with pytest.raises(RuntimeError):
+        jobs.benchmark_limit(cfg, b, a, 0.99)
+    assert fake_stages["benchmark"][0] == {s: f"{s}_with_bdt_scores.root" for s in SAMPLES}
+    assert (Path(b) / "cut_0.99" / "combine_asymptotic.log").is_file()        # copied although it failed
+    jobs.benchmark_summary(cfg, b, a)
+    m = read_manifest(b)
+    assert m["phase"] == "benchmark" and m["upstream"] == "bdt_vs1" and m["missing"] == [0.99]
+    assert m["outputs"]["limits_json"] == "limits_benchmark.json" and m["outputs"]["limit_0.98"] == "cut_0.98/limit.json"
+    assert json.loads((Path(b) / "limits_benchmark.json").read_text())["best_cut"] == 0.98
+    assert not (Path(b) / "limits_gnn.json").exists()
+
+
+def test_benchmark_job_needs_a_bdt_version(cfg, scratch, fake_stages):
+    from tau3mu_gnn.pipelines.analysis import jobs
+    from tau3mu_gnn.pipelines.analysis import manifest as am
+    from tau3mu_gnn.pipelines.common.manifest import UpstreamError
+
+    run_bdt_phase(cfg)
+    g = run_gnn_phase(cfg)
+    with pytest.raises(UpstreamError, match="needs a bdt folder"):
+        jobs.benchmark_limit(cfg, am.create_version(cfg, "benchmark"), g, 0.98)
+
+
+def test_main_benchmark_dispatch(cfg, scratch, fake_stages, monkeypatch):
+    from tau3mu_gnn.pipelines.analysis import jobs
+    from tau3mu_gnn.pipelines.analysis import manifest as am
+
+    monkeypatch.setattr(jobs, "load_config", lambda path: cfg)   # toy config needs the fake repo defaults
+
+    a = run_bdt_phase(cfg)
+    b = am.create_version(cfg, "benchmark")
+    base = ["--config", str(cfg.user_file), "--phase-dir", b, "--upstream", a]
+    jobs.main(["benchmark_limit", *base, "--cut", "0.98"])
+    jobs.main(["benchmark_limit", *base, "--cut", "0.99"])
+    jobs.main(["benchmark_summary", *base])
+    assert (Path(b) / "manifest.json").is_file() and (Path(b) / "limits_benchmark.txt").is_file()
+    with pytest.raises(SystemExit):
+        jobs.main(["benchmark_limit", *base])                                   # no --cut

@@ -50,8 +50,6 @@ def test_phase_settings_sections(cfg):
 
     assert "graphs" not in phase_settings(cfg, "bdt") and "bdt_training" in phase_settings(cfg, "bdt")
     assert {"npvs", "graphs", "gnn_training"} <= set(phase_settings(cfg, "gnn"))
-    assert {"benchmark", "limit"} <= set(phase_settings(cfg, "benchmark"))
-    assert "graphs" not in phase_settings(cfg, "benchmark")
     assert "comet" not in phase_settings(cfg, "gnn")
 
 
@@ -66,7 +64,7 @@ def test_pick_upstream_highest_complete(cfg):
     second = make_bdt(cfg)
     make_bdt(cfg, manifest=False)
     assert pick_upstream(cfg, "gnn") == second
-    assert pick_upstream(cfg, "benchmark", "bdt_vs1").endswith("bdt_vs1")
+    assert pick_upstream(cfg, "gnn", "bdt_vs1").endswith("bdt_vs1")
     with pytest.raises(ValueError):
         pick_upstream(cfg, "bdt")
 
@@ -88,7 +86,7 @@ def test_manifest_roundtrip_and_check_upstream(cfg, load_training, training_user
     gnn.mkdir()
     write_manifest(cfg, gnn, "gnn", "bdt_vs1", {})
     with pytest.raises(UpstreamError, match="gnn folder"):
-        check_upstream(cfg, gnn, "benchmark")
+        check_upstream(cfg, gnn, "gnn")
 
     (Path(bdt) / "bdt/model.json").unlink()
     with pytest.raises(UpstreamError, match="missing"):
@@ -98,5 +96,5 @@ def test_manifest_roundtrip_and_check_upstream(cfg, load_training, training_user
     load_training.defaults["bdt_training"]["max_depth"] = 3
     changed = load_training(training_user)
     with caplog.at_level(logging.WARNING):
-        check_upstream(changed, bdt, "benchmark")
+        check_upstream(changed, bdt, "gnn")
     assert "bdt_training.max_depth: 8 -> 3" in caplog.text

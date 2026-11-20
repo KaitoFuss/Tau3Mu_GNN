@@ -42,6 +42,39 @@ def test_score_cut_scalar_and_list(load, user):
     assert load(user).limit.gnn_score_cut == (3.5, 3.9)
 
 
+def test_benchmark_cuts_required(load, user):
+    assert load(user).benchmark.bdt_score_cut == (0.98, 0.99)
+    user["benchmark"]["bdt_score_cut"] = 0.95
+    assert load(user).benchmark.bdt_score_cut == (0.95,)
+    del user["benchmark"]
+    with pytest.raises(ConfigError) as e:
+        load(user)
+    assert "missing required key 'benchmark.bdt_score_cut'" in problems_of(e)
+
+
+@pytest.mark.parametrize("bad", [[0.0, 0.98], [1.0], [0.98, 0.98], ["x"]])
+def test_benchmark_cut_must_be_in_unit_interval(load, user, bad):
+    user["benchmark"]["bdt_score_cut"] = bad
+    with pytest.raises(ConfigError) as e:
+        load(user)
+    assert "benchmark.bdt_score_cut" in problems_of(e)
+
+
+@pytest.mark.parametrize("bad", [-1, -1.0, -2.5, [0.0, -1.0]])
+def test_gnn_cut_must_be_above_not_scored(load, user, bad):
+    """GNN_score = -1 marks the events the GNN did not score (below the BDT preselection): a cut at or below
+    -1 would let them into the limit."""
+    user["limit"]["gnn_score_cut"] = bad
+    with pytest.raises(ConfigError) as e:
+        load(user)
+    assert "limit.gnn_score_cut" in problems_of(e) and "must be > -1.0" in problems_of(e)
+
+
+def test_gnn_cut_negative_above_not_scored_ok(load, user):
+    user["limit"]["gnn_score_cut"] = [-0.99, 0.0]
+    assert load(user).limit.gnn_score_cut == (-0.99, 0.0)
+
+
 def test_config_is_read_only(load, user):
     user["branch_map"] = {"PFCands_pt": "PFCand_pt"}
     cfg = load(user)
@@ -106,6 +139,8 @@ inputs:
 branch_map:
 limit:
   signal_weight: 1.9e-5
+benchmark:
+  bdt_score_cut: 0.98
 """
     assert dict(load(raw_text=raw).branch_map) == {}
 
@@ -215,7 +250,8 @@ def test_log_dir_and_slurm(load, user):
     cfg = load(user)
     assert cfg.paths.log_dir == "/tmp/toy_logs"
     assert cfg.slurm.account == "t3"
-    assert set(cfg.slurm.jobs) == {"skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary"}
+    assert set(cfg.slurm.jobs) == {"skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary",
+                                   "benchmark_limit", "benchmark_summary"}
     job = cfg.slurm.jobs["limit"]
     assert (job.partition, job.mem, job.time, job.cpus) == ("standard", "4G", "0-01:00:00", 1)
 

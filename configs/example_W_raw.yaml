@@ -51,5 +51,12 @@ limit:
   # 0.000019 is not yet the physical value: it only scales the signal so that the limits have a
   # comparable size. Compute the real value for YOUR dataset.
   signal_weight: 0.000019
-  # One cut or a list of cuts on the GNN score. A list runs a cut scan. Default: 3.5 (best cut of the frozen W model)
+  # One cut or a list of cuts on the GNN score (the raw logit of the GNN). A list runs a cut scan.
+  # Default: 3.5 (best cut of the frozen W model). Each cut must be > -1: GNN_score = -1 marks the events
+  # below the BDT preselection cut, which the GNN does not score.
   gnn_score_cut: 3.5
+
+benchmark:
+  # REQUIRED. BDT-only benchmark limit (the limit the GNN must beat), on the same events as the GNN limit:
+  # one cut or a list of cuts on bdt_ISO, each in (0, 1). A list runs a cut scan.
+  bdt_score_cut: [0.98, 0.982, 0.984, 0.986, 0.988, 0.99, 0.992, 0.994, 0.996]   # scan 0.98 to 0.996, step 0.002
