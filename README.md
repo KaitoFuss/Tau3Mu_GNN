@@ -45,7 +45,7 @@ cd /eos/user/${USER:0:1}/$USER                                                  
 git clone git@github.com:KaitoFuss/Tau3Mu_GNN.git && cd Tau3Mu_GNN
 conda env create -f environment_frozen.yaml -p /eos/user/${USER:0:1}/$USER/envs/Tau3Mu   # once, see Installation
 conda activate /eos/user/${USER:0:1}/$USER/envs/Tau3Mu
-pip install -r requirements_frozen.txt && pip install -e .                               # once
+pip install -e .                                                                          # once
 # once: build CMS Combine into the env, see CMS Combine
 cp configs/example_W_raw.yaml my_W.yaml                                                  # edit analysis_name
 tau3mu-analysis all --config my_W.yaml --dry-run
@@ -83,13 +83,16 @@ All work runs on **CERN lxplus**:
 ## Repository Structure
 
 ```
-tau3mu_gnn/
-├── environment.yaml              # Conda environment spec (unpinned)
-├── environment_frozen.yaml       # Pinned conda environment (reproducible)
-├── requirements_frozen.txt       # Pinned pip packages (reproducible)
-├── pyproject.toml                # Package definition (src layout)
+Tau3Mu_GNN/
+├── README.md
+├── README_old.md                 # Old README of the SVJ_GNN fork (jet graphs). Kept for reference, not current
+├── environment.yaml              # Conda environment spec (unpinned, old)
+├── environment_frozen.yaml       # Pinned conda + pip environment (reproducible, use this)
+├── pyproject.toml                # Package definition (src layout), pytest config
 ├── configs/                      # Pipeline configs: example_*.yaml (copy + edit), *_defaults_*.yaml (frozen)
-├── models/                       # Frozen models: models/W/bdt/, models/W/gnn/<model_name>/
+├── models/                       # Frozen models used by the pipelines: models/W/bdt/, models/W/gnn/<model_name>/
+├── gnn_models/                   # Old GNN models (lambda05, lambda1). Not used by the pipelines
+├── images/                       # Graph pictures for README_old.md
 ├── tests/pipelines/              # Tests of the pipelines (pytest)
 ├── jobs/                         # Cluster job scripts (old manual workflow; the pipelines write their own)
 │   ├── migration/                # Copy T3 files to EOS (t3_list_files.py, copy_to_eos.sh)
@@ -110,29 +113,47 @@ tau3mu_gnn/
     │   ├── Train_TauMuNet.py     # GNN training entry point
     │   └── ScoreCreation.py      # GNN inference entry point
     ├── graph/
-    │   ├── ConeGraphProducer.py          # Core graph building logic
-    │   └── graphDataLoader.py            # Data loading / batching
+    │   ├── ConeGraphProducer.py          # Core graph building logic (old scripts)
+    │   ├── ConeGraphProducer_Dataset.py  # Graph building as a dataset (used by the pipelines)
+    │   ├── graphDataLoader.py            # Data loading / batching
+    │   ├── graphDataLoader_chunk_sampler.py  # Old chunked loader (not used)
+    │   └── naming.py                     # Graph file names (shared by scripts and pipelines)
     ├── architectures/
     │   ├── TauMuNet.py           # GNN model definition
-    │   └── GNN_archs.py          # Pre-defined architecture configs
+    │   ├── GNN_archs.py          # Pre-defined architecture configs
+    │   └── GraphAE.py            # Old graph autoencoder (not used)
     ├── gnn_training/
+    │   ├── train_gnn.py          # GNN training for the pipeline
+    │   ├── gnn_inputs.py         # Branches that ScoreProducer loads, per channel
+    │   ├── model_loading.py      # Load a trained TauMuNet and its normaliser
     │   ├── TrainingUtils.py      # Normalisation, early stopping, helpers
     │   ├── EvaluationUtils.py    # ROC/AUC evaluation of test dataset
     │   ├── NormalizerUtils.py    # On-the-fly feature normaliser
-    │   └── ScoreProducer.py      # Inference on ROOT files
+    │   ├── ScoreProducer.py      # Inference on ROOT files
+    │   ├── Parallel_ScoreProducer.py  # Old parallel copy of ScoreProducer (not used)
+    │   ├── LossDisco.py          # Old DisCo decorrelation loss (not used)
+    │   └── create_score_root.cpp # Old ROOT macro (not used)
     ├── bdt_training/
-    │   ├── Train_XGB_W.py        # Train XGBoost BDT (W channel)
-    │   ├── Train_XGB_HF.py       # Train XGBoost BDT (HF channel)
+    │   ├── train_bdt.py          # ISO BDT training for the pipeline
+    │   ├── bdt_inputs.py         # Branches that BDT_ScoreProducer loads, per channel
+    │   ├── Train_XGB_W.py        # Train XGBoost BDT (W channel, old script)
+    │   ├── Train_XGB_HF.py       # Train XGBoost BDT (HF channel, old script)
     │   └── BDT_ScoreProducer.py  # Score production for BDT
     ├── model_eval/
-    │   └── ModelEval.py          # Plotting: ROC, sculpting, score distributions
+    │   ├── ModelEval.py          # Plotting: ROC, sculpting, score distributions
+    │   └── plotauc.py, plotrocs.py, plotrocsoptuna.py  # Old plot scripts (not used)
     ├── analysis/
-    │   ├── datacard.py                            # CMS Combine datacards (GNN score or BDT ISO)
+    │   ├── datacard.py                   # CMS Combine datacards (GNN score or BDT ISO), used by the pipeline
+    │   ├── combine.py                    # Run CMS Combine on a datacard folder
+    │   ├── readout_limit.py              # Parse Combine output and save limits to JSON
     │   ├── datacard_creation_ISO.py      # Generate CMS Combine datacards (ISO/BDT baseline)
-    │   └── readout_limit.py              # Parse Combine output and save limits to JSON
-    └── utils/
-        ├── skimmer.py            # Pre-selection skimmer
-        └── ...
+    │   ├── datacard_creation_GNN.py      # Old datacard script (jobs/analysis/create_datacard.sh)
+    │   └── bkg_fit_params.py             # Old background fit script (jobs/analysis/get_bkg_fit.sh)
+    ├── utils/
+    │   ├── skimmer.py            # Pre-selection skimmer
+    │   ├── score_merge.py        # Write a score back to its event (run, lumi, event)
+    │   └── ...                   # Awkward, Lund tree, pileup and plot helpers
+    └── adrian_utils/             # Adrian's Optuna and debug scripts (not used by the pipelines)
 ```
 
 ---
@@ -144,7 +165,6 @@ All steps use the conda env `Tau3Mu`. Make it and activate it:
 ```bash
 conda env create -f environment_frozen.yaml
 conda activate Tau3Mu
-pip install -r requirements_frozen.txt
 pip install -e .
 ```
 
