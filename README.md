@@ -42,7 +42,7 @@ Needs miniforge on EOS (see [Installation](#installation)).
 
 ```bash
 cd /eos/user/${USER:0:1}/$USER                                                           # EOS, not AFS (AFS home: 2 GB)
-git clone git@github.com:KaitoFuss/SVJ_GNN.git && cd SVJ_GNN
+git clone git@github.com:KaitoFuss/Tau3Mu_GNN.git && cd Tau3Mu_GNN
 conda env create -f environment_frozen.yaml -p /eos/user/${USER:0:1}/$USER/envs/Tau3Mu   # once, see Installation
 conda activate /eos/user/${USER:0:1}/$USER/envs/Tau3Mu
 pip install -r requirements_frozen.txt && pip install -e .                               # once
@@ -51,7 +51,8 @@ cp configs/example_W_raw.yaml my_W.yaml                                         
 tau3mu-analysis all --config my_W.yaml --dry-run
 tau3mu-analysis all --config my_W.yaml
 condor_q                                                                                 # watch
-cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/analysis/<analysis_name>/limit_vs1/limits.txt  # result
+cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/analysis/<analysis_name>/limit_vs1/limits_gnn.txt            # GNN limit
+cat /eos/user/${USER:0:1}/$USER/tau3mu_pipeline/analysis/<analysis_name>/benchmark_vs1/limits_benchmark.txt  # BDT-only limit
 ```
 
 First time? Do [Check Your Setup](#check-your-setup) before a full run.
@@ -90,7 +91,6 @@ tau3mu_gnn/
 ├── configs/                      # Pipeline configs: example_*.yaml (copy + edit), *_defaults_*.yaml (frozen)
 ├── models/                       # Frozen models: models/W/bdt/, models/W/gnn/<model_name>/
 ├── tests/pipelines/              # Tests of the pipelines (pytest)
-├── docs/                         # Roadmap, design specs
 ├── jobs/                         # Cluster job scripts (old manual workflow; the pipelines write their own)
 │   ├── migration/                # Copy T3 files to EOS (t3_list_files.py, copy_to_eos.sh)
 │   ├── graph_creation/           # SLURM: skimming and graph creation
@@ -103,8 +103,8 @@ tau3mu_gnn/
 └── src/tau3mu_gnn/
     ├── pipelines/                # tau3mu-analysis and tau3mu-training (start here)
     │   ├── common/               # shared: config parts, storage, batch (HTCondor, SLURM), manifests, shared stages
-    │   ├── analysis/             # analysis pipeline (phases bdt, gnn, limit)
-    │   └── training/             # training pipeline (phases bdt, gnn, benchmark)
+    │   ├── analysis/             # analysis pipeline (phases bdt, gnn, limit, benchmark)
+    │   └── training/             # training pipeline (phases bdt, gnn)
     ├── scripts/                  # Old manual entry points (the pipelines use the code, not these scripts)
     │   ├── GraphCreation.py      # Graph creation entry point
     │   ├── Train_TauMuNet.py     # GNN training entry point
@@ -213,7 +213,7 @@ limit:
 
 ```bash
 tau3mu-analysis limit --config check_W.yaml --from gnn_vs1
-cat $MY/limit_vsN/limits.txt                 # N: the version the command printed (results: ...)
+cat $MY/limit_vsN/limits_gnn.txt             # N: the version the command printed (results: ...)
 ```
 
 Expected (median expected limit at CL 0.9):
@@ -274,10 +274,15 @@ Edit `my_W.yaml`. It starts from raw NanoAOD (stage 0 runs). The comments in the
 | `inputs.already_resonance_skimmed` | `false`: your files are raw NanoAOD. Stage 0 applies the resonance skim. `true`: your files are already resonance-skimmed. Stage 0 is skipped. See [Skimming cuts](#skimming-cuts). |
 | `branch_map` | Set it only if your branch names are different. For raw NanoAOD, use the raw names as keys (`TauTo3Mu_*`, `PFCands_*`). |
 | `limit.signal_weight` | **Required.** It has no default. See below. |
-| `limit.gnn_score_cut` | One cut, or a list for a cut scan. A cut scan runs one Combine job per cut. |
+| `limit.gnn_score_cut` | One cut, or a list for a cut scan, on the GNN logit. A cut scan runs one Combine job per cut. Each cut must be > -1 (see below). |
+| `benchmark.bdt_score_cut` | **Required.** One cut or a list on `bdt_ISO`, each in (0, 1), for the BDT-only benchmark limit. |
 | `models` | Optional. `frozen` (default): the frozen BDT and GNN in `models/W/` (training `W_raw_Nano_AOD_fixed`; reference: expected limit 1.414 at GNN cut 3.5). Or the path of a finished training GNN phase (`.../<training_name>/gnn_vsN`, from `tau3mu-training`). See below. |
 
 > **`limit.signal_weight`:** the weight that scales the signal MC to the dataset (lumi, cross section, reference BR). The example values (W 0.000019, HF 0.000152) are not yet the physical values: they only scale the signal so that the limits have a comparable size. For a physics result, compute the value for **your** dataset.
+
+> **`limit.gnn_score_cut` > -1:** the GNN scores only the events with `bdt_ISO >= bdt_preselection_cut`. The other events stay in the file with `GNN_score = -1`. A cut at -1 or lower would let them into the limit, so the config check refuses it.
+
+> **`benchmark`:** the BDT-only limit (the limit the GNN must beat). It cuts on `bdt_ISO` in the stage 2 files of the same `bdt_vsN` that the GNN reads. So both limits use the same events, `signal_weight` and mass fit, and you can compare them.
 
 > **`models`:** with a training `gnn_vsN` path, the analysis takes from the training manifests: the BDT classifier (of its `bdt_vsN` upstream), the GNN model files, and the settings that belong to the model: BDT preselection cut, graph type, unsculpting mode, conv type and GNN mode. These replace the frozen values. The analysis also has `gnn_vsN` folders (GNN scores): use the one of `tau3mu-training`, under `<training_name>/`. The config stops with an error if the folder is not a training `gnn_vsN` (an analysis `gnn_vsN` is refused), its training is not finished (no `manifest.json`), or a model file is missing. The result manifests record the model source (`models`), so a model change shows as a setting change.
 
@@ -317,21 +322,22 @@ Do a dry run first. Then submit.
 
 ```bash
 tau3mu-analysis all --config my_W.yaml --dry-run    # write the job files, print the submit command, submit nothing
-tau3mu-analysis all --config my_W.yaml              # submit the phases bdt, gnn and limit at once
+tau3mu-analysis all --config my_W.yaml              # submit the phases bdt, gnn, limit and benchmark at once
 ```
 
 | Phase | Jobs | Stages |
 |---|---|---|
 | `bdt` | `skim`, `bdt` | resonance skim (skipped if `already_resonance_skimmed: true`), skim, BDT |
 | `gnn` | `gnn_signal`, `gnn_background`, `eval` | GNN scores, evaluation plots |
-| `limit` | `limit_<cut>` (one per cut), `summary` | datacard + Combine per cut, table of limits |
+| `limit` | `limit_<cut>` (one per cut), `summary` | GNN limit: datacard + Combine per cut on `GNN_score`, table of limits |
+| `benchmark` | `benchmark_limit_<cut>` (one per cut), `benchmark_summary` | BDT-only limit: datacard + Combine per cut on `bdt_ISO`, table of limits |
 
-How `all` connects the phases (HTCondor: one DAG over the three phases; SLURM: job dependencies):
+How `all` connects the phases (HTCondor: one DAG over the four phases; SLURM: job dependencies):
 
-- `gnn` starts when the `bdt` job of phase `bdt` succeeds.
+- `gnn` and `benchmark` start when the `bdt` job of phase `bdt` succeeds. They run in parallel.
 - `limit` starts when the `eval` job of phase `gnn` succeeds.
 - If a job fails, the jobs after it do not run.
-- `summary` runs also if some `limit_<cut>` jobs fail. With HTCondor the DAG then still shows as done: check `limits.txt` for missing cuts.
+- `summary` and `benchmark_summary` run also if some cut jobs fail. With HTCondor the DAG then still shows as done: check `limits_gnn.txt` and `limits_benchmark.txt` for missing cuts.
 
 **One phase at a time.** You can also run each phase alone.
 
@@ -339,15 +345,16 @@ How `all` connects the phases (HTCondor: one DAG over the three phases; SLURM: j
 - To use a different version, give it with `--from`.
 
 ```bash
-tau3mu-analysis bdt   --config my_W.yaml
-tau3mu-analysis gnn   --config my_W.yaml [--from bdt_vs2]
-tau3mu-analysis limit --config my_W.yaml [--from gnn_vs1]
+tau3mu-analysis bdt       --config my_W.yaml
+tau3mu-analysis gnn       --config my_W.yaml [--from bdt_vs2]
+tau3mu-analysis limit     --config my_W.yaml [--from gnn_vs1]
+tau3mu-analysis benchmark --config my_W.yaml [--from bdt_vs2]
 ```
 
 **One stage, for debugging.** The output goes to `debug/`. It has no manifest.
 
 ```bash
-tau3mu-analysis stage <skim|bdt|gnn|eval|limit|summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
+tau3mu-analysis stage <skim|bdt|gnn|eval|limit|summary|benchmark_limit|benchmark_summary> --config my_W.yaml [--from ...] [--sample signal|background] [--cut X]
 ```
 
 **Help.** `tau3mu-analysis <command> --help` shows all options. `python -m tau3mu_gnn.pipelines.analysis.cli` is the same command (training: `python -m tau3mu_gnn.pipelines.training.cli`).
@@ -360,7 +367,8 @@ Each phase run makes a **new version folder**. The pipeline does not overwrite a
 <output_base>/<analysis_name>/
 ├── bdt_vs1/               0_resonance_skim/, 1_skim/, 2_bdt/
 ├── gnn_vs1/               3_gnn/, 4_eval/ (tau mass, ROC and SIC plots)
-├── limit_vs1/             cut_<cut>/ (datacard, Combine logs, limit.json), limits.json, limits.txt, limits.png
+├── limit_vs1/             cut_<cut>/ (datacard, Combine logs, limit.json), limits_gnn.{json,txt,png}        (GNN limit)
+├── benchmark_vs1/         cut_<cut>/ (datacard, Combine logs, limit.json), limits_benchmark.{json,txt,png}   (BDT-only limit)
 └── debug/<stage>_vsN/     single-stage runs
 ```
 
@@ -373,14 +381,14 @@ Each version folder also has these files:
 
 > **A version is complete only if `manifest.json` exists.**
 
-- **The limit:** `limit_vsN/limits.txt` has the expected limit and the best cut.
+- **The limits:** `limit_vsN/limits_gnn.txt` (GNN) and `benchmark_vsN/limits_benchmark.txt` (BDT only) have the expected limit and the best cut. The GNN limit should be lower. Compare only versions of the same `bdt_vsN` (see `upstream` in the manifests).
 - **Local copy:** `<log_dir>/analysis/<analysis_name>/<phase>_vsN/` also has the job scripts and the batch logs. With HTCondor, the DAG (`jobs.dag` and the DAGMan files) is in the folder of the first phase.
 
 ### 5. When a job fails
 
 1. **Find the job.**
    - HTCondor: `condor_q` shows the DAGs that run (batch name `<analysis_name>.<versions>`, e.g. `my_W.bdt_vs1+gnn_vs1+limit_vs1`); `condor_q -dag -nobatch` shows each job; `condor_history -limit 20` shows finished jobs.
-   - SLURM: `squeue -u $USER`, `sacct -j <ID>`. Job names: `<phase><version>.<job>.<analysis_name>`, for example `GNN1.gnnS.my_W` (phase `BDT`, `GNN`, `LIM`, or `D` for a debug stage; job `skim`, `bdt`, `gnnS`, `gnnB`, `eval`, `lim<cut>`, `sum`).
+   - SLURM: `squeue -u $USER`, `sacct -j <ID>`. Job names: `<phase><version>.<job>.<analysis_name>`, for example `GNN1.gnnS.my_W` (phase `BDT`, `GNN`, `LIM`, `BEN`, or `D` for a debug stage; job `skim`, `bdt`, `gnnS`, `gnnB`, `eval`, `lim<cut>`, `sum`, `bl<cut>`, `bsum`).
 2. **Read the log** of the failed job: `<log_dir>/analysis/<analysis_name>/<phase>_vsN/<job>-<ID>.err` (also in `<phase>_vsN/logs/` next to the results). HTCondor: `jobs.dag.dagman.out` in the folder of the first phase says which node failed.
 3. **Fix the problem. Then submit the phase again.**
    - This makes the next version, for example `gnn_vs2`.
@@ -391,7 +399,7 @@ Each version folder also has these files:
 
 ## Training Pipeline (tau3mu-training)
 
-Trains a new BDT and GNN on your inputs, and computes a BDT-only benchmark limit. You need it only if you want new models. Without it, the analysis uses the frozen models.
+Trains a new BDT and GNN on your inputs. You need it only if you want new models. Without it, the analysis uses the frozen models. The BDT-only benchmark limit is a phase of the analysis (same events as the GNN limit).
 
 ### 1. Write the training config
 
@@ -409,8 +417,6 @@ The comments in the file explain each key. The frozen training settings (BDT and
 | `paths`, `inputs`, `branch_map` | As in the analysis config. |
 | `graphs.bdt_preselection_cut` | **Required.** Only events with `bdt_ISO >= cut` go into the GNN training graphs. |
 | `graphs.max_events`, `bdt_training.max_events_per_class` | Optional. Defaults 600000 and 100000. |
-| `benchmark.bdt_score_cut` | **Required.** One cut or a list on `bdt_ISO` for the BDT-only benchmark limit. |
-| `limit.signal_weight` | **Required.** As in the analysis config. |
 
 ### 2. Submit
 
@@ -420,13 +426,12 @@ tau3mu-training all --config my_training_W.yaml --dry-run
 tau3mu-training all --config my_training_W.yaml
 ```
 
-`all` submits three phases. You can also submit one phase: `tau3mu-training bdt|gnn|benchmark --config ...` (`gnn` and `benchmark` take `--from bdt_vsN`).
+`all` submits two phases. You can also submit one phase: `tau3mu-training bdt|gnn --config ...` (`gnn` takes `--from bdt_vsN`).
 
 | Phase | Jobs | Needs |
 |---|---|---|
 | `bdt` | skim → BDT training → BDT inference | your inputs |
 | `gnn` | npvs weights → signal graphs; background graphs → GNN training (GPU) | a `bdt_vsN` |
-| `benchmark` | one BDT-only limit per cut → summary | a `bdt_vsN` |
 
 The jobs use the code of the folder you submit from. Do not change that folder while the jobs run. The GNN training asks for one GPU (HTCondor: `request_gpus = 1`, compute capability ≥ 7.0, ≥ 30 GB GPU memory; SLURM: the `gpu` partition). Without a visible GPU it trains on CPU and writes a warning to its log. With dCache output, each job checks at its start that the proxy is valid for its own time limit.
 
@@ -435,13 +440,12 @@ The jobs use the code of the folder you submit from. Do not change that folder w
 ```
 <output_base>/<training_name>/
 ├── bdt_vsN/         1_skim/, bdt_train/ (ISO_classifiers.pck, plots), 2_bdt/
-├── gnn_vsN/         npvs/, graphs/, gnn_train/<model_name>/ (model, Normalization.pkl, arch_config.json)
-└── benchmark_vsN/   cut_<cut>/, limits.json, limits.txt, limits.png   (BDT-only limit, best cut)
+└── gnn_vsN/         npvs/, graphs/, gnn_train/<model_name>/ (model, Normalization.pkl, arch_config.json)
 ```
 
 The job scripts and the batch logs: `<log_dir>/training/<training_name>/<phase>_vsN/`.
 
-HTCondor batch name: `<training_name>.<versions>`. SLURM job names: `BDT<N>`, `GNN<N>`, `BEN<N>` plus the job, for example `GNN1.gnnT.my_training`.
+HTCondor batch name: `<training_name>.<versions>`. SLURM job names: `BDT<N>`, `GNN<N>` plus the job, for example `GNN1.gnnT.my_training`.
 
 ### 4. Use the new models in the analysis
 
@@ -451,13 +455,13 @@ Set `models` in your analysis config to the `gnn_vsN` folder, then run the analy
 models: root://eosuser.cern.ch//eos/user/<initial>/<you>/tau3mu_pipeline/training/<training_name>/gnn_vs1
 ```
 
-The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `limit_vsN/limits.txt` with the benchmark `benchmark_vsN/limits.txt`: the GNN limit should be lower than the BDT-only limit.
+The analysis then uses the new BDT and GNN, and the settings that belong to them (see [`models`](#2-write-your-config)). Compare `limit_vsN/limits_gnn.txt` with `benchmark_vsN/limits_benchmark.txt` of the same analysis: the GNN limit should be lower than the BDT-only limit.
 
 ---
 
 ## HF Channel
 
-Both pipelines also run the HF channel (Ds → τ → 3μ). Set `channel: HF` in the config: it selects `configs/analysis_defaults_HF.yaml` and `configs/training_defaults_HF.yaml`. Design: `docs/superpowers/specs/2026-10-25-step13-hf-design.md`.
+Both pipelines also run the HF channel (Ds → τ → 3μ). Set `channel: HF` in the config: it selects `configs/analysis_defaults_HF.yaml` and `configs/training_defaults_HF.yaml`.
 
 What differs from W:
 
@@ -603,8 +607,8 @@ After the main training, `Train_TauMuNet.py` can do a second training phase: fin
 
 **The baseline is the ISO BDT** (input: `rel_iso`). Both pipelines train or use it themselves:
 
-- `tau3mu-training`, phase `bdt`: trains the ISO BDT. Phase `benchmark`: the BDT-only limit.
-- `tau3mu-analysis`, phase `bdt`: BDT scores with the frozen (or `models:`) classifier.
+- `tau3mu-training`, phase `bdt`: trains the ISO BDT.
+- `tau3mu-analysis`, phase `bdt`: BDT scores with the frozen (or `models:`) classifier. Phase `benchmark`: the BDT-only limit.
 
 The old manual scripts still exist. You do not need them for the pipelines:
 

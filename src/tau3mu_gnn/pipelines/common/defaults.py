@@ -13,7 +13,8 @@ from tau3mu_gnn.pipelines.common.config import (
     _positive_number, _range, _read_yaml, _slurm_jobs_parser, _htcondor_jobs_parser,
 )
 
-SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary")   # also the HTCondor jobs
+SLURM_JOBS = ("skim", "bdt", "gnn_signal", "gnn_background", "eval", "limit", "summary",   # also the HTCondor jobs
+              "benchmark_limit", "benchmark_summary")
 
 # Keys of the frozen defaults file. Paths are relative to the repo root.
 # The channel is not repeated here: the user file selects analysis_defaults_<channel>.yaml.

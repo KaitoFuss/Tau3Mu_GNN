@@ -205,15 +205,17 @@ def test_bdt_phase_one_dag(load, condor_user, fake_dag, tmp_path):
     assert (s.log_folder / "skim.sub").is_file() and os.access(s.log_folder / "skim.sh", os.X_OK)
 
 
-def test_all_is_one_dag_over_three_phases(load, condor_user, fake_dag):
+def test_all_is_one_dag_over_four_phases(load, condor_user, fake_dag):
     from tau3mu_gnn.pipelines.analysis.driver import submit_all
     from tau3mu_gnn.pipelines.common.batch import JobEnv
 
     subs = submit_all(load(condor_user), env=JobEnv.from_environment(ENV))
     calls = fake_dag.read_text().splitlines()
     assert sum(c.startswith("-batch-name") for c in calls) == 1
-    assert calls[0].startswith("-batch-name toy_run.bdt_vs1+gnn_vs1+limit_vs1 ")
+    assert calls[0].startswith("-batch-name toy_run.bdt_vs1+gnn_vs1+limit_vs1+benchmark_vs1 ")
     assert "PARENT bdt_vs1-bdt CHILD gnn_vs1-gnn_signal" in calls
+    assert "PARENT bdt_vs1-bdt CHILD benchmark_vs1-benchmark_limit_0_98" in calls
+    assert not any(c.startswith("PARENT benchmark_vs1") and "gnn_vs1" in c for c in calls)   # in parallel
     assert "PARENT gnn_vs1-eval CHILD limit_vs1-limit_2_0" in calls
     assert "SCRIPT POST limit_vs1-limit_3_9 /bin/true" in calls
     for s in subs:
@@ -230,9 +232,9 @@ def test_training_all_is_one_dag(load_training, training_user, tmp_path, fake_da
     training_user["paths"]["log_dir"] = str(tmp_path / "logs")
     submit_all(load_training(training_user), env=JobEnv.from_environment(ENV))
     calls = fake_dag.read_text().splitlines()
-    assert calls[0].startswith("-batch-name toy_train.bdt_vs1+gnn_vs1+benchmark_vs1 ")
+    assert calls[0].startswith("-batch-name toy_train.bdt_vs1+gnn_vs1 ")
     assert "PARENT bdt_vs1-bdt_infer CHILD gnn_vs1-npvs" in calls
-    assert "PARENT bdt_vs1-bdt_infer CHILD benchmark_vs1-benchmark_limit_0_98" in calls
+    assert not any("benchmark" in c for c in calls)
 
 
 def test_dry_run_prints_command_submits_nothing(load, condor_user, fake_dag, capsys):
@@ -284,6 +286,7 @@ channel: W
 paths: {{output_base: {tmp_path / 'out'}, log_dir: {tmp_path / 'logs_root'}}}
 inputs: {{signal: [/data/s.root], background: [/data/b.root], already_resonance_skimmed: true}}
 limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
+benchmark: {{bdt_score_cut: [0.98]}}
 """)
     cfg = load_config(cfg_file)
     assert cfg.scheduler == "htcondor"
@@ -301,7 +304,7 @@ limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
                                     JobEnv.from_environment()))
     res = subprocess.run(["bash", str(script)], env=run_env, capture_output=True, text=True, timeout=300)
     assert res.returncode == 0, res.stderr
-    assert json.loads((Path(version_dir) / "limits.json").read_text())["best_cut"] == 3.9
+    assert json.loads((Path(version_dir) / "limits_gnn.json").read_text())["best_cut"] == 3.9
     assert (Path(version_dir) / "logs" / "summary-77.out").is_file()             # log copied by the trap
     assert list(scratch.iterdir()) == []                                          # scratch removed
 

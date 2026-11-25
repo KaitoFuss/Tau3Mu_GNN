@@ -2,8 +2,9 @@
 
 Writes <out_dir>/cut_<cut>/: the datacard files (datacard.txt/.root, mass.pdf, temp trees), the Combine
 outputs and logs, and limit.json ({"cut", "limit", "limitErr"}: median expected limit at CL = limit.cl).
-Cut scan: one run() per cut of limit.gnn_score_cut, then summarize() writes <out_dir>/limits.json,
-limits.txt and limits.png (best cut = lowest limit). run_scan() does both in one process.
+Cut scan: one run() per cut of limit.gnn_score_cut, then summarize() writes <out_dir>/limits_gnn.json,
+limits_gnn.txt and limits_gnn.png (best cut = lowest limit). run_scan() does both in one process.
+The BDT-only benchmark (analysis/stages/benchmark.py) uses the same code with the tail "benchmark".
 """
 from __future__ import annotations
 
@@ -26,7 +27,13 @@ log = logging.getLogger(__name__)
 
 INPUTS = ("signal", "background")
 REQUIRED_BRANCHES = ("GNN_score", "Selected_TauTo3Mu_fitted_mass")
-SUMMARY_FILES = {"json": "limits.json", "txt": "limits.txt", "png": "limits.png"}
+TAIL = "gnn"   # summary file names: limits_<tail>.{json,txt,png}; the benchmark uses "benchmark"
+SCORE_LABELS = {"GNN_score": "GNN score cut", "bdt_ISO": "BDT ISO score cut"}
+
+
+def summary_files(tail: str) -> dict[str, str]:
+    """Summary file names of a cut scan: {"json", "txt", "png"} -> limits_<tail>.<ext>."""
+    return {ext: f"limits_{tail}.{ext}" for ext in ("json", "txt", "png")}
 
 
 def cut_dir_name(cut: float) -> str:
@@ -95,21 +102,23 @@ def run_scan(cfg: Config, inputs: Mapping[str, str | Path], out_dir: str | Path)
 
 
 def summarize(cfg: Config, out_dir: str | Path, write_dir: str | Path | None = None) -> dict:
-    """Table of the GNN cut scan (cuts of limit.gnn_score_cut); see summarize_cuts."""
-    return summarize_cuts(cfg.limit.gnn_score_cut, cfg.limit.cl, out_dir, write_dir)
+    """Table of the GNN cut scan (cuts of limit.gnn_score_cut) -> limits_gnn.*; see summarize_cuts."""
+    return summarize_cuts(cfg.limit.gnn_score_cut, cfg.limit.cl, out_dir, write_dir, tail=TAIL,
+                          score_branch="GNN_score")
 
 
-def summarize_cuts(cuts, cl: float, out_dir: str | Path, write_dir: str | Path | None = None) -> dict:
+def summarize_cuts(cuts, cl: float, out_dir: str | Path, write_dir: str | Path | None = None, *, tail: str,
+                   score_branch: str) -> dict:
     """Table of a cut scan: reads <out_dir>/cut_<cut>/limit.json for each cut of cuts.
 
     A cut without a finite limit is a missing row (warning). Best cut = lowest limit, the smaller cut on a tie.
-    Writes limits.json, limits.txt, limits.png into write_dir (default out_dir). Raises RuntimeError if no cut
+    Writes limits_<tail>.json, .txt, .png into write_dir (default out_dir). Raises RuntimeError if no cut
     has a limit.
     """
     out_dir = Path(out_dir)
     write_dir = Path(write_dir) if write_dir is not None else out_dir
     write_dir.mkdir(parents=True, exist_ok=True)
-    files = {k: write_dir / name for k, name in SUMMARY_FILES.items()}
+    files = {k: write_dir / name for k, name in summary_files(tail).items()}
     for f in files.values():
         f.unlink(missing_ok=True)  # a failed summary must not leave the table of an earlier scan
     rows = [_read_cut(out_dir, cut) for cut in sorted(cuts)]
@@ -123,7 +132,7 @@ def summarize_cuts(cuts, cl: float, out_dir: str | Path, write_dir: str | Path |
     best = min(found, key=lambda r: r["limit"])
     for r in rows:
         r["best"] = r is best
-    summary = {"cl": cl, "best_cut": best["cut"], "best_limit": best["limit"],
+    summary = {"cl": cl, "score_branch": score_branch, "best_cut": best["cut"], "best_limit": best["limit"],
                "missing": missing, "rows": rows}
     files["json"].write_text(json.dumps(summary, indent=2) + "\n")
     files["txt"].write_text(_table(summary))
@@ -150,7 +159,8 @@ def _read_cut(out_dir: Path, cut: float) -> dict:
 
 
 def _table(summary: dict) -> str:
-    lines = [f"# median expected limit at CL {summary['cl']}; * = best cut", f"  {'cut':<10} limit"]
+    lines = [f"# median expected limit at CL {summary['cl']}, cut on {summary['score_branch']}; * = best cut",
+             f"  {'cut':<10} limit"]
     for r in summary["rows"]:
         value = "missing" if r["limit"] is None else repr(r["limit"])
         lines.append(f"{'*' if r['best'] else ' '} {r['cut']!r:<10} {value}")
@@ -158,7 +168,7 @@ def _table(summary: dict) -> str:
 
 
 def _plot(summary: dict, png: Path) -> None:
-    """Median expected limit vs GNN score cut. Best cut: star + text label. Missing cuts: gray dotted lines."""
+    """Median expected limit vs score cut. Best cut: star + text label. Missing cuts: gray dotted lines."""
     from matplotlib.figure import Figure  # no pyplot: no display backend needed on batch nodes
 
     found = [r for r in summary["rows"] if r["limit"] is not None]
@@ -175,7 +185,7 @@ def _plot(summary: dict, png: Path) -> None:
         ax.axvline(cut, color="#9a9a9a", linestyle=":", linewidth=1)
         ax.annotate("missing", (cut, 1), xycoords=("data", "axes fraction"), textcoords="offset points",
                     xytext=(3, -12), color="#6b6b6b", fontsize=8)
-    ax.set_xlabel("GNN score cut")
+    ax.set_xlabel(SCORE_LABELS.get(summary["score_branch"], f"{summary['score_branch']} cut"))
     ax.set_ylabel(f"median expected limit ({summary['cl']:.0%} CL)")
     ax.grid(True, color="#e6e6e6", linewidth=0.8)
     ax.set_axisbelow(True)

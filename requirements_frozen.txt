@@ -152,7 +152,6 @@ soupsieve @ file:///home/conda/feedstock_root/build_artifacts/soupsieve_17690343
 SQLAlchemy==2.0.48
 stack_data @ file:///home/conda/feedstock_root/build_artifacts/stack_data_1733569443808/work
 sympy @ file:///home/conda/feedstock_root/build_artifacts/sympy_1745946051654/work
--e git+ssh://git@github.com/KaitoFuss/SVJ_GNN.git@445a091865d2b22f9e800c072d028e76ce7e33cd#egg=tau3mu_gnn
 terminado @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_terminado_1766513766/work
 threadpoolctl @ file:///home/conda/feedstock_root/build_artifacts/threadpoolctl_1741878222898/work
 tinycss2 @ file:///home/conda/feedstock_root/build_artifacts/tinycss2_1729802851396/work

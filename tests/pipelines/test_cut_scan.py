@@ -33,9 +33,9 @@ def test_summary_best_cut_and_files(load, user, tmp_path):
     assert s["best_cut"] == 3.9 and s["best_limit"] == 1.2890625 and s["missing"] == []
     assert [r["cut"] for r in s["rows"]] == [2.0, 3.9, 4.5]
     assert [r["best"] for r in s["rows"]] == [False, True, False]
-    assert s["files"] == {k: tmp_path / v for k, v in limit.SUMMARY_FILES.items()}
-    saved = json.loads((tmp_path / "limits.json").read_text())
-    assert saved == {"cl": 0.9, "best_cut": 3.9, "best_limit": 1.2890625, "missing": [],
+    assert s["files"] == {k: tmp_path / v for k, v in limit.summary_files("gnn").items()}
+    saved = json.loads((tmp_path / "limits_gnn.json").read_text())
+    assert saved == {"cl": 0.9, "score_branch": "GNN_score", "best_cut": 3.9, "best_limit": 1.2890625, "missing": [],
                      "rows": [{"cut": 2.0, "limit": 1.7, "limitErr": 0.0, "best": False},
                               {"cut": 3.9, "limit": 1.2890625, "limitErr": 0.0, "best": True},
                               {"cut": 4.5, "limit": 1.5, "limitErr": 0.0, "best": False}]}
@@ -48,8 +48,8 @@ def test_summary_text_table(load, user, tmp_path):
     write_limit(tmp_path, 2.0, 1.7)
     write_limit(tmp_path, 3.9, 1.2890625)
     limit.summarize(cfg, tmp_path)
-    lines = (tmp_path / "limits.txt").read_text().splitlines()
-    assert lines[0] == "# median expected limit at CL 0.9; * = best cut"
+    lines = (tmp_path / "limits_gnn.txt").read_text().splitlines()
+    assert lines[0] == "# median expected limit at CL 0.9, cut on GNN_score; * = best cut"
     assert lines[1].split() == ["cut", "limit"]
     assert lines[2].split() == ["2.0", "1.7"]
     assert lines[3].split() == ["*", "3.9", "1.2890625"]
@@ -103,7 +103,7 @@ def test_summary_no_limit_at_all_raises(load, user, tmp_path):
     cfg = scan_cfg(load, user, [2.0, 3.9])
     with pytest.raises(RuntimeError, match="2.0"):
         limit.summarize(cfg, tmp_path)
-    assert not (tmp_path / "limits.json").exists()
+    assert not (tmp_path / "limits_gnn.json").exists()
 
 
 def test_summary_broken_json_raises(load, user, tmp_path):
@@ -132,7 +132,7 @@ def test_summary_plot(load, user, tmp_path):
     write_limit(tmp_path, 2.0, 1.7)
     write_limit(tmp_path, 3.9, 1.3)                      # 4.5 missing: drawn as a dotted line
     limit.summarize(cfg, tmp_path)
-    png = (tmp_path / "limits.png").read_bytes()
+    png = (tmp_path / "limits_gnn.png").read_bytes()
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and len(png) > 5000
 
 
@@ -142,7 +142,7 @@ def test_summary_plot_single_cut(load, user, tmp_path):
     cfg = scan_cfg(load, user, [3.9])                     # default config: one cut, still a valid plot
     write_limit(tmp_path, 3.9, 1.2890625)
     limit.summarize(cfg, tmp_path)
-    assert (tmp_path / "limits.png").read_bytes()[:4] == b"\x89PNG"
+    assert (tmp_path / "limits_gnn.png").read_bytes()[:4] == b"\x89PNG"
 
 
 def test_rerun_removes_old_limit_json(load, user, toy_inputs, monkeypatch, tmp_path):
@@ -183,7 +183,7 @@ def test_run_scan_all_cuts_then_summary(load, user, monkeypatch, tmp_path):
 
     assert calls == [2.0, 3.9, 4.5]                      # a failed cut does not stop the scan
     assert s["best_cut"] == 3.9 and s["missing"] == [4.5]
-    assert (tmp_path / "limits.json").is_file()
+    assert (tmp_path / "limits_gnn.json").is_file()
 
 
 def test_run_scan_no_combine_fails_before_any_cut(load, user, monkeypatch, tmp_path):
@@ -226,7 +226,7 @@ def test_run_scan_end_to_end(load, user, toy_inputs, tmp_path):
         per_cut = json.loads((tmp_path / "limit" / f"cut_{cut}" / "limit.json").read_text())
         row = next(r for r in s["rows"] if r["cut"] == cut)
         assert row["limit"] == per_cut["limit"]
-    for name in limit.SUMMARY_FILES.values():
+    for name in limit.summary_files("gnn").values():
         assert (tmp_path / "limit" / name).is_file(), name
 
 
@@ -246,11 +246,11 @@ def test_failed_summary_removes_old_summary_files(load, user, tmp_path):
     """No cut has a limit: the limits.* files of an earlier scan must not stay and look valid."""
     from tau3mu_gnn.pipelines.common.stages import limit
 
-    for name in limit.SUMMARY_FILES.values():
+    for name in limit.summary_files("gnn").values():
         (tmp_path / name).write_text("old")
     with pytest.raises(RuntimeError):
         limit.summarize(scan_cfg(load, user, [3.9]), tmp_path)
-    for name in limit.SUMMARY_FILES.values():
+    for name in limit.summary_files("gnn").values():
         assert not (tmp_path / name).exists(), name
 
 
@@ -262,15 +262,15 @@ def test_summary_write_dir(load, user, tmp_path):
     write_limit(tmp_path / "phase", 3.9, 1.3)
     scratch = tmp_path / "scratch"
     s = limit.summarize(cfg, tmp_path / "phase", write_dir=scratch)
-    assert s["files"]["json"] == scratch / "limits.json" and (scratch / "limits.png").is_file()
-    assert not (tmp_path / "phase" / "limits.json").exists()
+    assert s["files"]["json"] == scratch / "limits_gnn.json" and (scratch / "limits_gnn.png").is_file()
+    assert not (tmp_path / "phase" / "limits_gnn.json").exists()
 
 
 def test_summarize_cuts_explicit(tmp_path):
     from tau3mu_gnn.pipelines.common.stages import limit
     write_limit(tmp_path, 0.98, 2.0)
     write_limit(tmp_path, 0.99, 1.5)
-    s = limit.summarize_cuts([0.98, 0.99], 0.9, tmp_path)
+    s = limit.summarize_cuts([0.98, 0.99], 0.9, tmp_path, tail="t", score_branch="bdt_ISO")
     assert s["best_cut"] == 0.99 and s["cl"] == 0.9 and all(f.is_file() for f in s["files"].values())
-    s = limit.summarize_cuts([0.98, 0.99, 0.995], 0.9, tmp_path)
+    s = limit.summarize_cuts([0.98, 0.99, 0.995], 0.9, tmp_path, tail="t", score_branch="bdt_ISO")
     assert s["missing"] == [0.995]

@@ -297,6 +297,7 @@ channel: W
 paths: {{output_base: {tmp_path / 'out'}, log_dir: {tmp_path / 'logs_root'}}}
 inputs: {{signal: [/data/s.root], background: [/data/b.root], already_resonance_skimmed: true}}
 limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
+benchmark: {{bdt_score_cut: [0.98]}}
 """)
     cfg = load_config(cfg_file)
     src = tmp_path / "out" / "script_test" / "limit_vs1"
@@ -314,7 +315,7 @@ limit: {{signal_weight: 1.0e-5, gnn_score_cut: [3.9]}}
     with open(out, "w") as fo:
         subprocess.run(["bash", str(script)], env={**os.environ, "SLURM_JOB_ID": "77"}, stdout=fo,
                        stderr=subprocess.STDOUT, check=True, timeout=300)
-    assert json.loads((Path(version_dir) / "limits.json").read_text())["best_cut"] == 3.9
+    assert json.loads((Path(version_dir) / "limits_gnn.json").read_text())["best_cut"] == 3.9
     assert (Path(version_dir) / "logs" / "summary-77.out").is_file()            # log copied by the trap
     assert not (tmp_path / "scratch" / "77").exists()                             # scratch removed
 

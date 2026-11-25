@@ -24,6 +24,8 @@ def test_phase_settings_sections(load, user):
                                                     "models", "bdt"]
     assert list(phase_settings(cfg, "gnn"))[-1] == "gnn"
     assert list(phase_settings(cfg, "limit"))[-2:] == ["gnn", "limit"]
+    benchmark = list(phase_settings(cfg, "benchmark"))
+    assert benchmark[-2:] == ["benchmark", "limit"] and "gnn" not in benchmark
 
 
 def test_settings_diff_dotted():

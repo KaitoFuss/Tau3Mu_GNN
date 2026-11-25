@@ -20,17 +20,17 @@ def _bdt_file(path, n, signal, seed):
 
 
 @pytest.fixture
-def bench(load_training, training_user, tmp_path):
-    training_user["benchmark"]["bdt_score_cut"] = [0.5, 0.8]
-    training_user["limit"]["signal_weight"] = SIG_WEIGHT
-    cfg = load_training(training_user)
+def bench(load, user, tmp_path):
+    user["benchmark"]["bdt_score_cut"] = [0.5, 0.8]
+    user["limit"]["signal_weight"] = SIG_WEIGHT
+    cfg = load(user)
     inputs = {"signal": _bdt_file(tmp_path / "in" / "signal_with_bdt_scores.root", 4000, True, 1),
               "background": _bdt_file(tmp_path / "in" / "background_with_bdt_scores.root", 40000, False, 2)}
     return cfg, inputs
 
 
 def test_benchmark_rejects_unknown_cut(bench, tmp_path):
-    from tau3mu_gnn.pipelines.training.stages import benchmark
+    from tau3mu_gnn.pipelines.analysis.stages import benchmark
     cfg, inputs = bench
     with pytest.raises(ValueError, match="benchmark.bdt_score_cut"):
         benchmark.run(cfg, inputs, tmp_path / "out", 0.7)
@@ -38,7 +38,7 @@ def test_benchmark_rejects_unknown_cut(bench, tmp_path):
 
 def test_benchmark_missing_bdt_iso(bench, tmp_path):
     from tau3mu_gnn.pipelines.common.branches import BranchError
-    from tau3mu_gnn.pipelines.training.stages import benchmark
+    from tau3mu_gnn.pipelines.analysis.stages import benchmark
     cfg, inputs = bench
     bad = toy_stage3_file(tmp_path / "gnn_only.root", 100, False, 3)
     with pytest.raises(BranchError, match="gnn_only.root"):
@@ -49,14 +49,32 @@ def test_benchmark_missing_bdt_iso(bench, tmp_path):
 @needs_combine
 def test_benchmark_scan_end_to_end(bench, tmp_path):
     import json
-    from tau3mu_gnn.pipelines.training.stages import benchmark
+    from tau3mu_gnn.pipelines.analysis.stages import benchmark
     cfg, inputs = bench
     s = benchmark.run_scan(cfg, inputs, tmp_path / "out")
-    data = json.loads((tmp_path / "out" / "limits.json").read_text())
+    data = json.loads((tmp_path / "out" / "limits_benchmark.json").read_text())
     assert [r["cut"] for r in data["rows"]] == [0.5, 0.8] and s["best_cut"] in (0.5, 0.8)
+    assert data["score_branch"] == "bdt_ISO" and not (tmp_path / "out" / "limits_gnn.json").exists()
+    assert "cut on bdt_ISO" in (tmp_path / "out" / "limits_benchmark.txt").read_text()
     assert np.isfinite(s["best_limit"])
     with uproot.open(tmp_path / "out" / "cut_0.5" / "temp_mc_selected.root") as f:
         n_sel = f["Events"].num_entries
     with uproot.open(inputs["signal"]) as f:
         expected = int((f["Events"]["bdt_ISO"].array(library="np") > 0.5).sum())
     assert n_sel == expected
+
+
+def test_benchmark_summarize_writes_tail(bench, tmp_path):
+    """Summary files get the tail _benchmark, the GNN limit files the tail _gnn: they cannot be mixed up."""
+    import json
+    from tau3mu_gnn.pipelines.analysis.stages import benchmark
+    from tau3mu_gnn.pipelines.common.stages import limit
+    cfg, _ = bench
+    for cut, value in ((0.5, 2.0), (0.8, 1.0)):
+        d = tmp_path / "out" / limit.cut_dir_name(cut)
+        d.mkdir(parents=True)
+        (d / "limit.json").write_text(json.dumps({"cut": cut, "limit": value, "limitErr": 0.1}))
+    s = benchmark.summarize(cfg, tmp_path / "out")
+    assert {k: f.name for k, f in s["files"].items()} == {
+        "json": "limits_benchmark.json", "txt": "limits_benchmark.txt", "png": "limits_benchmark.png"}
+    assert s["best_cut"] == 0.8 and all(f.is_file() for f in s["files"].values())

@@ -1,4 +1,4 @@
-"""Versions and manifests of the analysis phases: bdt, gnn, limit.
+"""Versions and manifests of the analysis phases: bdt, benchmark, gnn, limit.
 
 Thin wrappers over common/runs.py and common/manifest.py with the analysis phase maps and settings.
 """
@@ -11,10 +11,11 @@ from tau3mu_gnn.pipelines.common import manifest as _manifest
 from tau3mu_gnn.pipelines.common import runs as _runs
 
 PIPELINE = "analysis"
-PHASES = ("bdt", "gnn", "limit")
-UPSTREAM = {"bdt": None, "gnn": "bdt", "limit": "gnn"}
+PHASES = ("bdt", "gnn", "limit", "benchmark")
+UPSTREAM = {"bdt": None, "gnn": "bdt", "limit": "gnn", "benchmark": "bdt"}
 PHASE_SECTIONS = {
     "bdt": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt"),
+    "benchmark": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "benchmark", "limit"),
     "gnn": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn"),
     "limit": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "gnn", "limit"),
 }
@@ -51,6 +52,7 @@ def config_dict(cfg: Config) -> dict:
         "limit": {"signal_weight": lim.signal_weight, "gnn_score_cut": list(lim.gnn_score_cut),
                   "tau_mass": lim.tau_mass, "mass_window": lim.mass_window, "fit_range": list(lim.fit_range),
                   "cl": lim.cl},
+        "benchmark": {"bdt_score_cut": list(cfg.benchmark.bdt_score_cut)},
         "slurm": {"account": cfg.slurm.account,
                   "jobs": {name: {"partition": j.partition, "mem": j.mem, "time": j.time, "cpus": j.cpus}
                            for name, j in cfg.slurm.jobs.items()}},

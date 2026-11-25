@@ -1,5 +1,4 @@
 """Training job bodies on toy data. Stages are faked (they have their own tests)."""
-import json
 from pathlib import Path
 
 import pytest
@@ -85,15 +84,6 @@ def fake_stages(monkeypatch):
         return {"model_dir": model_dir, "model_name": name, "best_epoch": 3, "epochs_run": 5,
                 "early_stopped": True, "auc_test": 0.9, "summary": _write(Path(out_dir) / "gnn_train_summary.json")}
 
-    def benchmark(cfg, inputs, out_dir, cut):
-        seen["calls"].append(f"benchmark_{cut}")
-        card = Path(out_dir) / jobs.limit_stage.cut_dir_name(cut)
-        _write(card / "combine_asymptotic.log", "log")
-        if cut == seen.get("fail_cut"):
-            raise RuntimeError("Combine wrote no median expected limit")
-        _write(card / "limit.json", json.dumps({"cut": cut, "limit": 1.0 + cut, "limitErr": 0.0}))
-        return {}
-
     monkeypatch.setattr(jobs.resonance_skim, "run", resonance)
     monkeypatch.setattr(jobs.skim_stage, "run", skim)
     monkeypatch.setattr(jobs.bdt_train_stage, "run", bdt_train)
@@ -101,7 +91,6 @@ def fake_stages(monkeypatch):
     monkeypatch.setattr(jobs.npvs_stage, "run", npvs)
     monkeypatch.setattr(jobs.graphs_stage, "run", graphs)
     monkeypatch.setattr(jobs.gnn_train_stage, "run", gnn_train)
-    monkeypatch.setattr(jobs.benchmark_stage, "run", benchmark)
     monkeypatch.setattr(jobs.torch.cuda, "is_available", lambda: True)
     return seen
 
@@ -175,7 +164,7 @@ def test_gnn_phase(cfg, scratch, fake_stages):
     assert fake_stages["gnn_train"]["device"] == jobs.torch.device("cuda")
 
 
-@pytest.mark.parametrize("job", ["npvs", "graphs_background", "graphs_signal", "benchmark_limit"])
+@pytest.mark.parametrize("job", ["npvs", "graphs_background", "graphs_signal"])
 def test_missing_upstream_file_stops_before_stage(cfg, scratch, fake_stages, job):
     from tau3mu_gnn.pipelines.common.manifest import UpstreamError
     from tau3mu_gnn.pipelines.training import jobs
@@ -183,36 +172,14 @@ def test_missing_upstream_file_stops_before_stage(cfg, scratch, fake_stages, job
 
     up = run_bdt(cfg)
     (Path(up) / "2_bdt" / "signal_with_bdt_scores.root").unlink()
-    phase = "benchmark" if job == "benchmark_limit" else "gnn"
-    d = create_version(cfg, phase)
+    d = create_version(cfg, "gnn")
     n = len(fake_stages["calls"])
     call = {"npvs": lambda: jobs.npvs(cfg, d, up),
             "graphs_background": lambda: jobs.graphs(cfg, d, up, "background"),
-            "graphs_signal": lambda: jobs.graphs(cfg, d, up, "signal"),
-            "benchmark_limit": lambda: jobs.benchmark_limit(cfg, d, up, 0.98)}[job]
+            "graphs_signal": lambda: jobs.graphs(cfg, d, up, "signal")}[job]
     with pytest.raises(UpstreamError, match="missing"):
         call()
     assert fake_stages["calls"][n:] == []
-
-
-def test_benchmark_phase(cfg, scratch, fake_stages):
-    from tau3mu_gnn.pipelines.common.manifest import read_manifest
-    from tau3mu_gnn.pipelines.training import jobs
-    from tau3mu_gnn.pipelines.training.manifest import create_version
-
-    up = run_bdt(cfg)
-    b = create_version(cfg, "benchmark")
-    fake_stages["fail_cut"] = 0.99
-    jobs.benchmark_limit(cfg, b, up, 0.98)
-    with pytest.raises(RuntimeError, match="Combine"):
-        jobs.benchmark_limit(cfg, b, up, 0.99)
-    assert (Path(b) / "cut_0.99" / "combine_asymptotic.log").is_file()      # copied although the stage failed
-    jobs.benchmark_summary(cfg, b, up)
-    m = read_manifest(b)
-    assert m["phase"] == "benchmark" and m["upstream"] == "bdt_vs1"
-    assert m["outputs"] == {"limits_json": "limits.json", "limits_txt": "limits.txt", "limits_png": "limits.png"}
-    assert m["missing"] == [0.99]
-    assert all((Path(b) / rel).is_file() for rel in m["outputs"].values())
 
 
 def test_main_dispatch(cfg, scratch, fake_stages, monkeypatch):
@@ -228,14 +195,12 @@ def test_main_dispatch(cfg, scratch, fake_stages, monkeypatch):
     jobs.main(["npvs", "--config", "x.yaml", "--phase-dir", g, "--upstream", a])
     jobs.main(["graphs", "--config", "x.yaml", "--phase-dir", g, "--upstream", a, "--sample", "signal"])
     assert fake_stages["graphs"]["signal"]["npvs"] == "w"
-    b = create_version(cfg, "benchmark")
-    jobs.main(["benchmark_limit", "--config", "x.yaml", "--phase-dir", b, "--upstream", a, "--cut", "0.98"])
-    assert (Path(b) / "cut_0.98" / "limit.json").is_file()
+    with pytest.raises(SystemExit):
+        jobs.main(["benchmark_limit", "--config", "x.yaml", "--phase-dir", g, "--upstream", a, "--cut", "0.98"])
 
 
 @pytest.mark.parametrize("argv", [
     ["npvs"], ["graphs", "--upstream", "u"], ["graphs", "--sample", "signal"], ["gnn_train"],
-    ["benchmark_limit", "--upstream", "u"], ["benchmark_summary"],
 ])
 def test_main_required_arguments(cfg, monkeypatch, capsys, argv):
     from tau3mu_gnn.pipelines.training import jobs
@@ -274,9 +239,7 @@ def test_jobs_check_proxy_before_work(remote_cfg, scratch, fake_stages):
              lambda: jobs.bdt_infer(remote_cfg, "p"), lambda: jobs.npvs(remote_cfg, "p", "u"),
              lambda: jobs.graphs(remote_cfg, "p", "u", "signal"),
              lambda: jobs.graphs(remote_cfg, "p", "u", "background"),
-             lambda: jobs.gnn_train(remote_cfg, "p", "u"),
-             lambda: jobs.benchmark_limit(remote_cfg, "p", "u", 0.5),
-             lambda: jobs.benchmark_summary(remote_cfg, "p", "u")]
+             lambda: jobs.gnn_train(remote_cfg, "p", "u")]
     for call in calls:
         with pytest.raises(ProxyError):
             call()

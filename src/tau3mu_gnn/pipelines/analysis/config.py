@@ -2,7 +2,7 @@
 
 Two YAML files are merged:
 - configs/analysis_defaults_<channel>.yaml : frozen analysis settings, not meant to be edited
-- the user file                            : paths, inputs, branch map, tunable limit values, models
+- the user file                            : paths, inputs, branch map, tunable limit and benchmark values, models
 
 All problems are collected and raised together as one ConfigError.
 """
@@ -14,7 +14,7 @@ from typing import Mapping
 
 from tau3mu_gnn.pipelines.common.config import (
     REPO_ROOT, ConfigError, HTCondorConfig, InputsConfig, PathsConfig, ResonanceSkimConfig, SkimConfig, SlurmConfig,
-    _abs_or_url, _bool, _channel, _Field, _inputs, _local_path, _name, _non_empty_str, _number_list,
+    _abs_or_url, _bool, _channel, _cut_list, _Field, _gnn_cut_list, _inputs, _local_path, _name, _non_empty_str,
     _optional_local_path, _paths, _positive_number, _read_flat_user, _resonance_skim, _scheduler, _skim, _str_map,
     _user_path_list,
 )
@@ -39,7 +39,8 @@ USER_FIELDS: dict[str, _Field] = {
     "inputs.already_resonance_skimmed": _Field(_bool),
     "branch_map": _Field(_str_map, required=False, default=None),
     "limit.signal_weight": _Field(_positive_number),
-    "limit.gnn_score_cut": _Field(_number_list, required=False, default=[3.5]),
+    "limit.gnn_score_cut": _Field(_gnn_cut_list, required=False, default=[3.5]),
+    "benchmark.bdt_score_cut": _Field(_cut_list),
     "models": _Field(_models, required=False, default="frozen"),
     "scheduler": _Field(_scheduler, required=False, default="htcondor"),
 }
@@ -72,6 +73,11 @@ class LimitConfig:
 
 
 @dataclass(frozen=True)
+class BenchmarkConfig:
+    bdt_score_cut: tuple[float, ...]   # BDT-only limit: one run per cut on bdt_ISO
+
+
+@dataclass(frozen=True)
 class Config:
     analysis_name: str
     channel: str
@@ -83,6 +89,7 @@ class Config:
     bdt: BDTConfig
     gnn: GNNConfig
     limit: LimitConfig
+    benchmark: BenchmarkConfig
     slurm: SlurmConfig
     htcondor: HTCondorConfig
     user_file: Path
@@ -155,6 +162,7 @@ def load_config(user_path: str | Path, defaults_dir: str | Path | None = None) -
             fit_range=defaults["limit.fit_range"],
             cl=defaults["limit.cl"],
         ),
+        benchmark=BenchmarkConfig(bdt_score_cut=user["benchmark.bdt_score_cut"]),
         slurm=SlurmConfig(account=defaults["slurm.account"], jobs=defaults["slurm.jobs"]),
         htcondor=HTCondorConfig(jobs=defaults["htcondor.jobs"]),
         user_file=user_path.resolve(),

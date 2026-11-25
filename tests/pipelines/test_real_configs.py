@@ -28,6 +28,7 @@ def test_example_w_raw_matches_production_settings(monkeypatch):
     assert cfg.skim.dz_max == 0.5
     assert cfg.skim.cos_alpha_2d_min == 0.5
     assert cfg.limit.gnn_score_cut == (3.5,)
+    assert cfg.benchmark.bdt_score_cut == (0.98, 0.982, 0.984, 0.986, 0.988, 0.99, 0.992, 0.994, 0.996)
     assert cfg.limit.signal_weight == 0.000019
     assert cfg.limit.tau_mass == 1.78
     assert cfg.limit.mass_window == 0.060
@@ -43,9 +44,11 @@ def test_example_w_raw_matches_production_settings(monkeypatch):
         ("long", "256G", "1-00:00:00", 4)
     assert (jobs["gnn_background"].partition, jobs["gnn_background"].time) == ("long", "2-00:00:00")
     assert jobs["limit"].time == "0-01:30:00" and jobs["summary"].partition == "short"
+    assert jobs["benchmark_limit"] == jobs["limit"] and condor["benchmark_limit"].disk == "4G"
 
 
 HF_GNN_CUTS = [0.25 * i for i in range(13)]   # 0.0 to 3.0, step 0.25 (HF GNN: above logit 3 almost no signal)
+HF_BENCHMARK_CUTS = [0.88, 0.89, 0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97]
 
 
 def _yaml(name):
@@ -82,6 +85,7 @@ def test_example_hf_cut_scan_and_inputs():
     assert hf["channel"] == "HF"
     assert hf["limit"]["gnn_score_cut"] == HF_GNN_CUTS
     assert hf["limit"]["signal_weight"] == 0.000152
+    assert hf["benchmark"]["bdt_score_cut"] == HF_BENCHMARK_CUTS
     assert hf["inputs"] == _yaml("example_training_HF.yaml")["inputs"]
     assert hf["analysis_name"] == "HF_analysis"
     assert hf["paths"]["output_base"].endswith("/tau3mu_pipeline/analysis")

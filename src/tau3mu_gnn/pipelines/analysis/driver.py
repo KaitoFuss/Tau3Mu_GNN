@@ -15,9 +15,10 @@ from tau3mu_gnn.pipelines.common.manifest import read_manifest
 log = logging.getLogger(__name__)
 
 SAMPLES = ("signal", "background")
-STAGES = ("skim", "bdt", "gnn", "eval", "limit", "summary")
-PHASES = ("bdt", "gnn", "limit")
-LAST_JOB = {"bdt": "bdt", "gnn": "eval"}   # writes the manifest; the next phase of `all` waits for it
+STAGES = ("skim", "bdt", "gnn", "eval", "limit", "summary", "benchmark_limit", "benchmark_summary")
+PHASES = ("bdt", "gnn", "limit", "benchmark")   # submit order of `all`
+UPSTREAM = {"benchmark": "bdt", "gnn": "bdt", "limit": "gnn"}   # the phase each phase reads (manifest.UPSTREAM)
+LAST_JOB = {"bdt": "bdt", "gnn": "eval"}   # writes the manifest; the phases that read it wait for it in `all`
 
 
 def _base(cfg: Config, version_dir: str) -> tuple[str, ...]:
@@ -35,6 +36,12 @@ def _phase_jobs(cfg: Config, phase: str, version_dir: str, up: str | None, after
         gnn = [Job(f"gnn_{s}", f"gnn_{s}", ("gnn", *b, "--upstream", up, "--sample", s), after_ids=after_ids)
                for s in SAMPLES]
         return gnn + [Job("eval", "eval", ("eval", *b, "--upstream", up), after=tuple(j.name for j in gnn))]
+    if phase == "benchmark":
+        limits = [Job(f"benchmark_limit_{c}", "benchmark_limit",
+                      ("benchmark_limit", *b, "--upstream", up, "--cut", repr(c)), after_ids=after_ids)
+                  for c in cfg.benchmark.bdt_score_cut]
+        return limits + [Job("benchmark_summary", "benchmark_summary", ("benchmark_summary", *b, "--upstream", up),
+                             after=tuple(j.name for j in limits), dependency="afterany", after_ids=after_ids)]
     limits = [Job(f"limit_{c}", "limit", ("limit", *b, "--upstream", up, "--cut", repr(c)), after_ids=after_ids)
               for c in cfg.limit.gnn_score_cut]
     return limits + [Job("summary", "summary", ("summary", *b, "--upstream", up),
@@ -72,6 +79,12 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
         up = runs.pick_version(cfg, "gnn", from_)
     elif stage == "summary":
         src = runs.pick_version(cfg, "limit", from_, complete=False)
+    elif stage == "benchmark_limit":
+        if cut not in cfg.benchmark.bdt_score_cut:
+            raise ValueError(f"cut {cut} is not in benchmark.bdt_score_cut {list(cfg.benchmark.bdt_score_cut)}")
+        up = runs.pick_version(cfg, "bdt", from_)
+    elif stage == "benchmark_summary":
+        src = runs.pick_version(cfg, "benchmark", from_, complete=False)
     elif from_ is not None:
         raise ValueError("stage skim reads the config inputs; --from is not allowed")
 
@@ -81,14 +94,15 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
             args += ["--upstream", up]
         if sample is not None and stage == "gnn":
             args += ["--sample", sample]
-        if stage == "limit":
+        if stage in ("limit", "benchmark_limit"):
             args += ["--cut", repr(cut)]
         if src is not None:
             args += ["--source", src]
-        if stage in ("bdt", "eval", "summary"):
+        if stage in ("bdt", "eval", "summary", "benchmark_summary"):
             args += ["--no-manifest"]
-        name = {"gnn": f"gnn_{sample}", "limit": f"limit_{cut}"}.get(stage, stage)
-        resources = {"gnn": f"gnn_{sample}", "limit": "limit"}.get(stage, stage)
+        name = {"gnn": f"gnn_{sample}", "limit": f"limit_{cut}",
+                "benchmark_limit": f"benchmark_limit_{cut}"}.get(stage, stage)
+        resources = {"gnn": f"gnn_{sample}"}.get(stage, stage)
         return [Job(name, resources, tuple(args))]
 
     debug = storage.join(cfg.output_dir, "debug")
@@ -97,16 +111,21 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 
 
 def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
-    """Submit the phases bdt, gnn and limit at once. gnn uses the new bdt version, limit the new gnn version (not
-    the newest complete one: they have no manifest yet). The first jobs of gnn and limit wait (afterok) for the
-    last job of the phase before; their upstream check runs when they start. If a job fails, the batch system
-    does not start the jobs after it. HTCondor: one DAG over the three phases."""
+    """Submit the phases bdt, gnn, limit and benchmark at once. gnn and benchmark use the new bdt version, limit
+    the new gnn version (not the newest complete one: they have no manifest yet). The first jobs of gnn
+    and benchmark wait (afterok) for the bdt job, so the two phases run in parallel; the first jobs of limit wait for
+    eval. The upstream check runs when a job starts. If a job fails, the batch system does not start the jobs
+    after it. HTCondor: one DAG over the four phases."""
     env = env if env is not None else JobEnv.from_config(cfg)
-    check_proxy(cfg, sum(chain_hours(cfg, _phase_jobs(cfg, p, "<version>", "<upstream>")) for p in PHASES))
+    hours = {p: chain_hours(cfg, _phase_jobs(cfg, p, "<version>", "<upstream>")) for p in PHASES}
+    check_proxy(cfg, hours["bdt"] + max(hours["benchmark"], hours["gnn"] + hours["limit"]))
     batch = make_batch(cfg)
     subs: list[Submission] = []
-    up, after = None, ()
+    done: dict[str, Submission] = {}
     for phase in PHASES:
+        src = done.get(UPSTREAM.get(phase))
+        up = src.version_dir if src is not None else None
+        after = (src.job_ids[LAST_JOB[UPSTREAM[phase]]],) if src is not None else ()
         try:
             s = _submit(cfg, lambda v, phase=phase, up=up, after=after: _phase_jobs(cfg, phase, v, up, after),
                         phase, cfg.output_dir, (), up, dry_run, env, proxy=False, pipeline=PIPELINE,
@@ -116,9 +135,9 @@ def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) ->
                 raise
             if not dry_run:
                 write_jobs(subs)
-            done = [i for prev in subs for i in prev.job_ids.values()] + list(e.submitted.values())
+            ids = [i for prev in subs for i in prev.job_ids.values()] + list(e.submitted.values())
             raise SubmitError(f"{e} Earlier phases are already submitted ({', '.join(x.version_dir for x in subs)});"
-                              f" to cancel everything: scancel {' '.join(done)}") from e
+                              f" to cancel everything: scancel {' '.join(ids)}") from e
         subs.append(s)
-        up, after = s.version_dir, (s.job_ids[LAST_JOB[phase]],) if phase in LAST_JOB else ()
+        done[phase] = s
     return finish(batch, subs, dry_run)

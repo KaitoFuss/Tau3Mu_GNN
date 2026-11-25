@@ -47,7 +47,7 @@ def test_bdt_phase(cfg, env, fake_sbatch):
     assert calls[2].startswith("--parsable --dependency=afterok:1002 ")
     assert json.loads((Path(s.version_dir) / "jobs.json").read_text()) == s.job_ids
     used = (Path(s.version_dir) / "config_used.yaml").read_text()
-    assert "training_name: toy_train" in used and "bdt_score_cut" in used     # training settings, not analysis
+    assert "training_name: toy_train" in used and "bdt_preselection_cut" in used   # training settings, not analysis
     assert last_line(s, "bdt_infer").endswith(
         f"-m {MODULE} bdt_infer --config {cfg.user_file} --phase-dir {s.version_dir}")
     assert "#SBATCH --job-name=BDT1.bdtI.toy_train" in (s.log_folder / "bdt_infer.sh").read_text()
@@ -92,17 +92,13 @@ def test_gpu_job_flags(cfg, env, fake_sbatch):
     assert "--gres" not in cpu and "#SBATCH --account=t3\n" in cpu
 
 
-def test_benchmark_jobs_per_cut(cfg, env, fake_sbatch):
+def test_no_benchmark_phase(cfg, env, fake_sbatch):
     from tau3mu_gnn.pipelines.training.driver import submit_phase
 
-    b1 = complete(cfg, "bdt_vs1")
-    s = submit_phase(cfg, "benchmark", env=env)
-    assert list(s.job_ids) == ["benchmark_limit_0.98", "benchmark_limit_0.99", "benchmark_summary"]
-    calls = sbatch_calls(fake_sbatch)
-    assert [c.startswith("--parsable /") for c in calls[:2]] == [True, True]
-    assert calls[2].startswith("--parsable --dependency=afterany:1001:1002 ")
-    assert last_line(s, "benchmark_limit_0.99").endswith(f"--upstream {b1} --cut 0.99")
-    assert last_line(s, "benchmark_summary").endswith(f"--upstream {b1}")
+    complete(cfg, "bdt_vs1")
+    with pytest.raises(ValueError, match="unknown phase 'benchmark'"):
+        submit_phase(cfg, "benchmark", env=env)
+    assert not fake_sbatch.exists()
 
 
 def test_from_requires_complete_bdt(cfg, env, fake_sbatch):
@@ -113,7 +109,7 @@ def test_from_requires_complete_bdt(cfg, env, fake_sbatch):
     with pytest.raises(UpstreamError, match="no manifest"):
         submit_phase(cfg, "gnn", "bdt_vs1", env=env)
     with pytest.raises(UpstreamError):
-        submit_phase(cfg, "benchmark", env=env)
+        submit_phase(cfg, "gnn", env=env)
     assert not fake_sbatch.exists()
 
 
@@ -122,19 +118,19 @@ def test_from_picks_given_bdt(cfg, env, fake_sbatch):
 
     b1 = complete(cfg, "bdt_vs1")
     complete(cfg, "bdt_vs2")
-    assert submit_phase(cfg, "benchmark", "bdt_vs1", env=env).upstream == b1
+    assert submit_phase(cfg, "gnn", "bdt_vs1", env=env).upstream == b1
 
 
 def test_all_waits_for_bdt_infer(cfg, env, fake_sbatch):
     from tau3mu_gnn.pipelines.training.driver import submit_all
 
-    bdt, gnn, ben = submit_all(cfg, env=env)
-    assert [s.version_dir.rsplit("/", 1)[-1] for s in (bdt, gnn, ben)] == ["bdt_vs1", "gnn_vs1", "benchmark_vs1"]
-    assert gnn.upstream == ben.upstream == bdt.version_dir
+    bdt, gnn = submit_all(cfg, env=env)
+    assert [s.version_dir.rsplit("/", 1)[-1] for s in (bdt, gnn)] == ["bdt_vs1", "gnn_vs1"]
+    assert gnn.upstream == bdt.version_dir
     infer = bdt.job_ids["bdt_infer"]
     assert infer == "1003"
-    calls = dict(zip([n for s in (bdt, gnn, ben) for n in s.job_ids], sbatch_calls(fake_sbatch)))
-    for first in ("npvs", "graphs_background", "benchmark_limit_0.98", "benchmark_limit_0.99"):
+    calls = dict(zip([n for s in (bdt, gnn) for n in s.job_ids], sbatch_calls(fake_sbatch)))
+    for first in ("npvs", "graphs_background"):
         assert calls[first].startswith(f"--parsable --dependency=afterok:{infer} "), first
     assert calls["graphs_signal"].startswith(f"--parsable --dependency=afterok:{gnn.job_ids['npvs']} ")
     assert last_line(gnn, "npvs").endswith(f"--upstream {bdt.version_dir}")
@@ -165,7 +161,7 @@ def test_no_comet_key_in_files(cfg, env, fake_sbatch):
     files = [f for root in (Path(cfg.paths.log_dir), Path(cfg.output_dir)) for f in root.rglob("*") if f.is_file()]
     assert len(files) > 10 and any(f.name == "config_used.yaml" for f in files)
     assert not [f for f in files if "toy-key" in f.read_text()]
-    assert len(subs) == 3
+    assert len(subs) == 2
 
 
 @pytest.fixture
@@ -183,8 +179,8 @@ def test_cli_dry_run(cli_env, fake_sbatch, capsys):
 
     assert cli.main(["all", "--config", "t.yaml", "--dry-run"]) == 0
     out = capsys.readouterr().out
-    assert out.count("DRY RUN") == 1 and "DRYRUN-gnn_train" in out and "DRYRUN-benchmark_summary" in out
-    assert all(f"{p}_vs1" in out for p in ("bdt", "gnn", "benchmark")) and not fake_sbatch.exists()
+    assert out.count("DRY RUN") == 1 and "DRYRUN-gnn_train" in out and "benchmark" not in out
+    assert all(f"{p}_vs1" in out for p in ("bdt", "gnn")) and not fake_sbatch.exists()
 
 
 def test_cli_phase_and_errors(cli_env, fake_sbatch, capsys):
@@ -194,9 +190,11 @@ def test_cli_phase_and_errors(cli_env, fake_sbatch, capsys):
     err = capsys.readouterr().err
     assert err.startswith("ERROR: ") and "Traceback" not in err
     b1 = complete(cli_env, "bdt_vs1")
-    assert cli.main(["benchmark", "--config", "t.yaml", "--from", "bdt_vs1"]) == 0
+    assert cli.main(["gnn", "--config", "t.yaml", "--from", "bdt_vs1"]) == 0
     out = capsys.readouterr().out
-    assert f"upstream: {b1}" in out and "benchmark_summary" in out and "1003" in out
+    assert f"upstream: {b1}" in out and "gnn_train" in out and "1004" in out
+    with pytest.raises(SystemExit):
+        cli.main(["benchmark", "--config", "t.yaml", "--from", "bdt_vs1"])
     for argv in (["bdt", "--config", "t.yaml", "--from", "bdt_vs1"], ["all", "--config", "t.yaml", "--from", "x"],
                  ["stage", "skim", "--config", "t.yaml"]):
         with pytest.raises(SystemExit):

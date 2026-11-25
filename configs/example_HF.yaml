@@ -45,8 +45,14 @@ models: root://eosuser.cern.ch//eos/user/k/kfuss/tau3mu_pipeline/training/HF_tra
 limit:
   # REQUIRED. Weight that scales the signal MC to your dataset (lumi, cross section, reference BR).
   # 0.000152 is the old HF value for Kaito's old HF dataset; its origin is not known. Like the W value, it
-  # only scales the signal to comparable limits for now (design: docs/superpowers/specs/2026-10-25-step13-hf-design.md, sec. 2).
+  # only scales the signal to comparable limits for now.
   signal_weight: 0.000152
   # One cut or a list of cuts on the GNN score (the raw logit of the GNN). A list runs a cut scan.
+  # Each cut must be > -1: GNN_score = -1 marks the events below the BDT preselection cut (not scored).
   # HF GNN (HF_training/gnn_vs1, AUC 0.77): logit 2 keeps 6% of the preselected signal, logit 3 only 0.7%.
   gnn_score_cut: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0]
+
+benchmark:
+  # REQUIRED. BDT-only benchmark limit (the limit the GNN must beat), on the same events as the GNN limit:
+  # one cut or a list of cuts on bdt_ISO, each in (0, 1). A list runs a cut scan.
+  bdt_score_cut: [0.88, 0.89, 0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97]   # scan 0.88 to 0.97 (old HF best: 0.91)

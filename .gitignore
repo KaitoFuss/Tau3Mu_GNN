@@ -190,3 +190,5 @@ tests/*
 notebooks/
 
 HiggsAnalysis/
+
+docs/
