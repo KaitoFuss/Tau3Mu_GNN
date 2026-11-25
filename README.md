@@ -92,7 +92,7 @@ Tau3Mu_GNN/
 ├── configs/                      # Pipeline configs: example_*.yaml (copy + edit), *_defaults_*.yaml (frozen)
 ├── models/                       # Frozen models used by the pipelines: models/W/bdt/, models/W/gnn/<model_name>/
 ├── gnn_models/                   # Old GNN models (lambda05, lambda1). Not used by the pipelines
-├── images/                       # Graph pictures for README_old.md
+├── images/                       # Old graph pictures (graph, Lund, spatial). Not referenced anywhere
 ├── tests/pipelines/              # Tests of the pipelines (pytest)
 ├── jobs/                         # Cluster job scripts (old manual workflow; the pipelines write their own)
 │   ├── migration/                # Copy T3 files to EOS (t3_list_files.py, copy_to_eos.sh)
