@@ -36,7 +36,7 @@ A Graph Neural Network (GNN) pipeline that searches for the decay **τ → 3μ**
 
 ## Quick Start
 
-lxplus, W channel, from raw NanoAOD to a limit:
+lxplus, W channel, from flat NTuples to a limit (Chiara Basile's [NTuplizer](https://github.com/BasChiara/Tau3muNANO/tree/CMSSW_14_0_16) with the addition of PFCands retention was used in this example):
 
 Needs miniforge on EOS (see [Installation](#installation)).
 
