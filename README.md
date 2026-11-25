@@ -42,7 +42,7 @@ Needs miniforge on EOS (see [Installation](#installation)).
 
 ```bash
 cd /eos/user/${USER:0:1}/$USER                                                           # EOS, not AFS (AFS home: 2 GB)
-git clone git@github.com:KaitoFuss/SVJ_GNN.git && cd SVJ_GNN
+git clone git@github.com:KaitoFuss/Tau3Mu_GNN.git && cd Tau3Mu_GNN
 conda env create -f environment_frozen.yaml -p /eos/user/${USER:0:1}/$USER/envs/Tau3Mu   # once, see Installation
 conda activate /eos/user/${USER:0:1}/$USER/envs/Tau3Mu
 pip install -r requirements_frozen.txt && pip install -e .                               # once
@@ -91,7 +91,6 @@ tau3mu_gnn/
 ├── configs/                      # Pipeline configs: example_*.yaml (copy + edit), *_defaults_*.yaml (frozen)
 ├── models/                       # Frozen models: models/W/bdt/, models/W/gnn/<model_name>/
 ├── tests/pipelines/              # Tests of the pipelines (pytest)
-├── docs/                         # Roadmap, design specs
 ├── jobs/                         # Cluster job scripts (old manual workflow; the pipelines write their own)
 │   ├── migration/                # Copy T3 files to EOS (t3_list_files.py, copy_to_eos.sh)
 │   ├── graph_creation/           # SLURM: skimming and graph creation
@@ -462,7 +461,7 @@ The analysis then uses the new BDT and GNN, and the settings that belong to them
 
 ## HF Channel
 
-Both pipelines also run the HF channel (Ds → τ → 3μ). Set `channel: HF` in the config: it selects `configs/analysis_defaults_HF.yaml` and `configs/training_defaults_HF.yaml`. Design: `docs/superpowers/specs/2026-10-25-step13-hf-design.md`.
+Both pipelines also run the HF channel (Ds → τ → 3μ). Set `channel: HF` in the config: it selects `configs/analysis_defaults_HF.yaml` and `configs/training_defaults_HF.yaml`.
 
 What differs from W:
 

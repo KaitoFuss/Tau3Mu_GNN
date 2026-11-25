@@ -190,3 +190,6 @@ tests/*
 notebooks/
 
 HiggsAnalysis/
+
+# Personal notes (not part of the repo)
+docs/
