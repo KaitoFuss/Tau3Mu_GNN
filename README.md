@@ -104,7 +104,7 @@ tau3mu_gnn/
 └── src/tau3mu_gnn/
     ├── pipelines/                # tau3mu-analysis and tau3mu-training (start here)
     │   ├── common/               # shared: config parts, storage, batch (HTCondor, SLURM), manifests, shared stages
-    │   ├── analysis/             # analysis pipeline (phases bdt, benchmark, gnn, limit)
+    │   ├── analysis/             # analysis pipeline (phases bdt, gnn, limit, benchmark)
     │   └── training/             # training pipeline (phases bdt, gnn)
     ├── scripts/                  # Old manual entry points (the pipelines use the code, not these scripts)
     │   ├── GraphCreation.py      # Graph creation entry point
@@ -323,19 +323,19 @@ Do a dry run first. Then submit.
 
 ```bash
 tau3mu-analysis all --config my_W.yaml --dry-run    # write the job files, print the submit command, submit nothing
-tau3mu-analysis all --config my_W.yaml              # submit the phases bdt, benchmark, gnn and limit at once
+tau3mu-analysis all --config my_W.yaml              # submit the phases bdt, gnn, limit and benchmark at once
 ```
 
 | Phase | Jobs | Stages |
 |---|---|---|
 | `bdt` | `skim`, `bdt` | resonance skim (skipped if `already_resonance_skimmed: true`), skim, BDT |
-| `benchmark` | `benchmark_limit_<cut>` (one per cut), `benchmark_summary` | BDT-only limit: datacard + Combine per cut on `bdt_ISO`, table of limits |
 | `gnn` | `gnn_signal`, `gnn_background`, `eval` | GNN scores, evaluation plots |
 | `limit` | `limit_<cut>` (one per cut), `summary` | GNN limit: datacard + Combine per cut on `GNN_score`, table of limits |
+| `benchmark` | `benchmark_limit_<cut>` (one per cut), `benchmark_summary` | BDT-only limit: datacard + Combine per cut on `bdt_ISO`, table of limits |
 
 How `all` connects the phases (HTCondor: one DAG over the four phases; SLURM: job dependencies):
 
-- `benchmark` and `gnn` start when the `bdt` job of phase `bdt` succeeds. They run in parallel.
+- `gnn` and `benchmark` start when the `bdt` job of phase `bdt` succeeds. They run in parallel.
 - `limit` starts when the `eval` job of phase `gnn` succeeds.
 - If a job fails, the jobs after it do not run.
 - `summary` and `benchmark_summary` run also if some cut jobs fail. With HTCondor the DAG then still shows as done: check `limits_gnn.txt` and `limits_benchmark.txt` for missing cuts.
@@ -347,9 +347,9 @@ How `all` connects the phases (HTCondor: one DAG over the four phases; SLURM: jo
 
 ```bash
 tau3mu-analysis bdt       --config my_W.yaml
-tau3mu-analysis benchmark --config my_W.yaml [--from bdt_vs2]
 tau3mu-analysis gnn       --config my_W.yaml [--from bdt_vs2]
 tau3mu-analysis limit     --config my_W.yaml [--from gnn_vs1]
+tau3mu-analysis benchmark --config my_W.yaml [--from bdt_vs2]
 ```
 
 **One stage, for debugging.** The output goes to `debug/`. It has no manifest.
@@ -367,9 +367,9 @@ Each phase run makes a **new version folder**. The pipeline does not overwrite a
 ```
 <output_base>/<analysis_name>/
 ├── bdt_vs1/               0_resonance_skim/, 1_skim/, 2_bdt/
-├── benchmark_vs1/         cut_<cut>/ (datacard, Combine logs, limit.json), limits_benchmark.{json,txt,png}   (BDT-only limit)
 ├── gnn_vs1/               3_gnn/, 4_eval/ (tau mass, ROC and SIC plots)
 ├── limit_vs1/             cut_<cut>/ (datacard, Combine logs, limit.json), limits_gnn.{json,txt,png}        (GNN limit)
+├── benchmark_vs1/         cut_<cut>/ (datacard, Combine logs, limit.json), limits_benchmark.{json,txt,png}   (BDT-only limit)
 └── debug/<stage>_vsN/     single-stage runs
 ```
 
@@ -389,7 +389,7 @@ Each version folder also has these files:
 
 1. **Find the job.**
    - HTCondor: `condor_q` shows the DAGs that run (batch name `<analysis_name>.<versions>`, e.g. `my_W.bdt_vs1+gnn_vs1+limit_vs1`); `condor_q -dag -nobatch` shows each job; `condor_history -limit 20` shows finished jobs.
-   - SLURM: `squeue -u $USER`, `sacct -j <ID>`. Job names: `<phase><version>.<job>.<analysis_name>`, for example `GNN1.gnnS.my_W` (phase `BDT`, `BEN`, `GNN`, `LIM`, or `D` for a debug stage; job `skim`, `bdt`, `bl<cut>`, `bsum`, `gnnS`, `gnnB`, `eval`, `lim<cut>`, `sum`).
+   - SLURM: `squeue -u $USER`, `sacct -j <ID>`. Job names: `<phase><version>.<job>.<analysis_name>`, for example `GNN1.gnnS.my_W` (phase `BDT`, `GNN`, `LIM`, `BEN`, or `D` for a debug stage; job `skim`, `bdt`, `gnnS`, `gnnB`, `eval`, `lim<cut>`, `sum`, `bl<cut>`, `bsum`).
 2. **Read the log** of the failed job: `<log_dir>/analysis/<analysis_name>/<phase>_vsN/<job>-<ID>.err` (also in `<phase>_vsN/logs/` next to the results). HTCondor: `jobs.dag.dagman.out` in the folder of the first phase says which node failed.
 3. **Fix the problem. Then submit the phase again.**
    - This makes the next version, for example `gnn_vs2`.
@@ -441,7 +441,7 @@ The jobs use the code of the folder you submit from. Do not change that folder w
 ```
 <output_base>/<training_name>/
 ├── bdt_vsN/         1_skim/, bdt_train/ (ISO_classifiers.pck, plots), 2_bdt/
-├── gnn_vsN/         npvs/, graphs/, gnn_train/<model_name>/ (model, Normalization.pkl, arch_config.json)
+└── gnn_vsN/         npvs/, graphs/, gnn_train/<model_name>/ (model, Normalization.pkl, arch_config.json)
 ```
 
 The job scripts and the batch logs: `<log_dir>/training/<training_name>/<phase>_vsN/`.

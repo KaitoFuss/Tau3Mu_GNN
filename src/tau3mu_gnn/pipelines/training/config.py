@@ -79,10 +79,6 @@ TRAINING_USER_FIELDS: dict[str, _Field] = {
     "bdt_training.max_events_per_class": _Field(_positive_int, required=False, default=100000),
 }
 
-# Keys that moved to the analysis config: the BDT-only benchmark limit runs in the analysis now, on the same
-# events as the GNN limit (tau3mu-analysis phase benchmark).
-MOVED_TO_ANALYSIS = ("benchmark.bdt_score_cut", "limit.signal_weight")
-
 TRAINING_DEFAULTS_FIELDS: dict[str, _Field] = {
     "sideband_half_width": _Field(_positive_number),
     "bdt_training.max_depth": _Field(_positive_int),
@@ -270,11 +266,6 @@ def load_training_config(user_path: str | Path, defaults_dir: str | Path | None 
     frozen = [(TRAINING_DEFAULTS_FIELDS, f"frozen training setting (training_defaults_{channel}.yaml)"),
               (DEFAULTS_FIELDS, f"frozen analysis setting (analysis_defaults_{channel}.yaml)")]
     flat_user = _flatten_training(raw_user, TRAINING_USER_FIELDS)
-    for key in MOVED_TO_ANALYSIS:
-        if key in flat_user:
-            del flat_user[key]
-            problems.append(f"user config {user_path}: key '{key}' moved to the analysis config (the BDT-only "
-                            f"benchmark limit is a phase of tau3mu-analysis now); remove it here")
     user = _parse(flat_user, TRAINING_USER_FIELDS, f"user config {user_path}", problems, frozen=frozen)
     if "channel" not in user:
         raise ConfigError(problems)

@@ -198,27 +198,27 @@ def test_conda_env_from_config_needs_no_active_env(load, user, tmp_path, fake_sb
 def test_all_chains_the_four_phases(cfg, env, fake_sbatch):
     from tau3mu_gnn.pipelines.analysis.driver import submit_all
 
-    a, ben, b, c = submit_all(cfg, env=env)
-    assert [s.version_dir.rsplit("/", 1)[-1] for s in (a, ben, b, c)] == \
-        ["bdt_vs1", "benchmark_vs1", "gnn_vs1", "limit_vs1"]
-    # bdt has no manifest yet; benchmark and gnn both read the new bdt version
-    assert (a.upstream, ben.upstream, b.upstream, c.upstream) == (None, a.version_dir, a.version_dir, b.version_dir)
+    a, b, c, ben = submit_all(cfg, env=env)
+    assert [s.version_dir.rsplit("/", 1)[-1] for s in (a, b, c, ben)] == \
+        ["bdt_vs1", "gnn_vs1", "limit_vs1", "benchmark_vs1"]
+    # bdt has no manifest yet; gnn and benchmark both read the new bdt version
+    assert (a.upstream, b.upstream, c.upstream, ben.upstream) == (None, a.version_dir, b.version_dir, a.version_dir)
     assert a.job_ids == {"skim": "1001", "bdt": "1002"}
-    assert ben.job_ids == {"benchmark_limit_0.98": "1003", "benchmark_limit_0.99": "1004",
-                           "benchmark_summary": "1005"}
-    assert b.job_ids == {"gnn_signal": "1006", "gnn_background": "1007", "eval": "1008"}
+    assert b.job_ids == {"gnn_signal": "1003", "gnn_background": "1004", "eval": "1005"}
+    assert ben.job_ids == {"benchmark_limit_0.98": "1010", "benchmark_limit_0.99": "1011",
+                           "benchmark_summary": "1012"}
     calls = sbatch_calls(fake_sbatch)
-    for i in (2, 3, 5, 6):            # benchmark limits and both GNN jobs wait only for the bdt job: in parallel
+    for i in (2, 3, 9, 10):           # both GNN jobs and benchmark limits wait only for the bdt job: in parallel
         assert calls[i].startswith("--parsable --dependency=afterok:1002 --kill-on-invalid-dep=yes ")
-    assert calls[4].startswith("--parsable --dependency=afterany:1003:1004,afterok:1002 ")
-    for i in (8, 9, 10):                                               # every limit job waits for the eval job
-        assert calls[i].startswith("--parsable --dependency=afterok:1008 --kill-on-invalid-dep=yes ")
-    assert calls[11].startswith("--parsable --dependency=afterany:1009:1010:1011,afterok:1008 ")
+    for i in (5, 6, 7):                                                # every limit job waits for the eval job
+        assert calls[i].startswith("--parsable --dependency=afterok:1005 --kill-on-invalid-dep=yes ")
+    assert calls[8].startswith("--parsable --dependency=afterany:1006:1007:1008,afterok:1005 ")
+    assert calls[11].startswith("--parsable --dependency=afterany:1010:1011,afterok:1002 ")
     assert (b.log_folder / "gnn_signal.sh").read_text().splitlines()[-1].endswith(
         f"--upstream {a.version_dir} --sample signal")
     assert (ben.log_folder / "benchmark_limit_0.98.sh").read_text().splitlines()[-1].endswith(
         f"--upstream {a.version_dir} --cut 0.98")
-    for s in (a, ben, b, c):
+    for s in (a, b, c, ben):
         assert json.loads((Path(s.version_dir) / "jobs.json").read_text()) == s.job_ids
 
 
@@ -226,14 +226,14 @@ def test_all_uses_its_own_bdt_phase_not_an_older_one(cfg, env, fake_sbatch):
     from tau3mu_gnn.pipelines.analysis.driver import submit_all
 
     complete(cfg, "bdt_vs1")
-    a, ben, b, _ = submit_all(cfg, env=env)
+    a, b, _, ben = submit_all(cfg, env=env)
     assert a.version_dir.endswith("bdt_vs2") and b.upstream == a.version_dir and ben.upstream == a.version_dir
 
 
 def test_all_dry_run(cfg, env, fake_sbatch, capsys):
     from tau3mu_gnn.pipelines.analysis.driver import submit_all
 
-    a, ben, b, c = submit_all(cfg, dry_run=True, env=env)
+    a, b, c, ben = submit_all(cfg, dry_run=True, env=env)
     out = capsys.readouterr().out
     assert f"--dependency=afterok:DRYRUN-bdt --kill-on-invalid-dep=yes {b.log_folder}/gnn_signal.sh" in out
     assert f"--dependency=afterok:DRYRUN-bdt --kill-on-invalid-dep=yes {ben.log_folder}/benchmark_limit_0.98.sh" \

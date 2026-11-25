@@ -195,7 +195,7 @@ def test_main_dispatch(cfg, scratch, fake_stages, monkeypatch):
     jobs.main(["npvs", "--config", "x.yaml", "--phase-dir", g, "--upstream", a])
     jobs.main(["graphs", "--config", "x.yaml", "--phase-dir", g, "--upstream", a, "--sample", "signal"])
     assert fake_stages["graphs"]["signal"]["npvs"] == "w"
-    with pytest.raises(SystemExit):                    # the benchmark jobs moved to the analysis
+    with pytest.raises(SystemExit):
         jobs.main(["benchmark_limit", "--config", "x.yaml", "--phase-dir", g, "--upstream", a, "--cut", "0.98"])
 
 

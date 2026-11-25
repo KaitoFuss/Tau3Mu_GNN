@@ -93,7 +93,6 @@ def test_gpu_job_flags(cfg, env, fake_sbatch):
 
 
 def test_no_benchmark_phase(cfg, env, fake_sbatch):
-    """The BDT-only benchmark limit moved to the analysis (same events as the GNN limit)."""
     from tau3mu_gnn.pipelines.training.driver import submit_phase
 
     complete(cfg, "bdt_vs1")

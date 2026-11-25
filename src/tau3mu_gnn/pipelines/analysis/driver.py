@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 SAMPLES = ("signal", "background")
 STAGES = ("skim", "bdt", "gnn", "eval", "limit", "summary", "benchmark_limit", "benchmark_summary")
-PHASES = ("bdt", "benchmark", "gnn", "limit")   # submit order of `all`
+PHASES = ("bdt", "gnn", "limit", "benchmark")   # submit order of `all`
 UPSTREAM = {"benchmark": "bdt", "gnn": "bdt", "limit": "gnn"}   # the phase each phase reads (manifest.UPSTREAM)
 LAST_JOB = {"bdt": "bdt", "gnn": "eval"}   # writes the manifest; the phases that read it wait for it in `all`
 
@@ -111,9 +111,9 @@ def submit_stage(cfg: Config, stage: str, from_: str | None = None, cut: float |
 
 
 def submit_all(cfg: Config, dry_run: bool = False, env: JobEnv | None = None) -> list[Submission]:
-    """Submit the phases bdt, benchmark, gnn and limit at once. benchmark and gnn use the new bdt version, limit
-    the new gnn version (not the newest complete one: they have no manifest yet). The first jobs of benchmark
-    and gnn wait (afterok) for the bdt job, so the two phases run in parallel; the first jobs of limit wait for
+    """Submit the phases bdt, gnn, limit and benchmark at once. gnn and benchmark use the new bdt version, limit
+    the new gnn version (not the newest complete one: they have no manifest yet). The first jobs of gnn
+    and benchmark wait (afterok) for the bdt job, so the two phases run in parallel; the first jobs of limit wait for
     eval. The upstream check runs when a job starts. If a job fails, the batch system does not start the jobs
     after it. HTCondor: one DAG over the four phases."""
     env = env if env is not None else JobEnv.from_config(cfg)

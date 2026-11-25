@@ -60,8 +60,8 @@ def test_all(cli_env, fake_sbatch, capsys):
 
     assert cli.main(["all", "--config", "my.yaml"]) == 0
     out = capsys.readouterr().out
-    assert all(f"{p}_vs1" in out for p in ("bdt", "benchmark", "gnn", "limit")) and f"  {'summary':<22} 1010" in out
-    assert f"  {'benchmark_summary':<22} 1005" in out
+    assert all(f"{p}_vs1" in out for p in ("bdt", "gnn", "limit", "benchmark")) and f"  {'summary':<22} 1007" in out
+    assert f"  {'benchmark_summary':<22} 1010" in out
     with pytest.raises(SystemExit):
         cli.main(["all", "--config", "my.yaml", "--from", "bdt_vs1"])
 

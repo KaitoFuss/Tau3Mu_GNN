@@ -45,6 +45,3 @@ graphs:
 
 # bdt_training:
 #   max_events_per_class: 100000           # optional, default 100000; BDT training events per class
-
-# The BDT-only benchmark limit (benchmark.bdt_score_cut) and limit.signal_weight are in the
-# analysis config now: the benchmark runs in tau3mu-analysis, on the same events as the GNN limit.

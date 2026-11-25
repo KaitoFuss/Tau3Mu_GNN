@@ -212,7 +212,7 @@ def test_all_is_one_dag_over_four_phases(load, condor_user, fake_dag):
     subs = submit_all(load(condor_user), env=JobEnv.from_environment(ENV))
     calls = fake_dag.read_text().splitlines()
     assert sum(c.startswith("-batch-name") for c in calls) == 1
-    assert calls[0].startswith("-batch-name toy_run.bdt_vs1+benchmark_vs1+gnn_vs1+limit_vs1 ")
+    assert calls[0].startswith("-batch-name toy_run.bdt_vs1+gnn_vs1+limit_vs1+benchmark_vs1 ")
     assert "PARENT bdt_vs1-bdt CHILD gnn_vs1-gnn_signal" in calls
     assert "PARENT bdt_vs1-bdt CHILD benchmark_vs1-benchmark_limit_0_98" in calls
     assert not any(c.startswith("PARENT benchmark_vs1") and "gnn_vs1" in c for c in calls)   # in parallel

@@ -11,8 +11,8 @@ from tau3mu_gnn.pipelines.common import manifest as _manifest
 from tau3mu_gnn.pipelines.common import runs as _runs
 
 PIPELINE = "analysis"
-PHASES = ("bdt", "benchmark", "gnn", "limit")
-UPSTREAM = {"bdt": None, "benchmark": "bdt", "gnn": "bdt", "limit": "gnn"}
+PHASES = ("bdt", "gnn", "limit", "benchmark")
+UPSTREAM = {"bdt": None, "gnn": "bdt", "limit": "gnn", "benchmark": "bdt"}
 PHASE_SECTIONS = {
     "bdt": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt"),
     "benchmark": ("channel", "inputs", "branch_map", "resonance_skim", "skim", "models", "bdt", "benchmark", "limit"),

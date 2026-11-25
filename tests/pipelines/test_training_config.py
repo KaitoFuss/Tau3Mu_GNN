@@ -58,17 +58,6 @@ def test_missing_required_user_keys(load_training, training_user):
     assert "missing required key 'graphs.bdt_preselection_cut'" in str(e.value)
 
 
-@pytest.mark.parametrize("key, value", [("benchmark", {"bdt_score_cut": [0.98]}),
-                                        ("limit", {"signal_weight": 1.9e-5})])
-def test_moved_keys_point_to_the_analysis(load_training, training_user, key, value):
-    """An old training config with the benchmark keys gets a clear message, not only 'unknown key'."""
-    training_user[key] = value
-    with pytest.raises(ConfigError) as e:
-        load_training(training_user)
-    text = str(e.value)
-    assert f"key '{key}.{next(iter(value))}' moved to the analysis config" in text and "unknown key" not in text
-
-
 def test_missing_analysis_defaults_is_reported(load_training, training_user, fake_repo):
     (fake_repo / "configs" / "analysis_defaults_W.yaml").unlink()
     with pytest.raises(ConfigError, match="analysis_defaults_W.yaml"):
