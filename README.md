@@ -429,7 +429,7 @@ cp configs/example_training_W.yaml my_training_W.yaml
 
 The comments in the file explain each key. The frozen training settings (BDT and GNN recipe, graph settings, Comet ML, batch resources) are in `configs/training_defaults_W.yaml`.
 
-> **Comet ML:** the defaults files have Kaito's Comet workspace and API key (`comet:`). Your GNN training logs into that workspace. Own workspace: edit `comet:` in `configs/training_defaults_<channel>.yaml` of your checkout. Do not share the key outside the group. The shared settings (skim cuts, limit fit) come from `configs/analysis_defaults_W.yaml`.
+> **Comet ML:** the defaults files have Kaito's Comet workspace and API key (`comet:`). Your GNN training logs into that workspace. Own workspace: edit `comet:` in `configs/training_defaults_<channel>.yaml` of your checkout. The shared settings (skim cuts, limit fit) come from `configs/analysis_defaults_W.yaml`.
 
 | Key | What it is |
 |---|---|
