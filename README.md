@@ -113,8 +113,8 @@ Tau3Mu_GNN/
     │   ├── Train_TauMuNet.py     # GNN training entry point
     │   └── ScoreCreation.py      # GNN inference entry point
     ├── graph/
-    │   ├── ConeGraphProducer.py          # Core graph building logic (old scripts)
-    │   ├── ConeGraphProducer_Dataset.py  # Graph building as a dataset (used by the pipelines)
+    │   ├── ConeGraphProducer.py          # Core graph building logic (used by the pipelines and scripts)
+    │   ├── ConeGraphProducer_Dataset.py  # Old dataset variant, only for graphDataLoader_chunk_sampler.py (not used)
     │   ├── graphDataLoader.py            # Data loading / batching
     │   ├── graphDataLoader_chunk_sampler.py  # Old chunked loader (not used)
     │   └── naming.py                     # Graph file names (shared by scripts and pipelines)
